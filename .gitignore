@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+dist/
+storage/
+.env
+.env.*.local
+*.tsbuildinfo
+prisma/generated/
+.turbo/
+npm-debug.log*

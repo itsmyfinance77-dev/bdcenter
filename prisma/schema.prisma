@@ -1,0 +1,314 @@
+// Business Development Center (bdcenter.yazdccima.com) — initial data model.
+// Rules: a domain owns its own models; other domains read through a service
+// function, never through a direct Prisma relation across domain lines,
+// unless the relation is intrinsic to the record (e.g. AuditLog.actorId).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access (admin/editor side only — public visitors do not need an
+// account for the request-based services in this phase)
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  ADMIN
+  EDITOR
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(EDITOR)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     AdminUser? @relation(fields: [actorId], references: [id])
+  action    String // e.g. "content.publish", "form.submission.export"
+  entity    String // e.g. "Article", "FormDefinition"
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// CMS: institutional pages, news/events, services
+// ---------------------------------------------------------------------------
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Static institutional pages: "درباره مرکز", "تماس با ما", ...
+model Page {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  sections    Json // typed sections rendered by the web layer; no raw HTML
+  status      ContentStatus @default(DRAFT)
+  seoTitle    String?
+  seoDesc     String?
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("pages")
+}
+
+enum ArticleKind {
+  NEWS
+  EVENT
+}
+
+/// "اخبار و رویدادهای مرکز"
+model Article {
+  id          String        @id @default(cuid())
+  kind        ArticleKind
+  slug        String        @unique
+  title       String
+  excerpt     String?
+  bodyMarkdown String
+  coverImageId String?
+  coverImage  MediaAsset?   @relation(fields: [coverImageId], references: [id])
+  eventStartsAt DateTime?
+  eventEndsAt   DateTime?
+  eventLocation String?
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([kind, status, publishedAt])
+  @@map("articles")
+}
+
+model MediaAsset {
+  id           String   @id @default(cuid())
+  storageKey   String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  altText      String?
+  createdAt    DateTime @default(now())
+
+  articles Article[]
+
+  @@map("media_assets")
+}
+
+/// The 7 "خدمات مرکز" tiles. Most start with `isPlaceholder = true`
+/// ("اطلاعات این صفحه بعدا اضافه می‌شود") and get real content later —
+/// the tile still renders, just without a detail page.
+model Service {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  summary       String?
+  externalUrl   String? // e.g. link to yazdccima.com/services/edu for training
+  isPlaceholder Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("services")
+}
+
+/// The "دسترسی به خدمات اتاق بازرگانی یزد" footer/section links — plain
+/// outbound links to the parent chamber site, not owned content.
+model ExternalLink {
+  id        String   @id @default(cuid())
+  section   String // e.g. "chamber-services", "useful-links"
+  title     String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("external_links")
+}
+
+// ---------------------------------------------------------------------------
+// Membership — OQ-BD-01: pricing tiers are NOT enforced yet (see
+// docs/product/open-questions.md). This table only stores the imported
+// roster; access/pricing logic stays behind a single lookup function
+// (`getMembershipTier`) so the real rule can land later without touching
+// every call site.
+// ---------------------------------------------------------------------------
+
+enum MembershipTier {
+  NORMAL // عادی — non-member, non-tech company
+  SPECIAL // ویژه — tech/knowledge-based company, non-member
+  PREMIUM // ممتاز — Chamber member
+}
+
+model MembershipRecord {
+  id           String         @id @default(cuid())
+  nationalId   String         @unique // شناسه ملی یا کد ملی
+  companyName  String?
+  tier         MembershipTier
+  sourceFile   String? // which Excel import this row came from, for traceability
+  importedAt   DateTime       @default(now())
+
+  @@map("membership_records")
+}
+
+// ---------------------------------------------------------------------------
+// Training & consulting — the only two transactional services in this phase
+// ---------------------------------------------------------------------------
+
+enum RequestStatus {
+  NEW
+  IN_REVIEW
+  ACCEPTED
+  REJECTED
+  DONE
+}
+
+model Course {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String?
+  instructor  String?
+  startsAt    DateTime?
+  capacity    Int?
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Enrollment {
+  id             String        @id @default(cuid())
+  courseId       String
+  course         Course        @relation(fields: [courseId], references: [id])
+  fullName       String
+  nationalId     String?
+  phone          String
+  email          String?
+  companyName    String?
+  status         RequestStatus @default(NEW)
+  // Resolved at submission time from MembershipRecord, but never auto-billed
+  // until OQ-BD-01 is answered — see docs/product/open-questions.md.
+  membershipTier MembershipTier?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("enrollments")
+}
+
+/// "مرکز مشاوره (ویژه شرکت‌های فناور و دانش‌بنیان)" — request intake only.
+model ConsultingRequest {
+  id             String        @id @default(cuid())
+  fullName       String
+  nationalId     String?
+  phone          String
+  email          String?
+  companyName    String?
+  topic          String
+  description    String?
+  membershipTier MembershipTier?
+  status         RequestStatus @default(NEW)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("consulting_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic form builder ("۸- فرم ساز" / "میز خدمت")
+// ---------------------------------------------------------------------------
+
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  EMAIL
+  PHONE
+  DATE
+  SELECT
+  FILE
+  CHECKBOX
+}
+
+model FormDefinition {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String?
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  fields      FormField[]
+  submissions FormSubmission[]
+
+  @@map("form_definitions")
+}
+
+model FormField {
+  id           String        @id @default(cuid())
+  formId       String
+  form         FormDefinition @relation(fields: [formId], references: [id], onDelete: Cascade)
+  key          String // stable machine name used as the JSON key in submissions
+  label        String
+  type         FormFieldType
+  isRequired   Boolean       @default(false)
+  options      Json? // for SELECT: string[]
+  sortOrder    Int           @default(0)
+
+  @@unique([formId, key])
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id        String         @id @default(cuid())
+  formId    String
+  form      FormDefinition @relation(fields: [formId], references: [id])
+  data      Json // { [fieldKey]: value }
+  status    RequestStatus  @default(NEW)
+  createdAt DateTime       @default(now())
+
+  @@index([formId, createdAt])
+  @@map("form_submissions")
+}
+
+// ---------------------------------------------------------------------------
+// Contact
+// ---------------------------------------------------------------------------
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  fullName  String
+  phone     String?
+  email     String?
+  message   String
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}

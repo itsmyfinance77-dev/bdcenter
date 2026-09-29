@@ -1,0 +1,21 @@
+packages:
+  - '.'
+
+# pnpm 12 renamed onlyBuiltDependencies -> allowBuilds (map form). Keep the
+# list form too for pnpm 10 compatibility, in case a contributor pins an
+# older pnpm locally.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true
+  unrs-resolver: true
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - argon2
+  - esbuild
+  - prisma
+  - unrs-resolver

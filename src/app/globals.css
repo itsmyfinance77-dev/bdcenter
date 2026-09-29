@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Change values here, not in components.
+ * Palette is a neutral placeholder — swap for the center's real brand
+ * colors once OQ-BD-04 (visual identity) is answered.
+ */
+@theme {
+  --font-sans: 'Vazirmatn', Tahoma, sans-serif;
+
+  --color-brand-900: #0b2257;
+  --color-brand-700: #2e4b8c;
+  --color-primary: #1450c8;
+  --color-primary-hover: #0f3e9e;
+
+  --color-ink: #0e1a33;
+  --color-ink-2: #3a4660;
+
+  --color-on-dark: #c9d4ea;
+  --color-on-dark-2: #a9b8d8;
+
+  --color-surface: #f3f6fa;
+  --color-surface-2: #eef2f8;
+  --color-line: #e3e7ef;
+  --color-line-hover: #9fb6e6;
+
+  --radius-chip: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-panel: 10px;
+
+  --container-page: 1200px;
+  /* Desktop nav switches on above this width; see SiteHeader. */
+  --breakpoint-nav: 73.75rem;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
