@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { z } from 'zod';
 
 /**
  * Private upload storage on the local disk (`storage/`, git-ignored). Files are
@@ -58,3 +59,20 @@ export async function storeUpload(area: string, file: File): Promise<StoredFile>
     sizeBytes: file.size,
   };
 }
+
+/**
+ * Absolute path of a stored upload. Keys come from the database, but the
+ * check still refuses anything that would resolve outside the storage root.
+ */
+export function storedFilePath(storageKey: string): string | null {
+  const root = storageRoot();
+  const target = path.resolve(root, storageKey);
+  return target.startsWith(root + path.sep) ? target : null;
+}
+
+export const storedFileSchema = z.object({
+  storageKey: z.string(),
+  originalName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number(),
+});

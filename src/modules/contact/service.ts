@@ -19,3 +19,27 @@ export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 export async function createContactMessage(input: ContactMessageInput) {
   return prisma.contactMessage.create({ data: input, select: { id: true } });
 }
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+const PAGE_SIZE = 20;
+
+export async function listContactMessages(page: number) {
+  const [items, total] = await Promise.all([
+    prisma.contactMessage.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.contactMessage.count(),
+  ]);
+  return { items, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+}
+
+export async function countRecentContactMessages(days = 7) {
+  return prisma.contactMessage.count({
+    where: { createdAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) } },
+  });
+}

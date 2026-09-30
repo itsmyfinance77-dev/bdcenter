@@ -60,16 +60,20 @@ export function Field({ name, label, required, error, hint, defaultValue, childr
 }
 
 export function TextField(
-  props: Omit<FieldProps, 'children'> & { type?: 'text' | 'email' | 'tel' | 'number' | 'date' },
+  props: Omit<FieldProps, 'children'> & {
+    type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'password';
+    autoComplete?: string;
+  },
 ) {
-  const { type = 'text', ...fieldProps } = props;
+  const { type = 'text', autoComplete, ...fieldProps } = props;
   return (
     <Field {...fieldProps}>
       {(control) => (
         <input
           {...control}
           type={type}
-          dir={type === 'email' || type === 'tel' ? 'ltr' : undefined}
+          autoComplete={autoComplete}
+          dir={type === 'email' || type === 'tel' || type === 'password' ? 'ltr' : undefined}
           inputMode={type === 'number' ? 'decimal' : undefined}
         />
       )}
@@ -77,8 +81,41 @@ export function TextField(
   );
 }
 
-export function TextareaField(props: Omit<FieldProps, 'children'>) {
-  return <Field {...props}>{(control) => <textarea {...control} rows={5} />}</Field>;
+export function TextareaField({
+  rows = 5,
+  ...props
+}: Omit<FieldProps, 'children'> & { rows?: number }) {
+  return <Field {...props}>{(control) => <textarea {...control} rows={rows} />}</Field>;
+}
+
+export function SelectField({
+  options,
+  onChange,
+  ...props
+}: Omit<FieldProps, 'children'> & {
+  options: Record<string, string>;
+  onChange?: (value: string) => void;
+}) {
+  return (
+    <Field {...props}>
+      {({ defaultValue, ...control }) => (
+        // key: React ignores a changed defaultValue on <select> after mount, and the
+        // form reset after an action would otherwise snap back to the first render.
+        <select
+          key={defaultValue}
+          {...control}
+          defaultValue={defaultValue ?? Object.keys(options)[0]}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+        >
+          {Object.entries(options).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      )}
+    </Field>
+  );
 }
 
 /** Off-screen input that people never fill; the server drops submissions that do. */

@@ -28,6 +28,25 @@ npm run db:seed
 npm run dev                   # http://localhost:3000
 ```
 
+## Admin panel
+
+`/admin` — news & events, consulting requests, contact messages, form builder
+with submissions (status, CSV export, attachment download), users and audit log.
+
+- Create the first account (password is printed once unless `ADMIN_PASSWORD` is set):
+
+  ```bash
+  npm run admin:create -- --email you@example.com --name "Full Name"
+  ```
+
+- Roles: **ADMIN** manages everything; **EDITOR** handles content and incoming
+  requests but not forms, users or the audit log.
+- Sessions are signed with `SESSION_SECRET` (8 h). Deactivating a user takes
+  effect on their next request. Login is throttled per email and per IP
+  (in-memory — single instance only).
+- Event dates are typed in the Solar Hijri calendar, Tehran time
+  (`۱۴۰۵/۰۷/۱۵ ۱۸:۳۰`).
+
 ## Quality gate
 
 ```bash

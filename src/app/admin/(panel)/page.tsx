@@ -1,0 +1,59 @@
+import Link from 'next/link';
+import { AdminHeading } from '@/components/admin/ui';
+import { formatNumber } from '@/lib/format';
+import { countNewConsultingRequests } from '@/modules/consulting/service';
+import { countRecentContactMessages } from '@/modules/contact/service';
+import { countArticlesByStatus } from '@/modules/content/service';
+import { countNewSubmissions } from '@/modules/forms/service';
+
+// A layout's title template applies to child segments only, not to its own page.
+export const metadata = { title: { absolute: 'داشبورد | پنل مدیریت' } };
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const { denied } = await searchParams;
+  const [consulting, messages, submissions, articles] = await Promise.all([
+    countNewConsultingRequests(),
+    countRecentContactMessages(),
+    countNewSubmissions(),
+    countArticlesByStatus(),
+  ]);
+
+  const tiles = [
+    { title: 'درخواست‌های مشاوره جدید', value: consulting, href: '/admin/consulting?status=NEW' },
+    { title: 'درخواست‌های فرم جدید', value: submissions, href: '/admin/forms' },
+    { title: 'پیام‌های ۷ روز اخیر', value: messages, href: '/admin/messages' },
+    { title: 'مطالب منتشر شده', value: articles.PUBLISHED ?? 0, href: '/admin/articles' },
+    { title: 'پیش‌نویس‌ها', value: articles.DRAFT ?? 0, href: '/admin/articles' },
+  ];
+
+  return (
+    <>
+      <AdminHeading title="داشبورد" />
+      {denied ? (
+        <p
+          role="status"
+          className="mb-4 rounded-control border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          دسترسی به آن بخش فقط برای مدیر کل مجاز است.
+        </p>
+      ) : null}
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {tiles.map((tile) => (
+          <li key={tile.title}>
+            <Link
+              href={tile.href}
+              className="block rounded-panel border border-line bg-white p-5 hover:border-line-hover"
+            >
+              <p className="text-sm text-ink-2">{tile.title}</p>
+              <p className="mt-2 text-3xl font-bold text-brand-900">{formatNumber(tile.value)}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}

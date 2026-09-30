@@ -8,7 +8,15 @@ import {
   requiredText,
   toLatinDigits,
 } from '@/lib/validation';
-import { checkUpload, storeUpload, type StoredFile } from '@/modules/files/service';
+import { requestStatusLabel } from '@/content/admin';
+import { formatDateTime } from '@/lib/format';
+import { recordAudit } from '@/modules/audit/service';
+import {
+  checkUpload,
+  storedFileSchema,
+  storeUpload,
+  type StoredFile,
+} from '@/modules/files/service';
 
 /**
  * Dynamic form builder ("فرم‌ساز" / "میز خدمت"). Staff define fields in the
@@ -166,4 +174,233 @@ export async function submitForm(
     },
   });
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Admin: form builder and submissions
+// ---------------------------------------------------------------------------
+
+const SUBMISSIONS_PAGE_SIZE = 20;
+
+export async function listFormsForAdmin() {
+  const forms = await prisma.formDefinition.findMany({
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      status: true,
+      _count: { select: { submissions: true, fields: true } },
+    },
+  });
+  const newCounts = await prisma.formSubmission.groupBy({
+    by: ['formId'],
+    where: { status: 'NEW' },
+    _count: true,
+  });
+  const newByForm = new Map(newCounts.map((row) => [row.formId, row._count]));
+  return forms.map((form) => ({ ...form, newSubmissions: newByForm.get(form.id) ?? 0 }));
+}
+
+export async function getFormForAdmin(id: string) {
+  return prisma.formDefinition.findUnique({
+    where: { id },
+    include: { fields: { orderBy: { sortOrder: 'asc' } } },
+  });
+}
+
+const fieldTypes = [
+  'TEXT',
+  'TEXTAREA',
+  'NUMBER',
+  'EMAIL',
+  'PHONE',
+  'DATE',
+  'SELECT',
+  'FILE',
+  'CHECKBOX',
+] as const;
+
+const formFieldInputSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z][a-z0-9_]{0,39}$/,
+        'کلید فیلد باید با حرف انگلیسی کوچک شروع شود (a-z، 0-9، _).',
+      ),
+    label: z.string().trim().min(1, 'برچسب فیلد را وارد کنید.').max(200),
+    type: z.enum(fieldTypes),
+    isRequired: z.boolean(),
+    options: z.array(z.string().trim().min(1).max(200)).max(50),
+  })
+  .refine((field) => field.type !== 'SELECT' || field.options.length > 0, {
+    message: 'فیلد انتخابی باید حداقل یک گزینه داشته باشد.',
+    path: ['options'],
+  });
+
+export const formDefinitionInputSchema = z
+  .object({
+    title: requiredText('عنوان فرم', 200),
+    slug: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'نامک فقط حروف انگلیسی کوچک، عدد و خط تیره.'),
+    description: optionalText('توضیحات', 1000),
+    status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+    fields: z.array(formFieldInputSchema).min(1, 'فرم باید حداقل یک فیلد داشته باشد.').max(60),
+  })
+  .superRefine((form, ctx) => {
+    const seen = new Set<string>();
+    for (const field of form.fields) {
+      if (seen.has(field.key)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fields'],
+          message: `کلید «${field.key}» تکراری است.`,
+        });
+      }
+      seen.add(field.key);
+    }
+  });
+
+export type FormDefinitionInput = z.infer<typeof formDefinitionInputSchema>;
+
+/**
+ * Creates or replaces a form definition and its fields. Past submissions keep
+ * their stored data even if a field is renamed or removed later.
+ */
+export async function saveFormDefinition(
+  id: string | null,
+  input: FormDefinitionInput,
+  actorId: string,
+): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
+  const clash = await prisma.formDefinition.findFirst({
+    where: { slug: input.slug, NOT: id ? { id } : undefined },
+    select: { id: true },
+  });
+  if (clash) return { ok: false, errors: { slug: 'این نامک قبلاً استفاده شده است.' } };
+
+  const fields = input.fields.map((field, index) => ({
+    key: field.key,
+    label: field.label,
+    type: field.type,
+    isRequired: field.isRequired,
+    options: field.type === 'SELECT' ? field.options : undefined,
+    sortOrder: index + 1,
+  }));
+  const definition = {
+    title: input.title,
+    slug: input.slug,
+    description: input.description ?? null,
+    status: input.status,
+  };
+
+  const form = await prisma.$transaction(async (tx) => {
+    if (!id) {
+      return tx.formDefinition.create({ data: { ...definition, fields: { create: fields } } });
+    }
+    await tx.formField.deleteMany({ where: { formId: id } });
+    return tx.formDefinition.update({
+      where: { id },
+      data: { ...definition, fields: { create: fields } },
+    });
+  });
+
+  await recordAudit({
+    actorId,
+    action: id ? 'form.update' : 'form.create',
+    entity: 'FormDefinition',
+    entityId: form.id,
+    metadata: { slug: form.slug, fields: fields.length },
+  });
+  return { ok: true, id: form.id };
+}
+
+export async function listSubmissions(formId: string, page: number) {
+  const [items, total] = await Promise.all([
+    prisma.formSubmission.findMany({
+      where: { formId },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * SUBMISSIONS_PAGE_SIZE,
+      take: SUBMISSIONS_PAGE_SIZE,
+    }),
+    prisma.formSubmission.count({ where: { formId } }),
+  ]);
+  return { items, pageCount: Math.max(1, Math.ceil(total / SUBMISSIONS_PAGE_SIZE)) };
+}
+
+export async function setSubmissionStatus(
+  id: string,
+  status: 'NEW' | 'IN_REVIEW' | 'ACCEPTED' | 'REJECTED' | 'DONE',
+  actorId: string,
+) {
+  await prisma.formSubmission.update({ where: { id }, data: { status } });
+  await recordAudit({
+    actorId,
+    action: 'form.submission.status',
+    entity: 'FormSubmission',
+    entityId: id,
+    metadata: { status },
+  });
+}
+
+export async function countNewSubmissions() {
+  return prisma.formSubmission.count({ where: { status: 'NEW' } });
+}
+
+/** The uploaded file stored under `fieldKey` of a submission, if any. */
+export async function getSubmissionFile(submissionId: string, fieldKey: string) {
+  const submission = await prisma.formSubmission.findUnique({
+    where: { id: submissionId },
+    select: { data: true },
+  });
+  const data = submission?.data as Record<string, unknown> | null | undefined;
+  return storedFileSchema.safeParse(data?.[fieldKey]).data ?? null;
+}
+
+/** Human-readable value of one submitted field, for tables and CSV. */
+export function displayValue(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'boolean') return value ? 'بله' : 'خیر';
+  const file = storedFileSchema.safeParse(value);
+  if (file.success) return file.data.originalName;
+  return String(value);
+}
+
+/** Neutralizes spreadsheet formulas (CSV injection) and quotes the cell. */
+function csvCell(text: string): string {
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+/** All submissions of a form as CSV (UTF-8 with BOM so Excel shows Persian correctly). */
+export async function exportSubmissionsCsv(formId: string, actorId: string) {
+  const form = await getFormForAdmin(formId);
+  if (!form) return null;
+  const submissions = await prisma.formSubmission.findMany({
+    where: { formId },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const header = ['تاریخ ثبت', 'وضعیت', ...form.fields.map((field) => field.label)];
+  const rows = submissions.map((submission) => {
+    const data = submission.data as Record<string, unknown>;
+    return [
+      formatDateTime(submission.createdAt),
+      requestStatusLabel[submission.status],
+      ...form.fields.map((field) => displayValue(data[field.key])),
+    ];
+  });
+  const csv = [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+
+  await recordAudit({
+    actorId,
+    action: 'form.submission.export',
+    entity: 'FormDefinition',
+    entityId: form.id,
+    metadata: { rows: rows.length },
+  });
+  return { filename: `${form.slug}-submissions.csv`, content: `﻿${csv}` };
 }

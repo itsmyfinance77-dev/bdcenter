@@ -45,7 +45,7 @@ export function DynamicForm({
         return (
           <Field {...common}>
             {({ defaultValue, ...control }) => (
-              <select {...control} defaultValue={defaultValue ?? ''}>
+              <select key={defaultValue} {...control} defaultValue={defaultValue ?? ''}>
                 <option value="" disabled>
                   انتخاب کنید
                 </option>
