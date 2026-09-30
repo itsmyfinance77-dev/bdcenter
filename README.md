@@ -17,11 +17,12 @@ One app, modular by domain — see ADR-0001.
 
 ## Local development
 
-Prerequisites: Node 22+, PostgreSQL (local or Docker).
+Prerequisites: Node 22+, Docker (for the dev database).
 
 ```bash
 npm install
-cp .env.example .env          # fill DATABASE_URL, SESSION_SECRET, FILE_URL_SECRET
+docker compose up -d          # PostgreSQL 16 on 127.0.0.1:5434
+cp .env.example .env          # fill SESSION_SECRET and FILE_URL_SECRET
 npm run db:migrate:dev -- --name init
 npm run db:seed
 npm run dev                   # http://localhost:3000

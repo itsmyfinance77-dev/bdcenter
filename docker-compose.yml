@@ -1,0 +1,22 @@
+# Local development database only. Port 5434 keeps it clear of a system
+# PostgreSQL on 5432 and of other projects' containers on 5433.
+services:
+  postgres:
+    image: postgres:16
+    container_name: bdcenter-postgres
+    environment:
+      POSTGRES_USER: bdcenter
+      POSTGRES_PASSWORD: bdcenter # dev-only; production credentials live outside this file
+      POSTGRES_DB: bdcenter_dev
+    ports:
+      - '127.0.0.1:5434:5432'
+    volumes:
+      - bdcenter-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bdcenter -d bdcenter_dev']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  bdcenter-pg-data:
