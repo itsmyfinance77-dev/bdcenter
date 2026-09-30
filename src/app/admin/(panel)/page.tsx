@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AdminHeading } from '@/components/admin/ui';
 import { formatNumber } from '@/lib/format';
+import { countUpcomingBookings } from '@/modules/appointments/service';
 import { countNewConsultingRequests } from '@/modules/consulting/service';
 import { countRecentContactMessages } from '@/modules/contact/service';
 import { countArticlesByStatus } from '@/modules/content/service';
@@ -17,18 +18,21 @@ export default async function DashboardPage({
   searchParams: Promise<{ denied?: string }>;
 }) {
   const { denied } = await searchParams;
-  const [consulting, messages, submissions, articles, enrollments, members] = await Promise.all([
-    countNewConsultingRequests(),
-    countRecentContactMessages(),
-    countNewSubmissions(),
-    countArticlesByStatus(),
-    countNewEnrollments(),
-    countMembers(),
-  ]);
+  const [consulting, messages, submissions, articles, enrollments, members, bookings] =
+    await Promise.all([
+      countNewConsultingRequests(),
+      countRecentContactMessages(),
+      countNewSubmissions(),
+      countArticlesByStatus(),
+      countNewEnrollments(),
+      countMembers(),
+      countUpcomingBookings(),
+    ]);
 
   const tiles = [
     { title: 'درخواست‌های مشاوره جدید', value: consulting, href: '/admin/consulting?status=NEW' },
     { title: 'ثبت‌نام‌های دوره جدید', value: enrollments, href: '/admin/courses' },
+    { title: 'نوبت‌های رزروشدهٔ پیش رو', value: bookings, href: '/admin/appointments' },
     { title: 'درخواست‌های فرم جدید', value: submissions, href: '/admin/forms' },
     { title: 'پیام‌های ۷ روز اخیر', value: messages, href: '/admin/messages' },
     { title: 'مطالب منتشر شده', value: articles.PUBLISHED ?? 0, href: '/admin/articles' },

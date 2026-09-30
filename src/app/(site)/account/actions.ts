@@ -12,6 +12,7 @@ import {
   safeMemberNext,
   updateProfile,
 } from '@/modules/members/service';
+import { cancelBookingByMember } from '@/modules/appointments/service';
 import { cancelEnrollment } from '@/modules/training/service';
 
 export async function saveProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -44,4 +45,11 @@ export async function memberLogoutEverywhereAction() {
   const member = await requireMember();
   await logoutMemberEverywhere(member.id);
   redirect('/');
+}
+
+export async function cancelBookingAction(bookingId: string) {
+  const member = await requireMember();
+  await cancelBookingByMember(bookingId, member.id);
+  revalidatePath('/account');
+  revalidatePath('/appointments', 'layout');
 }

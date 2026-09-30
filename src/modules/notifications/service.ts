@@ -1,6 +1,9 @@
+import { bookingNotice, serviceLabel, staffBookingNotice } from '@/content/appointments';
 import { consultingNotice, enrollmentNotice } from '@/content/notifications';
+import { formatDateTime } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { mobilePhone } from '@/lib/validation';
+import { getBookingContact } from '@/modules/appointments/service';
 import { getConsultingRequest } from '@/modules/consulting/service';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSender } from '@/modules/messaging/sms';
@@ -16,7 +19,7 @@ import { getEnrollmentContact } from '@/modules/training/service';
 type Notice = { subject: string; text: string };
 
 type Target = {
-  entity: 'Enrollment' | 'ConsultingRequest';
+  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking';
   entityId: string;
   event: string;
   phone: string | null;
@@ -83,6 +86,41 @@ export async function notifyConsultingStatus(requestId: string, status: string) 
     email: request.email,
     notice: build(request.topic, accountLink()),
   });
+}
+
+/**
+ * Booking messages: the member hears about a new booking and a cancellation
+ * by staff; on a new booking the staff member also gets an email if one is set.
+ */
+export async function notifyBooking(bookingId: string, event: 'booked' | 'cancelledByStaff') {
+  const booking = await getBookingContact(bookingId);
+  if (!booking) return;
+  const service = serviceLabel[booking.slot.staff.service];
+  const when = formatDateTime(booking.slot.startsAt);
+  await deliver({
+    entity: 'Booking',
+    entityId: bookingId,
+    event: `booking.${event}`,
+    phone: booking.phone,
+    email: booking.email,
+    notice: bookingNotice[event](service, booking.slot.staff.fullName, when, accountLink()),
+  });
+  if (event === 'booked' && booking.slot.staff.email && emailAvailable()) {
+    const sent = await sendEmail({
+      to: booking.slot.staff.email,
+      ...staffBookingNotice(booking.fullName, booking.topic, when),
+    });
+    await prisma.notification.create({
+      data: {
+        entity: 'Booking',
+        entityId: bookingId,
+        event: 'booking.staffAlert',
+        channel: 'EMAIL',
+        recipient: booking.slot.staff.email,
+        status: sent ? 'SENT' : 'FAILED',
+      },
+    });
+  }
 }
 
 /** Statuses that send a message when an admin chooses to notify. */

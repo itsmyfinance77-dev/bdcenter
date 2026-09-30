@@ -1,10 +1,10 @@
 /**
  * Where to send a member after sign-in or profile completion: only same-site
- * account, course and service paths, never an outside URL (`//host`, `/\host`).
+ * account, course, service and booking paths, never an outside URL (`//host`, `/\host`).
  */
 export function safeMemberNext(value: unknown): string {
   return typeof value === 'string' &&
-    /^\/(account|courses|services)(\/[\w\-/%]*)?$/.test(value) &&
+    /^\/(account|courses|services|appointments)(\/[\w\-/%]*)?$/.test(value) &&
     !value.includes('//')
     ? value
     : '/account';

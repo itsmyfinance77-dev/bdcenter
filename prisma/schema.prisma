@@ -399,3 +399,82 @@ model Notification {
   @@index([entity, entityId])
   @@map("notifications")
 }
+
+// ---------------------------------------------------------------------------
+// Appointments (ADR-0003): staff profiles, bookable slots, member bookings
+// ---------------------------------------------------------------------------
+
+enum AppointmentService {
+  CONSULTING // مرکز مشاوره
+  SERVICE_DESK // میز خدمت
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  DONE
+  NO_SHOW
+}
+
+model StaffProfile {
+  id        String             @id @default(cuid())
+  service   AppointmentService
+  fullName  String
+  title     String? // e.g. "مشاور بازاریابی"
+  bio       String? // Markdown
+  /// Optional: receives an email for each new booking.
+  email     String?
+  isActive  Boolean            @default(true)
+  sortOrder Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  slots AppointmentSlot[]
+
+  @@index([service, isActive])
+  @@map("staff_profiles")
+}
+
+model AppointmentSlot {
+  id          String       @id @default(cuid())
+  staffId     String
+  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  startsAt    DateTime
+  endsAt      DateTime
+  /// Place or meeting note shown to the member, e.g. "دفتر مرکز" or "تلفنی".
+  location    String?
+  isCancelled Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  bookings Booking[]
+
+  @@unique([staffId, startsAt])
+  @@index([startsAt])
+  @@map("appointment_slots")
+}
+
+model Booking {
+  id           String          @id @default(cuid())
+  slotId       String
+  slot         AppointmentSlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  /// Equals slotId while the booking is live (BOOKED/DONE/NO_SHOW), null once
+  /// cancelled: the unique index makes a second live booking of a slot impossible.
+  activeSlotId String?         @unique
+  /// The member (members domain) — a plain id, not a cross-domain relation.
+  memberId     String
+  fullName     String
+  phone        String
+  email        String?
+  nationalId   String?
+  companyName  String?
+  topic        String
+  description  String?
+  status       BookingStatus   @default(BOOKED)
+  cancelledAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([memberId])
+  @@index([slotId])
+  @@map("bookings")
+}

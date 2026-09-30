@@ -2,12 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
+import { appointmentsCopy, bookingStatusLabel, serviceLabel } from '@/content/appointments';
 import { consultingCopy, memberCopy } from '@/content/members';
-import { formatDate, formatDateTime, toPersianDigits } from '@/lib/format';
+import { formatDate, formatDateTime, formatTime, toPersianDigits } from '@/lib/format';
+import { listMemberBookings } from '@/modules/appointments/service';
 import { listMemberConsultingRequests } from '@/modules/consulting/service';
 import { requireMember } from '@/modules/members/service';
 import { listMemberEnrollments } from '@/modules/training/service';
 import {
+  cancelBookingAction,
   cancelEnrollmentAction,
   memberLogoutAction,
   memberLogoutEverywhereAction,
@@ -24,14 +27,16 @@ export const metadata: Metadata = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ welcome?: string; next?: string }>;
+  searchParams: Promise<{ welcome?: string; next?: string; booked?: string }>;
 }) {
   const member = await requireMember();
-  const { welcome, next } = await searchParams;
-  const [enrollments, consultingRequests] = await Promise.all([
+  const { welcome, next, booked } = await searchParams;
+  const [enrollments, consultingRequests, bookings] = await Promise.all([
     listMemberEnrollments(member.id),
     listMemberConsultingRequests(member.id),
+    listMemberBookings(member.id),
   ]);
+  const now = new Date();
 
   const initial = {
     fullName: member.fullName ?? '',
@@ -65,6 +70,74 @@ export default async function AccountPage({
         </section>
 
         <section aria-labelledby="enrollments-heading" className="space-y-6">
+          <div className="rounded-panel border border-line bg-white p-6">
+            <div className="mb-4 flex items-baseline justify-between gap-4">
+              <h2 id="bookings-heading" className="text-lg font-bold text-brand-900">
+                {appointmentsCopy.myBookings}
+              </h2>
+              <span className="flex gap-3 text-sm">
+                <Link href="/appointments/consulting" className="text-primary hover:underline">
+                  {serviceLabel.CONSULTING}
+                </Link>
+                <Link href="/appointments/service-desk" className="text-primary hover:underline">
+                  {serviceLabel.SERVICE_DESK}
+                </Link>
+              </span>
+            </div>
+            {booked ? (
+              <p
+                role="status"
+                className="mb-4 rounded-control border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
+              >
+                {appointmentsCopy.booked}
+              </p>
+            ) : null}
+            {bookings.length === 0 ? (
+              <p className="text-sm text-ink-2">{appointmentsCopy.noBookings}</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {bookings.map((booking) => {
+                  const upcoming = booking.status === 'BOOKED' && booking.slot.startsAt > now;
+                  return (
+                    <li
+                      key={booking.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3"
+                    >
+                      <div>
+                        <p className="font-medium text-ink">
+                          {booking.slot.staff.fullName} · {serviceLabel[booking.slot.staff.service]}
+                        </p>
+                        <p className="text-xs text-ink-2">
+                          {formatDateTime(booking.slot.startsAt)} تا{' '}
+                          {formatTime(booking.slot.endsAt)}
+                          {booking.slot.location ? ` · ${booking.slot.location}` : null} · وضعیت:{' '}
+                          {bookingStatusLabel[booking.status]}
+                        </p>
+                        <p className="text-xs text-ink-2">موضوع: {booking.topic}</p>
+                      </div>
+                      {upcoming ? (
+                        <div className="flex items-center gap-3 text-xs">
+                          <a
+                            href={`/account/bookings/${booking.id}/ics`}
+                            download
+                            className="text-primary hover:underline"
+                          >
+                            {appointmentsCopy.addToCalendar}
+                          </a>
+                          <form action={cancelBookingAction.bind(null, booking.id)}>
+                            <button type="submit" className="text-danger hover:underline">
+                              {appointmentsCopy.cancel}
+                            </button>
+                          </form>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           <div className="rounded-panel border border-line bg-white p-6">
             <div className="mb-4 flex items-baseline justify-between gap-4">
               <h2 id="enrollments-heading" className="text-lg font-bold text-brand-900">

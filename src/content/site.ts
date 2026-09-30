@@ -52,9 +52,11 @@ export const mainNav = [
     children: [
       { title: 'دوره‌های آموزشی', href: '/courses' },
       { title: 'مرکز مشاوره', href: '/services/consulting' },
+      { title: 'رزرو نوبت مشاوره', href: '/appointments/consulting' },
       { title: 'رویدادها', href: '/events' },
       { title: 'تقویم رویدادها', href: '/events/calendar' },
       { title: 'میز خدمت', href: '/forms/service-desk' },
+      { title: 'رزرو نوبت میز خدمت', href: '/appointments/service-desk' },
       { title: 'میز صنعت', href: '/services/industry-desk' },
     ],
   },
@@ -70,6 +72,8 @@ export const accountLink = { title: 'حساب کاربری', href: '/account' } 
 export const servicePageCopy = {
   consulting:
     'شرکت‌های فناور و دانش‌بنیان می‌توانند درخواست مشاوره خود را از طریق فرم زیر ثبت کنند.',
+  bookingPrompt: 'می‌خواهید مستقیم با یکی از مشاوران وقت بگیرید؟',
+  bookingLink: 'رزرو نوبت مشاوره',
   placeholder: 'اطلاعات این بخش به‌زودی اضافه می‌شود.',
 } as const;
 

@@ -51,6 +51,15 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       <>
         <PageHeader title={tile.title} lead={servicePageCopy.consulting} crumbs={crumbs} />
         <div className="mx-auto max-w-3xl px-4 py-12">
+          <p className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-panel border border-primary/30 bg-primary/5 p-4 text-sm text-ink">
+            {servicePageCopy.bookingPrompt}
+            <Link
+              href="/appointments/consulting"
+              className="rounded-control bg-primary px-4 py-2 font-semibold text-white hover:bg-primary-hover"
+            >
+              {servicePageCopy.bookingLink}
+            </Link>
+          </p>
           <section
             aria-labelledby="consulting-form-heading"
             className="rounded-panel border border-line bg-white p-6"

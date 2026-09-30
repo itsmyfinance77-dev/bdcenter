@@ -36,3 +36,27 @@ export function formatDate(date: Date): string {
 export function formatDateTime(date: Date): string {
   return dateTimeFormat.format(date);
 }
+
+const timeFormat = new Intl.DateTimeFormat('fa-IR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Tehran',
+});
+
+const weekdayDateFormat = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'Asia/Tehran',
+});
+
+/** Time of day in Tehran, e.g. ۱۶:۳۰. */
+export function formatTime(date: Date): string {
+  return timeFormat.format(date);
+}
+
+/** Weekday and date without the year, e.g. «چهارشنبه ۱۵ مهر». */
+export function formatWeekdayDate(date: Date): string {
+  return weekdayDateFormat.format(date);
+}
