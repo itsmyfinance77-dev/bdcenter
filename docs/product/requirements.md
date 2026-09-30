@@ -49,15 +49,16 @@ in the schema only to store the imported roster; no price or free/paid gate is
 computed from them until the rule is confirmed.
 
 ## Non-functional (carried over from the Chamber site's own bar and the
+
 sibling Roshd Afarinan project's baseline, unless the employer says otherwise)
 
-| Area          | Requirement                                                   |
-| ------------- | -------------------------------------------------------------- |
-| Language      | Persian, RTL, Persian digits in UI                              |
-| Responsive    | Mobile-first                                                    |
+| Area          | Requirement                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------- |
+| Language      | Persian, RTL, Persian digits in UI                                                                      |
+| Responsive    | Mobile-first                                                                                            |
 | SEO           | Metadata, canonical, OG, JSON-LD, sitemap, robots (the Chamber's own site lacks JSON-LD — we do better) |
-| Accessibility | Semantic HTML, keyboard navigation (the hover-reveal about text must also work on focus) |
-| Ownership     | The client owns the source, database and content                |
+| Accessibility | Semantic HTML, keyboard navigation (the hover-reveal about text must also work on focus)                |
+| Ownership     | The client owns the source, database and content                                                        |
 
 ## Out of scope for this phase
 

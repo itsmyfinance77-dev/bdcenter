@@ -1,0 +1,6 @@
+# Generated files
+pnpm-lock.yaml
+next-env.d.ts
+prisma/generated/
+.next/
+storage/

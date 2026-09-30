@@ -12,13 +12,15 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude \"tests/db/**\"",
+    "test:db": "node --env-file=.env node_modules/vitest/vitest.mjs run tests/db",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "verify": "npm run lint && npm run typecheck && npm run build",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
     "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
@@ -45,6 +47,7 @@
     "prisma": "^6.3.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^5.0.2"
   }
 }
