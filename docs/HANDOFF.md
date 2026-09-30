@@ -8,14 +8,14 @@ explanations; code, commits and technical docs stay in English (see `CLAUDE.md`)
 
 ## Where things live
 
-| What                            | Where                                                                                                                                                                 |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository (private, canonical) | https://github.com/itsmyfinance77-dev/bdcenter — `origin`, branch `main`                                                                                              |
-| Old copy (do not use)           | `itsmyfinance99-eng/bdcenter` — superseded; the owner has not yet decided whether to delete it. A collaborator invite to `itsmyfinance77-dev` is still pending there. |
-| Local checkout                  | `C:\Users\Mohammad\Desktop\SITE SEARCH` (Windows 11, Node 24, pnpm 12)                                                                                                |
-| Dev database                    | Docker container `bdcenter-postgres`, PostgreSQL 16 on `127.0.0.1:5434` (`docker-compose.yml`)                                                                        |
-| Secrets                         | `.env` (git-ignored): `DATABASE_URL`, `SESSION_SECRET`, `FILE_URL_SECRET`, plus a local test admin (`DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD`)                         |
-| Uploads                         | `storage/` (git-ignored, `STORAGE_DIR`)                                                                                                                               |
+| What                            | Where                                                                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository (private, canonical) | https://github.com/itsmyfinance77-dev/bdcenter — `origin`, branch `main`                                                                      |
+| Old copy                        | `itsmyfinance99-eng/bdcenter` — deleted on 2026-09-30 at the owner's request (all its commits were already in the canonical repo).            |
+| Local checkout                  | `C:\Users\Mohammad\Desktop\SITE SEARCH` (Windows 11, Node 24, pnpm 12)                                                                        |
+| Dev database                    | Docker container `bdcenter-postgres`, PostgreSQL 16 on `127.0.0.1:5434` (`docker-compose.yml`)                                                |
+| Secrets                         | `.env` (git-ignored): `DATABASE_URL`, `SESSION_SECRET`, `FILE_URL_SECRET`, plus a local test admin (`DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD`) |
+| Uploads                         | `storage/` (git-ignored, `STORAGE_DIR`)                                                                                                       |
 
 GitHub CLI has three accounts logged in; the active one must be
 `itsmyfinance77-dev` for pushes (`gh auth switch --user itsmyfinance77-dev`).
