@@ -65,7 +65,8 @@ export type OtpRequestResult = { ok: true } | { ok: false; error: string };
 export async function requestOtp(phone: string, clientIp: string): Promise<OtpRequestResult> {
   const withinLimits =
     (await consume(`otp-send:phone:${phone}`, LIMITS.otpSendPerPhone)) &&
-    (await consume(`otp-send:ip:${clientIp}`, LIMITS.otpSendPerIp));
+    (await consume(`otp-send:ip:${clientIp}`, LIMITS.otpSendPerIp)) &&
+    (await consume('otp-send:global', LIMITS.otpSendGlobal));
   if (!withinLimits) {
     return { ok: false, error: 'تعداد درخواست کد زیاد است. چند دقیقه دیگر دوباره تلاش کنید.' };
   }

@@ -8,8 +8,8 @@ import { z } from 'zod';
 
 /**
  * Private upload storage on the local disk (`storage/`, git-ignored). Files are
- * never served from `public/`; a later admin download route streams them as
- * attachments, signed with FILE_URL_SECRET.
+ * never served from `public/`; form attachments are only streamed, as
+ * downloads, to a signed-in admin (see the submissions file route).
  */
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -46,6 +46,32 @@ export function checkUpload(file: File): string | null {
     return 'نوع فایل مجاز نیست (PDF، تصویر، Word یا Excel).';
   }
   return null;
+}
+
+/**
+ * The first bytes each accepted type must start with, so a renamed file (an
+ * executable called `.pdf`) is refused even though the browser vouched for it.
+ * docx/xlsx are ZIP containers; doc/xls are OLE2 compound files.
+ */
+const ZIP = [0x50, 0x4b, 0x03, 0x04];
+const OLE2 = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+const signatures: Record<string, number[][]> = {
+  'application/pdf': [[0x25, 0x50, 0x44, 0x46]], // %PDF
+  'image/jpeg': [[0xff, 0xd8, 0xff]],
+  'image/png': [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF (WEBP at offset 8, checked below)
+  'application/msword': [OLE2],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [ZIP],
+  'application/vnd.ms-excel': [OLE2],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [ZIP],
+};
+
+/** Returns a Persian error message when the content does not match the declared type. */
+export async function checkUploadContent(file: File): Promise<string | null> {
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const matches = (signatures[file.type] ?? []).some((sig) => sig.every((b, i) => head[i] === b));
+  const webpOk = file.type !== 'image/webp' || String.fromCharCode(...head.slice(8, 12)) === 'WEBP';
+  return matches && webpOk ? null : 'محتوای فایل با نوع آن مطابقت ندارد.';
 }
 
 /** Stores an already-checked upload under `<STORAGE_DIR>/<area>/`. */

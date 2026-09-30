@@ -14,6 +14,7 @@ import { formatDateTime } from '@/lib/format';
 import { recordAudit } from '@/modules/audit/service';
 import {
   checkUpload,
+  checkUploadContent,
   storedFileSchema,
   storeUpload,
   type StoredFile,
@@ -144,7 +145,7 @@ export async function submitForm(
       if (field.isRequired) errors[field.key] = `${field.label} را بارگذاری کنید.`;
       continue;
     }
-    const problem = checkUpload(file);
+    const problem = checkUpload(file) ?? (await checkUploadContent(file));
     if (problem) errors[field.key] = problem;
     else uploads.push({ key: field.key, file });
   }
