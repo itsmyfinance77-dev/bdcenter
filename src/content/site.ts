@@ -71,3 +71,15 @@ export const servicePageCopy = {
     'شرکت‌های فناور و دانش‌بنیان می‌توانند درخواست مشاوره خود را از طریق فرم زیر ثبت کنند.',
   placeholder: 'اطلاعات این بخش به‌زودی اضافه می‌شود.',
 } as const;
+
+/** Site search (/search). */
+export const searchCopy = {
+  title: 'جستجو',
+  label: 'جستجو در سایت',
+  placeholder: 'جستجو…',
+  button: 'جستجو',
+  hint: 'در اخبار، رویدادها، دوره‌ها و صفحه‌های سایت جستجو کنید.',
+  tooShort: 'عبارت جستجو باید دست‌کم دو حرف داشته باشد.',
+  none: (query: string) => `نتیجه‌ای برای «${query}» پیدا نشد.`,
+  count: (count: string, query: string) => `${count} نتیجه برای «${query}»`,
+} as const;

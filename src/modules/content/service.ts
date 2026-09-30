@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { jalaliDateTime } from '@/lib/jalali';
 import { prisma, type ArticleKind } from '@/lib/prisma';
+import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
@@ -37,6 +38,29 @@ export async function getPublishedArticle(kind: ArticleKind, slug: string) {
     where: { kind, slug, status: 'PUBLISHED' },
     include: { coverImage: coverSelect },
   });
+}
+
+/** Published news/events matching every search term; title hits first, then newest. */
+export async function searchPublishedArticles(terms: string[], limit = 20) {
+  if (terms.length === 0) return [];
+  const params = new SqlParams();
+  const where = matchesAllTerms(
+    ['title', 'excerpt', '"bodyMarkdown"', '"eventLocation"'],
+    terms,
+    params,
+  );
+  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    `SELECT id FROM articles
+     WHERE status = 'PUBLISHED' AND ${where}
+     ORDER BY ${allTermsIn('title', terms, params)} DESC, "publishedAt" DESC NULLS LAST
+     LIMIT ${params.add(limit)}`,
+    ...params.values,
+  );
+  const items = await prisma.article.findMany({
+    where: { id: { in: rows.map((row) => row.id) } },
+    select: articleSummarySelect,
+  });
+  return rows.flatMap((row) => items.find((item) => item.id === row.id) ?? []);
 }
 
 /** Slugs and last-modified times for the sitemap. */

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MobileNavDisclosure } from '@/components/mobile-nav-disclosure';
+import { SearchForm } from '@/components/search-form';
 import { accountLink, mainNav, siteInfo } from '@/content/site';
 
 const linkClass = 'text-sm font-medium text-ink hover:text-primary';
@@ -39,6 +40,7 @@ export function SiteHeader() {
               </Link>
             ),
           )}
+          <SearchForm id="header-search" />
           <Link
             href={accountLink.href}
             className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-primary hover:border-line-hover"
@@ -57,6 +59,9 @@ export function SiteHeader() {
             aria-label="ناوبری اصلی"
             className="absolute inset-x-0 top-full z-20 border-b border-line bg-white px-4 py-3 shadow-lg"
           >
+            <div className="mb-3">
+              <SearchForm id="mobile-search" />
+            </div>
             <ul className="space-y-1">
               {mainNav.map((item) =>
                 'children' in item ? (

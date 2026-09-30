@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { systemPages, type SystemPage } from '@/content/pages';
 import { prisma } from '@/lib/prisma';
+import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
@@ -60,6 +61,29 @@ export async function getSystemPageContent(slug: string): Promise<PublicPage | n
   return definition.fallback === null
     ? null
     : { title: definition.title, body: definition.fallback, seoDesc: null, updatedAt: null };
+}
+
+/** The section bodies as one text, so JSON keys never match a search. */
+const sectionsText =
+  "(SELECT string_agg(section->>'body', ' ') FROM jsonb_array_elements(sections) AS section)";
+
+/** Published pages matching every search term, with their public addresses. */
+export async function searchPublishedPages(terms: string[], limit = 10) {
+  if (terms.length === 0) return [];
+  const params = new SqlParams();
+  const where = matchesAllTerms(['title', sectionsText], terms, params);
+  const rows = await prisma.$queryRawUnsafe<{ slug: string; title: string; sections: unknown }[]>(
+    `SELECT slug, title, sections FROM pages
+     WHERE status = 'PUBLISHED' AND ${where}
+     ORDER BY ${allTermsIn('title', terms, params)} DESC, "updatedAt" DESC
+     LIMIT ${params.add(limit)}`,
+    ...params.values,
+  );
+  return rows.map((row) => ({
+    title: row.title,
+    path: pagePath(row.slug),
+    body: bodyOf(row.sections),
+  }));
 }
 
 /** Published custom pages (not the built-in ones), for the sitemap. */

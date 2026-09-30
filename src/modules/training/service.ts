@@ -4,6 +4,7 @@ import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
 import { jalaliDateTime } from '@/lib/jalali';
 import { prisma, Prisma } from '@/lib/prisma';
+import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
@@ -70,6 +71,22 @@ export async function getPublishedCourse(slug: string) {
     availability: availability(course, taken),
     seatsLeft: course.capacity === null ? null : Math.max(0, course.capacity - taken),
   };
+}
+
+/** Published courses matching every search term; title hits first, then newest. */
+export async function searchPublishedCourses(terms: string[], limit = 20) {
+  if (terms.length === 0) return [];
+  const params = new SqlParams();
+  const where = matchesAllTerms(['title', 'description', 'instructor', 'location'], terms, params);
+  return prisma.$queryRawUnsafe<
+    { slug: string; title: string; instructor: string | null; startsAt: Date | null }[]
+  >(
+    `SELECT slug, title, instructor, "startsAt" FROM courses
+     WHERE status = 'PUBLISHED' AND ${where}
+     ORDER BY ${allTermsIn('title', terms, params)} DESC, "startsAt" DESC NULLS LAST
+     LIMIT ${params.add(limit)}`,
+    ...params.values,
+  );
 }
 
 export async function listPublishedCourseUrls() {
