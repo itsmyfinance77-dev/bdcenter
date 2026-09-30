@@ -40,9 +40,11 @@ export const formFieldTypeLabel = {
 export const adminNav = [
   { href: '/admin', title: 'داشبورد', adminOnly: false },
   { href: '/admin/articles', title: 'اخبار و رویدادها', adminOnly: false },
+  { href: '/admin/courses', title: 'دوره‌های آموزشی', adminOnly: false },
   { href: '/admin/consulting', title: 'درخواست‌های مشاوره', adminOnly: false },
   { href: '/admin/messages', title: 'پیام‌های تماس', adminOnly: false },
   { href: '/admin/forms', title: 'فرم‌ها و درخواست‌ها', adminOnly: false },
+  { href: '/admin/members', title: 'اعضای سایت', adminOnly: true },
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/account', title: 'تغییر رمز عبور', adminOnly: false },

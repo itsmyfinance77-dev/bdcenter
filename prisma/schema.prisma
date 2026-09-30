@@ -30,6 +30,8 @@ model AdminUser {
   passwordHash String
   role         AdminRole @default(EDITOR)
   isActive     Boolean   @default(true)
+  /// Bumped on logout / password change; tokens carrying an older value are refused.
+  sessionVersion Int     @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -50,6 +52,37 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Members: public visitors who sign up with a phone number (ADR-0002)
+// ---------------------------------------------------------------------------
+
+model Member {
+  id             String    @id @default(cuid())
+  phone          String    @unique // normalized 09xxxxxxxxx
+  fullName       String?
+  nationalId     String?
+  companyName    String?
+  email          String?
+  isActive       Boolean   @default(true)
+  sessionVersion Int       @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("members")
+}
+
+/// One pending SMS code per phone; only its HMAC is stored.
+model OtpChallenge {
+  phone     String   @id
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("otp_challenges")
 }
 
 // ---------------------------------------------------------------------------
@@ -192,8 +225,12 @@ model Course {
   title       String
   description String?
   instructor  String?
+  location    String?
   startsAt    DateTime?
+  endsAt      DateTime?
   capacity    Int?
+  /// Admins close enrollment without unpublishing the course.
+  enrollmentOpen Boolean @default(true)
   status      ContentStatus @default(DRAFT)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -206,7 +243,9 @@ model Course {
 model Enrollment {
   id             String        @id @default(cuid())
   courseId       String
-  course         Course        @relation(fields: [courseId], references: [id])
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// The enrolling member (members domain) — a plain id, not a cross-domain relation.
+  memberId       String
   fullName       String
   nationalId     String?
   phone          String
@@ -219,6 +258,8 @@ model Enrollment {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  @@unique([courseId, memberId])
+  @@index([memberId])
   @@map("enrollments")
 }
 

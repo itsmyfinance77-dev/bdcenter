@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { parseJalaliDateTime } from '@/lib/jalali';
+import { jalaliDateTime } from '@/lib/jalali';
 import { prisma, type ArticleKind } from '@/lib/prisma';
+import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { checkImageUpload, deleteStoredImage, storeImage } from '@/modules/files/service';
@@ -77,35 +78,6 @@ export async function getArticleForAdmin(id: string) {
   return prisma.article.findUnique({ where: { id }, include: { coverImage: coverSelect } });
 }
 
-/** Unicode letters/digits separated by single hyphens; Persian slugs are allowed. */
-const slugPattern = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
-
-/** Persian half-space (نیم‌فاصله); becomes a hyphen in slugs. */
-const ZERO_WIDTH_NON_JOINER = String.fromCharCode(0x200c);
-
-export function slugify(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replaceAll(ZERO_WIDTH_NON_JOINER, '-')
-    .replace(/[\s_]+/g, '-')
-    .replace(/[^\p{L}\p{N}-]/gu, '')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 120);
-}
-
-const jalaliDateTime = (label: string) =>
-  optionalText(label, 30).transform((value, ctx) => {
-    if (value === undefined) return null;
-    const date = parseJalaliDateTime(value);
-    if (!date) {
-      ctx.addIssue({ code: 'custom', message: `${label} را به شکل ۱۴۰۵/۰۷/۱۵ ۱۸:۳۰ وارد کنید.` });
-      return z.NEVER;
-    }
-    return date;
-  });
-
 export const articleInputSchema = z
   .object({
     kind: z.enum(['NEWS', 'EVENT']),
@@ -129,7 +101,7 @@ export const articleInputSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['slug'],
-        message: 'نامک فقط می‌تواند حروف، عدد و خط تیره داشته باشد.',
+        message: SLUG_ERROR,
       });
     }
     if (value.eventStartsAt && value.eventEndsAt && value.eventEndsAt < value.eventStartsAt) {
@@ -166,7 +138,7 @@ export async function saveArticle(
     where: { slug: input.slug, NOT: id ? { id } : undefined },
     select: { id: true },
   });
-  if (clash) return { ok: false, errors: { slug: 'این نامک قبلاً استفاده شده است.' } };
+  if (clash) return { ok: false, errors: { slug: SLUG_TAKEN } };
 
   const event =
     input.kind === 'EVENT'

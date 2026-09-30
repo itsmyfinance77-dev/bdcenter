@@ -50,13 +50,7 @@ export async function login(
   }
 
   await clear(...keys);
-  (await cookies()).set(SESSION_COOKIE, await signSession(user.id), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/admin',
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
+  await setAdminCookie(user.id, user.sessionVersion);
   await recordAudit({
     actorId: user.id,
     action: 'auth.login',
@@ -66,19 +60,55 @@ export async function login(
   return { ok: true };
 }
 
+async function setAdminCookie(adminId: string, sessionVersion: number) {
+  (await cookies()).set(SESSION_COOKIE, await signSession(adminId, 'admin', sessionVersion), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/admin',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+}
+
+/** Gives this browser a fresh cookie after `sessionVersion` changed (password change). */
+export async function reissueAdminSession(adminId: string) {
+  const user = await prisma.adminUser.findUniqueOrThrow({
+    where: { id: adminId },
+    select: { sessionVersion: true },
+  });
+  await setAdminCookie(adminId, user.sessionVersion);
+}
+
+/** Signs out every browser holding this admin's session, not just this one. */
 export async function logout() {
+  const admin = await getCurrentAdmin();
+  if (admin) await revokeAdminSessions(admin.id);
   (await cookies()).delete({ name: SESSION_COOKIE, path: '/admin' });
+}
+
+export async function revokeAdminSessions(adminId: string) {
+  await prisma.adminUser.update({
+    where: { id: adminId },
+    data: { sessionVersion: { increment: 1 } },
+  });
 }
 
 /** The signed-in, active admin for this request, or null. Cached per request. */
 export const getCurrentAdmin = cache(async (): Promise<CurrentAdmin | null> => {
-  const session = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
+  const session = await verifySession((await cookies()).get(SESSION_COOKIE)?.value, 'admin');
   if (!session) return null;
   const user = await prisma.adminUser.findUnique({
     where: { id: session.uid },
-    select: { id: true, fullName: true, email: true, role: true, isActive: true },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      isActive: true,
+      sessionVersion: true,
+    },
   });
-  if (!user?.isActive) return null;
+  if (!user?.isActive || user.sessionVersion !== session.ver) return null;
   return { id: user.id, fullName: user.fullName, email: user.email, role: user.role };
 });
 

@@ -52,24 +52,6 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
     );
   }
 
-  if ('externalUrl' in tile) {
-    return (
-      <>
-        <PageHeader title={tile.title} lead={servicePageCopy.training} crumbs={crumbs} />
-        <div className="mx-auto max-w-3xl px-4 py-12">
-          <a
-            href={tile.externalUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-block rounded-control bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover"
-          >
-            ورود به سامانه آموزش اتاق بازرگانی یزد
-          </a>
-        </div>
-      </>
-    );
-  }
-
   // OQ-BD-06: content for the remaining tiles has not arrived yet.
   return (
     <>

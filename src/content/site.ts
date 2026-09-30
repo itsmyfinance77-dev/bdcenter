@@ -22,14 +22,15 @@ export const siteInfo = {
 
 export const aboutText = `اتاق بازرگانی، صنایع، معادن و کشاورزی یزد به عنوان پارلمان بخش خصوصی، مأموریت خود را در ارائه خدمات و حمایت از فعالان اقتصادی و کارآفرینان استان تعریف کرده است. این نهاد در دوره دهم فعالیت خود، توجه ویژه‌ای به حوزه‌های نوآورانه و توسعه زیست‌بوم فناوری داشته و با هدف ایجاد ارتباطی مؤثر میان شرکت‌های فناور و دانش‌بنیان و واحدهای اقتصادی بزرگ، دفتر مرکز کسب‌وکار را در پارک علم و فناوری یزد راه‌اندازی کرده است. این مرکز با ارائه خدمات مشاوره‌ای، آموزشی، برگزاری رویدادهای فناورانه و نشست‌های تخصصی با کارآفرینان، بستری مناسب برای معرفی ایده‌ها، طرح‌ها و ظرفیت‌های نوآورانه به صنایع، واحدهای تولیدی و سرمایه‌گذاران فراهم می‌آورد. همچنین در مواردی که صنایع و بنگاه‌های اقتصادی به دنبال راهکارها و فناوری‌های نوین برای توسعه فعالیت‌های خود باشند، این مرکز نقش تسهیل‌گر و پل ارتباطی میان آن‌ها و شرکت‌های فناور و دانش‌بنیان را ایفا می‌کند. اتاق بازرگانی یزد بر این باور است که نوآوری و بهره‌گیری از ایده‌های خلاقانه، رمز پایداری، رشد و رقابت‌پذیری صنایع در دنیای امروز است و مرکز کسب‌وکار با همین رویکرد تلاش می‌کند زمینه‌ساز شکل‌گیری همکاری‌های مؤثر و آینده‌ساز برای نسل جدید صنعت و اقتصاد استان باشد.`;
 
-/** The 7 service tiles from the brief (§5). Training links out to the Chamber,
- * consulting and the service desk have their own intake forms, and the rest
+/** The 7 service tiles from the brief (§5). Training opens the on-site course
+ * list, consulting and the service desk have their own intake forms, and the rest
  * render as an announced-soon card until their content arrives (OQ-BD-06). */
 export const serviceTiles = [
   {
     slug: 'training',
     title: 'آموزش و توانمندسازی',
-    externalUrl: 'https://yazdccima.com/services/edu',
+    // On-site courses (ADR-0002); /courses still links to the Chamber's system.
+    href: '/courses',
     isPlaceholder: false,
   },
   {
@@ -68,7 +69,7 @@ export const mainNav = [
   {
     title: 'خدمات',
     children: [
-      { title: 'آموزش', href: '/services/training' },
+      { title: 'دوره‌های آموزشی', href: '/courses' },
       { title: 'مرکز مشاوره', href: '/services/consulting' },
       { title: 'رویدادها', href: '/events' },
       { title: 'میز خدمت', href: '/forms/service-desk' },
@@ -80,10 +81,11 @@ export const mainNav = [
   { title: 'تماس با ما', href: '/contact' },
 ] as const;
 
+/** Header link to the member area; /account redirects to sign-in when needed. */
+export const accountLink = { title: 'حساب کاربری', href: '/account' } as const;
+
 /** Intro copy for the service detail pages. Only what the brief states. */
 export const servicePageCopy = {
-  training:
-    'دوره‌های آموزشی و برنامه‌های توانمندسازی مرکز از طریق سامانه آموزش اتاق بازرگانی یزد ارائه می‌شود.',
   consulting:
     'شرکت‌های فناور و دانش‌بنیان می‌توانند درخواست مشاوره خود را از طریق فرم زیر ثبت کنند.',
   placeholder: 'اطلاعات این بخش به‌زودی اضافه می‌شود.',

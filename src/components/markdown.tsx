@@ -72,7 +72,7 @@ const components: Components = {
 
 export function MarkdownBody({ source }: { source: string }) {
   return (
-    <div className="space-y-4 text-base leading-8 text-ink">
+    <div className="space-y-4 text-base leading-8 text-ink [&>:first-child]:mt-0">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={components}

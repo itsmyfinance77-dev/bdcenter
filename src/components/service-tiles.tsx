@@ -21,9 +21,6 @@ export function ServiceTiles() {
               {'summary' in tile && tile.summary ? (
                 <p className="mt-1 text-sm text-ink-2">{tile.summary}</p>
               ) : null}
-              {'externalUrl' in tile ? (
-                <p className="mt-1 text-xs text-ink-2">در سایت اتاق بازرگانی یزد</p>
-              ) : null}
               {tile.isPlaceholder ? (
                 <span className="mt-3 inline-block rounded-chip bg-surface-2 px-2 py-0.5 text-xs text-ink-2">
                   اطلاعات این بخش به‌زودی اضافه می‌شود
@@ -33,18 +30,12 @@ export function ServiceTiles() {
           );
           return (
             <li key={tile.slug}>
-              {'externalUrl' in tile ? (
-                <a href={tile.externalUrl} target="_blank" rel="noreferrer" className={tileClass}>
-                  {body}
-                </a>
-              ) : (
-                <Link
-                  href={'href' in tile ? tile.href : `/services/${tile.slug}`}
-                  className={tileClass}
-                >
-                  {body}
-                </Link>
-              )}
+              <Link
+                href={'href' in tile ? tile.href : `/services/${tile.slug}`}
+                className={tileClass}
+              >
+                {body}
+              </Link>
             </li>
           );
         })}

@@ -9,6 +9,7 @@ import {
   toLatinDigits,
 } from '@/lib/validation';
 import { requestStatusLabel } from '@/content/admin';
+import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
 import { recordAudit } from '@/modules/audit/service';
 import {
@@ -369,12 +370,6 @@ export function displayValue(value: unknown): string {
   return String(value);
 }
 
-/** Neutralizes spreadsheet formulas (CSV injection) and quotes the cell. */
-function csvCell(text: string): string {
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-  return `"${safe.replace(/"/g, '""')}"`;
-}
-
 /** All submissions of a form as CSV (UTF-8 with BOM so Excel shows Persian correctly). */
 export async function exportSubmissionsCsv(formId: string, actorId: string) {
   const form = await getFormForAdmin(formId);
@@ -393,8 +388,6 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
       ...form.fields.map((field) => displayValue(data[field.key])),
     ];
   });
-  const csv = [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
-
   await recordAudit({
     actorId,
     action: 'form.submission.export',
@@ -402,5 +395,5 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
     entityId: form.id,
     metadata: { rows: rows.length },
   });
-  return { filename: `${form.slug}-submissions.csv`, content: `﻿${csv}` };
+  return { filename: `${form.slug}-submissions.csv`, content: toCsv([header, ...rows]) };
 }

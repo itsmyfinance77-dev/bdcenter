@@ -55,6 +55,20 @@ export function phone(required: boolean) {
   return z.preprocess(normalizePhone, required ? schema : schema.optional());
 }
 
+/**
+ * Iranian mobile number, normalized to `09xxxxxxxxx` (accepts +98 / 0098 / 98
+ * prefixes, Persian digits, spaces and dashes). Used as the member login.
+ */
+export const mobilePhone = z.preprocess(
+  (value) => {
+    const text = normalizePhone(value);
+    return typeof text === 'string' ? text.replace(/^(\+98|0098|98)(?=9\d{9}$)/, '0') : text;
+  },
+  z
+    .string({ required_error: 'شماره همراه را وارد کنید.' })
+    .regex(/^09\d{9}$/, 'شماره همراه باید به شکل ۰۹۱۲۳۴۵۶۷۸۹ باشد.'),
+);
+
 export function email(required: true): RequiredString;
 export function email(required: false): OptionalString;
 export function email(required: boolean): RequiredString | OptionalString;

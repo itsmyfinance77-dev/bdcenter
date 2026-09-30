@@ -1,12 +1,12 @@
 import { attachmentDisposition } from '@/lib/csv';
 import { getCurrentAdmin } from '@/modules/auth/service';
-import { exportSubmissionsCsv } from '@/modules/forms/service';
+import { exportEnrollmentsCsv } from '@/modules/training/service';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getCurrentAdmin();
   if (!admin) return new Response('Unauthorized', { status: 401 });
 
-  const csv = await exportSubmissionsCsv((await params).id, admin.id);
+  const csv = await exportEnrollmentsCsv((await params).id, admin.id);
   if (!csv) return new Response('Not found', { status: 404 });
 
   return new Response(csv.content, {

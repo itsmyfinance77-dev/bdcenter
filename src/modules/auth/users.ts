@@ -52,7 +52,10 @@ export async function createAdmin(input: z.infer<typeof newAdminSchema>, actorId
 export async function setAdminActive(userId: string, isActive: boolean, actor: { id: string }) {
   if (userId === actor.id)
     return { ok: false as const, error: 'نمی‌توانید حساب خودتان را غیرفعال کنید.' };
-  await prisma.adminUser.update({ where: { id: userId }, data: { isActive } });
+  await prisma.adminUser.update({
+    where: { id: userId },
+    data: { isActive, sessionVersion: { increment: 1 } },
+  });
   await recordAudit({
     actorId: actor.id,
     action: isActive ? 'admin.activate' : 'admin.deactivate',
@@ -69,7 +72,8 @@ export async function changeOwnPassword(actor: { id: string }, current: string, 
   }
   await prisma.adminUser.update({
     where: { id: actor.id },
-    data: { passwordHash: await hashPassword(next) },
+    // Also signs out every other browser; the caller re-issues this one's cookie.
+    data: { passwordHash: await hashPassword(next), sessionVersion: { increment: 1 } },
   });
   await recordAudit({
     actorId: actor.id,

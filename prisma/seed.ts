@@ -101,16 +101,33 @@ async function main() {
     create: {
       slug: 'service-desk',
       title: 'میز خدمت',
-      description:
-        'اعضا و فعالان اقتصادی می‌توانند درخواست یا مشکل خود را از این طریق ثبت کنند.',
+      description: 'اعضا و فعالان اقتصادی می‌توانند درخواست یا مشکل خود را از این طریق ثبت کنند.',
       status: 'PUBLISHED',
       fields: {
         create: [
-          { key: 'full_name', label: 'نام و نام خانوادگی', type: 'TEXT', isRequired: true, sortOrder: 1 },
-          { key: 'company_name', label: 'نام شرکت/واحد', type: 'TEXT', isRequired: false, sortOrder: 2 },
+          {
+            key: 'full_name',
+            label: 'نام و نام خانوادگی',
+            type: 'TEXT',
+            isRequired: true,
+            sortOrder: 1,
+          },
+          {
+            key: 'company_name',
+            label: 'نام شرکت/واحد',
+            type: 'TEXT',
+            isRequired: false,
+            sortOrder: 2,
+          },
           { key: 'phone', label: 'شماره تماس', type: 'PHONE', isRequired: true, sortOrder: 3 },
           { key: 'subject', label: 'موضوع درخواست', type: 'TEXT', isRequired: true, sortOrder: 4 },
-          { key: 'description', label: 'توضیحات', type: 'TEXTAREA', isRequired: false, sortOrder: 5 },
+          {
+            key: 'description',
+            label: 'توضیحات',
+            type: 'TEXTAREA',
+            isRequired: false,
+            sortOrder: 5,
+          },
           { key: 'attachment', label: 'پیوست', type: 'FILE', isRequired: false, sortOrder: 6 },
         ],
       },

@@ -5,6 +5,8 @@ import { countNewConsultingRequests } from '@/modules/consulting/service';
 import { countRecentContactMessages } from '@/modules/contact/service';
 import { countArticlesByStatus } from '@/modules/content/service';
 import { countNewSubmissions } from '@/modules/forms/service';
+import { countMembers } from '@/modules/members/service';
+import { countNewEnrollments } from '@/modules/training/service';
 
 // A layout's title template applies to child segments only, not to its own page.
 export const metadata = { title: { absolute: 'داشبورد | پنل مدیریت' } };
@@ -15,19 +17,23 @@ export default async function DashboardPage({
   searchParams: Promise<{ denied?: string }>;
 }) {
   const { denied } = await searchParams;
-  const [consulting, messages, submissions, articles] = await Promise.all([
+  const [consulting, messages, submissions, articles, enrollments, members] = await Promise.all([
     countNewConsultingRequests(),
     countRecentContactMessages(),
     countNewSubmissions(),
     countArticlesByStatus(),
+    countNewEnrollments(),
+    countMembers(),
   ]);
 
   const tiles = [
     { title: 'درخواست‌های مشاوره جدید', value: consulting, href: '/admin/consulting?status=NEW' },
+    { title: 'ثبت‌نام‌های دوره جدید', value: enrollments, href: '/admin/courses' },
     { title: 'درخواست‌های فرم جدید', value: submissions, href: '/admin/forms' },
     { title: 'پیام‌های ۷ روز اخیر', value: messages, href: '/admin/messages' },
     { title: 'مطالب منتشر شده', value: articles.PUBLISHED ?? 0, href: '/admin/articles' },
     { title: 'پیش‌نویس‌ها', value: articles.DRAFT ?? 0, href: '/admin/articles' },
+    { title: 'اعضای سایت', value: members, href: '/admin/members' },
   ];
 
   return (

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { MobileNavDisclosure } from '@/components/mobile-nav-disclosure';
-import { mainNav, siteInfo } from '@/content/site';
+import { accountLink, mainNav, siteInfo } from '@/content/site';
 
 const linkClass = 'text-sm font-medium text-ink hover:text-primary';
 
@@ -39,6 +39,12 @@ export function SiteHeader() {
               </Link>
             ),
           )}
+          <Link
+            href={accountLink.href}
+            className="rounded-control border border-line px-3 py-1.5 text-sm font-medium text-primary hover:border-line-hover"
+          >
+            {accountLink.title}
+          </Link>
         </nav>
 
         {/* Below the nav breakpoint: a native disclosure that works before hydration. */}
@@ -82,6 +88,14 @@ export function SiteHeader() {
                   </li>
                 ),
               )}
+              <li>
+                <Link
+                  href={accountLink.href}
+                  className="block rounded-control px-2 py-2 text-sm font-medium text-primary hover:bg-surface-2"
+                >
+                  {accountLink.title}
+                </Link>
+              </li>
             </ul>
           </nav>
         </MobileNavDisclosure>

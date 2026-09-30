@@ -1,7 +1,7 @@
 'use server';
 
 import type { FormState } from '@/lib/form-state';
-import { requireAdmin } from '@/modules/auth/service';
+import { reissueAdminSession, requireAdmin } from '@/modules/auth/service';
 import { changeOwnPassword, passwordSchema } from '@/modules/auth/users';
 
 export async function changePasswordAction(
@@ -29,5 +29,6 @@ export async function changePasswordAction(
       values: {},
     };
   }
-  return { status: 'success', message: 'رمز عبور تغییر کرد.' };
+  await reissueAdminSession(admin.id);
+  return { status: 'success', message: 'رمز عبور تغییر کرد. نشست‌های دیگر شما بسته شد.' };
 }

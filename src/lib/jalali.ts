@@ -1,4 +1,5 @@
-import { toLatinDigits } from './validation';
+import { z } from 'zod';
+import { optionalText, toLatinDigits } from './validation';
 
 /**
  * Solar Hijri (Jalali) <-> Gregorian conversion for admin date inputs, so
@@ -79,3 +80,15 @@ export function formatJalaliInput(date: Date): string {
   const parts = Object.fromEntries(partsFormat.formatToParts(date).map((p) => [p.type, p.value]));
   return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
 }
+
+/** Optional form field for a Solar Hijri date-time; parses to a Date or null. */
+export const jalaliDateTime = (label: string) =>
+  optionalText(label, 30).transform((value, ctx) => {
+    if (value === undefined) return null;
+    const date = parseJalaliDateTime(value);
+    if (!date) {
+      ctx.addIssue({ code: 'custom', message: `${label} را به شکل ۱۴۰۵/۰۷/۱۵ ۱۸:۳۰ وارد کنید.` });
+      return z.NEVER;
+    }
+    return date;
+  });
