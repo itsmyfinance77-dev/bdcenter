@@ -369,3 +369,33 @@ model RateLimitBucket {
   @@index([resetAt])
   @@map("rate_limit_buckets")
 }
+
+// ---------------------------------------------------------------------------
+// Notifications — SMS/email sent to applicants when staff change a status
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+/// One row per message attempt. The text is not stored (it is rebuilt from
+/// the event), only who, which channel and whether the provider accepted it.
+model Notification {
+  id        String              @id @default(cuid())
+  entity    String // "Enrollment" | "ConsultingRequest"
+  entityId  String
+  event     String // e.g. "status.ACCEPTED"
+  channel   NotificationChannel
+  recipient String
+  status    NotificationStatus
+  createdAt DateTime            @default(now())
+
+  @@index([entity, entityId])
+  @@map("notifications")
+}

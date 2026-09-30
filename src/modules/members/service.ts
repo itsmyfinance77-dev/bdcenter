@@ -22,7 +22,7 @@ import {
   verifySession,
 } from '@/modules/auth/session-token';
 import { clear, consume, LIMITS } from '@/modules/ratelimit/service';
-import { smsSender } from './sms';
+import { smsSender } from '@/modules/messaging/sms';
 
 export { safeMemberNext } from './next-path';
 
@@ -90,7 +90,7 @@ export async function requestOtp(phone: string, clientIp: string): Promise<OtpRe
     },
   });
 
-  if (!(await sender.send(phone, memberCopy.otpSms(code)))) {
+  if (!(await sender.sendOtp(phone, code, memberCopy.otpSms(code)))) {
     await prisma.otpChallenge.deleteMany({ where: { phone } });
     return { ok: false, error: memberCopy.smsUnavailable };
   }

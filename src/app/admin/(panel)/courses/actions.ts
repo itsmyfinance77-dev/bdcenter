@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
+import { notifyEnrollmentStatus } from '@/modules/notifications/service';
 import {
   courseInputSchema,
   deleteCourse,
@@ -42,6 +44,10 @@ export async function deleteCourseAction(id: string) {
 export async function setEnrollmentStatusAction(enrollmentId: string, formData: FormData) {
   const admin = await requireAdmin();
   const status = enrollmentStatusSchema.parse(formData.get('status'));
-  const courseId = await setEnrollmentStatus(enrollmentId, status, admin.id);
+  const { courseId, changed } = await setEnrollmentStatus(enrollmentId, status, admin.id);
+  if (changed && formData.get('notify') === 'on') {
+    // After the response: a slow SMS provider must not hold up the panel.
+    after(() => notifyEnrollmentStatus(enrollmentId, status));
+  }
   revalidatePath(`/admin/courses/${courseId}`);
 }

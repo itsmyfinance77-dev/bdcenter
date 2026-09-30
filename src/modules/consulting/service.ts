@@ -68,7 +68,12 @@ export async function getConsultingRequest(id: string) {
   return prisma.consultingRequest.findUnique({ where: { id } });
 }
 
+/** Returns whether the status actually changed. */
 export async function setConsultingStatus(id: string, status: RequestStatus, actorId: string) {
+  const before = await prisma.consultingRequest.findUniqueOrThrow({
+    where: { id },
+    select: { status: true },
+  });
   await prisma.consultingRequest.update({ where: { id }, data: { status } });
   await recordAudit({
     actorId,
@@ -77,6 +82,7 @@ export async function setConsultingStatus(id: string, status: RequestStatus, act
     entityId: id,
     metadata: { status },
   });
+  return before.status !== status;
 }
 
 export async function countNewConsultingRequests() {

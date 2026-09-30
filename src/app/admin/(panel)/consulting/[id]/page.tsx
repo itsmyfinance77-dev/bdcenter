@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
+import { NotificationList } from '@/components/admin/notification-list';
 import { StatusForm } from '@/components/admin/status-form';
 import { AdminHeading, Badge } from '@/components/admin/ui';
 import { membershipTierLabel, requestStatusLabel } from '@/content/admin';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { getConsultingRequest } from '@/modules/consulting/service';
+import { listNotifications } from '@/modules/notifications/service';
 import { setConsultingStatusAction } from '../actions';
 
 export const metadata = { title: 'درخواست مشاوره' };
@@ -14,6 +16,7 @@ export default async function ConsultingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const request = await getConsultingRequest((await params).id);
+  const notifications = request ? await listNotifications('ConsultingRequest', [request.id]) : {};
   if (!request) notFound();
 
   const rows: [string, React.ReactNode][] = [
@@ -70,7 +73,9 @@ export default async function ConsultingDetailPage({
         <StatusForm
           action={setConsultingStatusAction.bind(null, request.id)}
           current={request.status}
+          notify
         />
+        <NotificationList rows={notifications[request.id] ?? []} />
         <p className="text-xs text-ink-2">
           سطح عضویت فقط برای اطلاع ثبت می‌شود؛ قیمت‌گذاری بر اساس آن هنوز تعریف نشده است (OQ-BD-01).
         </p>

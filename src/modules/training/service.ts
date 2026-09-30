@@ -294,6 +294,10 @@ export async function setEnrollmentStatus(
   status: z.infer<typeof enrollmentStatusSchema>,
   actorId: string,
 ) {
+  const before = await prisma.enrollment.findUniqueOrThrow({
+    where: { id: enrollmentId },
+    select: { status: true },
+  });
   const enrollment = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: { status },
@@ -306,7 +310,18 @@ export async function setEnrollmentStatus(
     entityId: enrollmentId,
     metadata: { status },
   });
-  return enrollment.courseId;
+  return { courseId: enrollment.courseId, changed: before.status !== status };
+}
+
+/** Who to tell about an enrollment's status, for the notifications domain. */
+export async function getEnrollmentContact(enrollmentId: string) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: { phone: true, email: true, course: { select: { title: true } } },
+  });
+  return enrollment
+    ? { phone: enrollment.phone, email: enrollment.email, courseTitle: enrollment.course.title }
+    : null;
 }
 
 export async function exportEnrollmentsCsv(courseId: string, actorId: string) {

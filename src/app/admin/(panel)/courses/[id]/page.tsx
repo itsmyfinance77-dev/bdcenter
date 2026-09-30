@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ConfirmButton } from '@/components/admin/confirm-button';
+import { NotificationList } from '@/components/admin/notification-list';
 import { StatusForm } from '@/components/admin/status-form';
 import { AdminHeading, EmptyState, secondaryButtonClass, Table, Td } from '@/components/admin/ui';
 import { membershipTierLabel } from '@/content/admin';
 import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
 import { formatJalaliInput } from '@/lib/jalali';
+import { listNotifications } from '@/modules/notifications/service';
 import { getCourseForAdmin, listEnrollments } from '@/modules/training/service';
 import { deleteCourseAction, setEnrollmentStatusAction } from '../actions';
 import { CourseForm } from '../course-form';
@@ -23,6 +25,10 @@ export default async function EditCoursePage({
   const course = await getCourseForAdmin(id);
   if (!course) notFound();
   const enrollments = await listEnrollments(course.id);
+  const notifications = await listNotifications(
+    'Enrollment',
+    enrollments.map((enrollment) => enrollment.id),
+  );
 
   const initial = {
     status: course.status,
@@ -106,7 +112,9 @@ export default async function EditCoursePage({
                   <StatusForm
                     action={setEnrollmentStatusAction.bind(null, enrollment.id)}
                     current={enrollment.status}
+                    notify
                   />
+                  <NotificationList rows={notifications[enrollment.id] ?? []} />
                 </Td>
               </tr>
             ))}
