@@ -9,6 +9,7 @@ Chamber of Commerce. Independent project from `F:/RoshdAfrinan Site`.
 | Open questions | [docs/product/open-questions.md](docs/product/open-questions.md) |
 | Architecture decision | [docs/decisions/ADR-0001-architecture.md](docs/decisions/ADR-0001-architecture.md) |
 | Engineering rules | [CLAUDE.md](CLAUDE.md) |
+| Current state & next steps | [docs/HANDOFF.md](docs/HANDOFF.md) |
 
 ## Stack
 

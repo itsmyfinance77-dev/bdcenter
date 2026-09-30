@@ -1,8 +1,10 @@
 # Project rules — Business Development Center microsite
 
 Standalone project for `bdcenter.yazdccima.com`, independent of `F:/RoshdAfrinan Site`.
-Read `docs/product/requirements.md` and `docs/decisions/ADR-0001-architecture.md`
-before large changes.
+Start every new session with `docs/HANDOFF.md` (current state, how to run,
+next steps, gotchas). Read `docs/product/requirements.md` and
+`docs/decisions/ADR-0001-architecture.md` before large changes. Keep
+`docs/HANDOFF.md` up to date when a chunk of work lands.
 
 ## Language
 
