@@ -63,6 +63,25 @@ export async function searchPublishedArticles(terms: string[], limit = 20) {
   return rows.flatMap((row) => items.find((item) => item.id === row.id) ?? []);
 }
 
+/** Published events starting in [from, to), soonest first (calendar and feed). */
+export async function listPublishedEventsBetween(from: Date, to: Date, limit = 500) {
+  return prisma.article.findMany({
+    where: { kind: 'EVENT', status: 'PUBLISHED', eventStartsAt: { gte: from, lt: to } },
+    orderBy: { eventStartsAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      excerpt: true,
+      eventStartsAt: true,
+      eventEndsAt: true,
+      eventLocation: true,
+      updatedAt: true,
+    },
+  });
+}
+
 /** Slugs and last-modified times for the sitemap. */
 export async function listPublishedArticleUrls() {
   return prisma.article.findMany({

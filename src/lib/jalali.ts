@@ -92,3 +92,67 @@ export const jalaliDateTime = (label: string) =>
     }
     return date;
   });
+
+// ---------------------------------------------------------------------------
+// Month arithmetic for the events calendar (all in Tehran time)
+// ---------------------------------------------------------------------------
+
+export type JalaliMonth = { year: number; month: number };
+
+/** The Solar Hijri year/month/day of an instant, in Tehran. */
+export function jalaliParts(date: Date): { year: number; month: number; day: number } {
+  const parts = Object.fromEntries(partsFormat.formatToParts(date).map((p) => [p.type, p.value]));
+  return {
+    year: Number(toLatinDigits(parts.year!)),
+    month: Number(toLatinDigits(parts.month!)),
+    day: Number(toLatinDigits(parts.day!)),
+  };
+}
+
+/** Midnight (Tehran) at the start of a Solar Hijri day. */
+export function jalaliDayStart(year: number, month: number, day: number): Date | null {
+  return parseJalaliDateTime(`${year}/${month}/${day}`);
+}
+
+export function jalaliMonthLength({ year, month }: JalaliMonth): number {
+  if (month <= 6) return 31;
+  if (month <= 11) return 30;
+  return jalaliDayStart(year, 12, 30) ? 30 : 29;
+}
+
+export function addJalaliMonths({ year, month }: JalaliMonth, delta: number): JalaliMonth {
+  const index = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+/** Parses "1405-07" (any digit script); null when malformed or out of range. */
+export function parseJalaliMonth(text: string | undefined): JalaliMonth | null {
+  const match = /^(\d{4})-(\d{1,2})$/.exec(toLatinDigits(text ?? '').trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  return year >= 1300 && year <= 1500 && month >= 1 && month <= 12 ? { year, month } : null;
+}
+
+export function formatJalaliMonthParam({ year, month }: JalaliMonth): string {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+const weekdayFormat = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  timeZone: 'Asia/Tehran',
+});
+const weekdayIndex: Record<string, number> = {
+  Sat: 0,
+  Sun: 1,
+  Mon: 2,
+  Tue: 3,
+  Wed: 4,
+  Thu: 5,
+  Fri: 6,
+};
+
+/** Column of a date in a Persian week (Saturday = 0 ... Friday = 6). */
+export function persianWeekday(date: Date): number {
+  return weekdayIndex[weekdayFormat.format(date)]!;
+}

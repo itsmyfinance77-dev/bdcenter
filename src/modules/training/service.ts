@@ -89,6 +89,25 @@ export async function searchPublishedCourses(terms: string[], limit = 20) {
   );
 }
 
+/** Published courses starting in [from, to), soonest first (calendar and feed). */
+export async function listPublishedCoursesBetween(from: Date, to: Date, limit = 500) {
+  return prisma.course.findMany({
+    where: { status: 'PUBLISHED', startsAt: { gte: from, lt: to } },
+    orderBy: { startsAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      description: true,
+      startsAt: true,
+      endsAt: true,
+      location: true,
+      updatedAt: true,
+    },
+  });
+}
+
 export async function listPublishedCourseUrls() {
   return prisma.course.findMany({
     where: { status: 'PUBLISHED' },

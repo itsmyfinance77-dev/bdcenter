@@ -53,6 +53,7 @@ export const mainNav = [
       { title: 'دوره‌های آموزشی', href: '/courses' },
       { title: 'مرکز مشاوره', href: '/services/consulting' },
       { title: 'رویدادها', href: '/events' },
+      { title: 'تقویم رویدادها', href: '/events/calendar' },
       { title: 'میز خدمت', href: '/forms/service-desk' },
       { title: 'میز صنعت', href: '/services/industry-desk' },
     ],
@@ -82,4 +83,37 @@ export const searchCopy = {
   tooShort: 'عبارت جستجو باید دست‌کم دو حرف داشته باشد.',
   none: (query: string) => `نتیجه‌ای برای «${query}» پیدا نشد.`,
   count: (count: string, query: string) => `${count} نتیجه برای «${query}»`,
+} as const;
+
+/** Events calendar (/events/calendar) and "add to calendar" links. */
+export const calendarCopy = {
+  title: 'تقویم رویدادها',
+  lead: 'رویدادها و دوره‌های آموزشی مرکز به تفکیک روز.',
+  feedName: 'رویدادها و دوره‌های مرکز توسعه کسب‌وکار اتاق یزد',
+  months: [
+    'فروردین',
+    'اردیبهشت',
+    'خرداد',
+    'تیر',
+    'مرداد',
+    'شهریور',
+    'مهر',
+    'آبان',
+    'آذر',
+    'دی',
+    'بهمن',
+    'اسفند',
+  ],
+  weekdays: ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'],
+  previous: 'ماه قبل',
+  next: 'ماه بعد',
+  thisMonth: 'این ماه',
+  monthList: 'برنامه‌های این ماه',
+  empty: 'در این ماه رویداد یا دوره‌ای ثبت نشده است.',
+  kind: { event: 'رویداد', course: 'دوره' },
+  addToCalendar: 'افزودن به تقویم گوشی',
+  addToCalendarHint: 'فایل تقویم دانلود می‌شود؛ با باز کردن آن، برنامه به تقویم گوشی اضافه می‌شود.',
+  subscribe: 'اشتراک در تقویم مرکز',
+  subscribeHint:
+    'این نشانی را در برنامه تقویم (مثلاً Google Calendar یا تقویم آیفون) به‌عنوان «تقویم از روی نشانی اینترنتی» اضافه کنید تا برنامه‌های تازه خودکار اضافه شوند.',
 } as const;

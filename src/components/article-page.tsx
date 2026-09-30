@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { AddToCalendar } from '@/components/add-to-calendar';
 import { ArticleList, articleBasePath, coverUrl } from '@/components/article-list';
 import { MarkdownBody } from '@/components/markdown';
 import { PageHeader } from '@/components/page-header';
@@ -79,6 +80,11 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
             </div>
           ) : null}
         </dl>
+        {kind === 'EVENT' && article.eventStartsAt && article.eventStartsAt > new Date() ? (
+          <div className="mb-8">
+            <AddToCalendar href={`/events/${encodeURIComponent(article.slug)}/ics`} />
+          </div>
+        ) : null}
         <MarkdownBody source={article.bodyMarkdown} />
       </article>
     </>

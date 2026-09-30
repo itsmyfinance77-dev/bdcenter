@@ -12,7 +12,7 @@ explanations; code, commits and technical docs stay in English (see `CLAUDE.md`)
 | What                            | Where                                                                                                                                                    |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository (private, canonical) | https://github.com/itsmyfinance77-dev/bdcenter — `origin`, branch `main`                                                                                 |
-| Local checkout                  | `C:\Users\Mohammad\Desktop\SITE SEARCH` (Windows 11, Node 24, pnpm 12)                                                                                   |
+| Local checkout                  | `F:\SITE SEARCH` (Windows 11, Node 24, pnpm 12). Moved from `C:\Users\Mohammad\Desktop` on 2026-09-30: drive C is full, keep builds and caches off it    |
 | Dev database                    | Docker container `bdcenter-postgres`, PostgreSQL 16 on `127.0.0.1:5434` (`docker-compose.yml`)                                                           |
 | Secrets                         | `.env` (git-ignored): `DATABASE_URL`, `SESSION_SECRET`, `OTP_SECRET`, `SMS_PROVIDER`, plus a local test admin (`DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD`) |
 | Uploads                         | `storage/` (git-ignored, `STORAGE_DIR`): `forms/…` attachments, `covers/…` WebP cover images                                                             |

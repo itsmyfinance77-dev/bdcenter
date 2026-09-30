@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AddToCalendar } from '@/components/add-to-calendar';
 import { MarkdownBody } from '@/components/markdown';
 import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
@@ -128,6 +129,9 @@ export default async function CoursePage({
               </button>
             </form>
           )}
+          {course.startsAt && course.startsAt > new Date() ? (
+            <AddToCalendar href={`${coursePath}/ics`} />
+          ) : null}
         </aside>
       </div>
     </>
