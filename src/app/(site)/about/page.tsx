@@ -1,24 +1,15 @@
 import type { Metadata } from 'next';
-import { PageHeader } from '@/components/page-header';
-import { aboutText, siteInfo } from '@/content/site';
+import { InstitutionalPage, systemPageMetadata } from '@/components/institutional-page';
+import { siteInfo } from '@/content/site';
+import { getSystemPageContent } from '@/modules/pages/service';
 
-export const metadata: Metadata = {
-  title: 'درباره مرکز',
-  description: aboutText.slice(0, 160),
-  alternates: { canonical: '/about' },
-};
+export const dynamic = 'force-dynamic';
 
-export default function AboutPage() {
-  return (
-    <>
-      <PageHeader
-        title="درباره مرکز"
-        lead={siteInfo.parentOrg}
-        crumbs={[{ title: 'درباره مرکز' }]}
-      />
-      <article className="mx-auto max-w-3xl px-4 py-12">
-        <p className="text-justify text-base leading-8 text-ink">{aboutText}</p>
-      </article>
-    </>
-  );
+export function generateMetadata(): Promise<Metadata> {
+  return systemPageMetadata('about');
+}
+
+export default async function AboutPage() {
+  const page = await getSystemPageContent('about');
+  return <InstitutionalPage title="درباره مرکز" lead={siteInfo.parentOrg} page={page} />;
 }

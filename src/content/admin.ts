@@ -41,6 +41,8 @@ export const adminNav = [
   { href: '/admin', title: 'داشبورد', adminOnly: false },
   { href: '/admin/articles', title: 'اخبار و رویدادها', adminOnly: false },
   { href: '/admin/courses', title: 'دوره‌های آموزشی', adminOnly: false },
+  { href: '/admin/pages', title: 'صفحه‌ها', adminOnly: false },
+  { href: '/admin/links', title: 'پیوندها', adminOnly: false },
   { href: '/admin/consulting', title: 'درخواست‌های مشاوره', adminOnly: false },
   { href: '/admin/messages', title: 'پیام‌های تماس', adminOnly: false },
   { href: '/admin/forms', title: 'فرم‌ها و درخواست‌ها', adminOnly: false },

@@ -46,25 +46,6 @@ export const serviceTiles = [
   { slug: 'investment-services', title: 'خدمات سرمایه‌گذاری', isPlaceholder: true },
 ] as const;
 
-/** Section 6 of the brief: outbound links to the parent chamber's own services. */
-export const chamberServiceLinks = [
-  { title: 'خدمات کارت بازرگانی و عضویت', url: 'https://yazdccima.com/services/registration/' },
-  { title: 'بانک اطلاعات اعضای اتاق بازرگانی یزد', url: 'https://members.yazdccima.com/' },
-  { title: 'مرکز علم و کار', url: 'https://sad.yazdccima.com/' },
-  { title: 'کمیسیون‌های اتاق بازرگانی یزد', url: 'https://yazdccima.com/commission/' },
-  { title: 'مرکز پژوهش‌های اقتصادی استان یزد', url: 'https://yazdccima.com/research/' },
-  { title: 'امور بین‌الملل', url: 'https://yazdccima.com/inter/' },
-  {
-    title: 'نمایشگاه خارجی',
-    url: 'https://yazdccima.com/event-group/Foreign-exhibition/',
-  },
-  {
-    title: 'نمایشگاه داخلی',
-    url: 'https://yazdccima.com/event-group/indoorexhibition/',
-  },
-  { title: 'رویدادهای تجاری اتاق یزد', url: 'https://yazdccima.com/event-group/yazdevent/' },
-] as const;
-
 export const mainNav = [
   {
     title: 'خدمات',

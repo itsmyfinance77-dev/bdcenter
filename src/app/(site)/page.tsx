@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { ArticleList } from '@/components/article-list';
 import { ChamberLinks } from '@/components/chamber-links';
 import { ServiceTiles } from '@/components/service-tiles';
+import { plainText } from '@/lib/text';
 import { aboutText, siteInfo } from '@/content/site';
 import { listPublishedArticles, type ArticleSummary } from '@/modules/content/service';
+import { getSystemPageContent } from '@/modules/pages/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,17 @@ async function latestArticles(): Promise<ArticleSummary[]> {
   } catch (error) {
     console.error('Home page: could not load articles', error);
     return [];
+  }
+}
+
+/** The admin-edited "about" text, or the approved copy if the database is unreachable. */
+async function aboutSummary(): Promise<string> {
+  try {
+    const page = await getSystemPageContent('about');
+    return page ? plainText(page.body) : aboutText;
+  } catch (error) {
+    console.error('Home page: could not load the about page', error);
+    return aboutText;
   }
 }
 
@@ -40,7 +53,7 @@ function organizationJsonLd() {
 }
 
 export default async function HomePage() {
-  const articles = await latestArticles();
+  const [articles, about] = await Promise.all([latestArticles(), aboutSummary()]);
 
   return (
     <>
@@ -73,7 +86,7 @@ export default async function HomePage() {
             نمای مرکز
           </div>
           <div className="absolute inset-0 flex items-center overflow-y-auto bg-brand-900/90 p-6 text-sm leading-7 text-on-dark opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
-            {aboutText}
+            {about}
           </div>
         </div>
 
