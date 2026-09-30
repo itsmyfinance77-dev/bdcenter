@@ -1,13 +1,16 @@
 'use server';
 
+import { clientIp } from '@/lib/client-ip';
 import {
   formValues,
   GENERIC_ERROR,
   isSpam,
+  RATE_LIMITED,
   SUCCESS_MESSAGE,
   type FormState,
 } from '@/lib/form-state';
 import { submitForm } from '@/modules/forms/service';
+import { consume, LIMITS } from '@/modules/ratelimit/service';
 
 export async function submitDynamicForm(
   slug: string,
@@ -16,6 +19,10 @@ export async function submitDynamicForm(
 ): Promise<FormState> {
   if (isSpam(formData)) return { status: 'success', message: SUCCESS_MESSAGE };
 
+  // Checked before the submission is parsed, since that already stores uploads.
+  if (!(await consume(`form:ip:${await clientIp()}`, LIMITS.publicForm))) {
+    return { status: 'error', message: RATE_LIMITED, errors: {}, values: formValues(formData) };
+  }
   const result = await submitForm(slug, Object.fromEntries(formData));
   if (result.ok) return { status: 'success', message: SUCCESS_MESSAGE };
 

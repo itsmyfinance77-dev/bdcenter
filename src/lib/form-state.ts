@@ -17,6 +17,7 @@ export const HONEYPOT_FIELD = 'website';
 
 export const GENERIC_ERROR = 'لطفاً خطاهای فرم را برطرف کنید.';
 export const SUCCESS_MESSAGE = 'درخواست شما با موفقیت ثبت شد.';
+export const RATE_LIMITED = 'تعداد ارسال‌ها از حد مجاز گذشته است. کمی بعد دوباره تلاش کنید.';
 
 /** Text entries of a submitted form, keyed by input name. Files are skipped. */
 export function formValues(formData: FormData): Record<string, string> {

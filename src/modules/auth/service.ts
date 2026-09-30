@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/modules/audit/service';
+import { clear, consume, isExhausted, LIMITS } from '@/modules/ratelimit/service';
 import { hashPassword, verifyPassword } from './password';
 import {
   SESSION_COOKIE,
@@ -19,30 +20,15 @@ export type CurrentAdmin = { id: string; fullName: string; email: string; role: 
 // which addresses have accounts.
 const dummyHash = hashPassword('timing-equalizer-not-a-real-password');
 
-// ---------------------------------------------------------------------------
-// Login throttling: in-memory, per email and per client address. Enough for a
-// single-instance deployment; move to the database if the app is scaled out.
-// ---------------------------------------------------------------------------
-
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-const failures = new Map<string, { count: number; resetAt: number }>();
-
-function isThrottled(keys: string[]): boolean {
-  const now = Date.now();
-  return keys.some((key) => {
-    const entry = failures.get(key);
-    return entry !== undefined && entry.resetAt > now && entry.count >= MAX_ATTEMPTS;
-  });
+// Login throttling counts failures only, per email and per client address,
+// in the shared rate-limit table (see src/modules/ratelimit).
+async function isThrottled(keys: string[]): Promise<boolean> {
+  const results = await Promise.all(keys.map((key) => isExhausted(key, LIMITS.adminLogin)));
+  return results.some(Boolean);
 }
 
-function noteFailure(keys: string[]) {
-  const now = Date.now();
-  for (const key of keys) {
-    const entry = failures.get(key);
-    if (!entry || entry.resetAt <= now) failures.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    else entry.count += 1;
-  }
+async function noteFailure(keys: string[]) {
+  await Promise.all(keys.map((key) => consume(key, LIMITS.adminLogin)));
 }
 
 export type LoginResult = { ok: true } | { ok: false; reason: 'invalid' | 'throttled' };
@@ -53,17 +39,17 @@ export async function login(
   clientIp: string,
 ): Promise<LoginResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  const keys = [`email:${normalizedEmail}`, `ip:${clientIp}`];
-  if (isThrottled(keys)) return { ok: false, reason: 'throttled' };
+  const keys = [`admin-login:email:${normalizedEmail}`, `admin-login:ip:${clientIp}`];
+  if (await isThrottled(keys)) return { ok: false, reason: 'throttled' };
 
   const user = await prisma.adminUser.findUnique({ where: { email: normalizedEmail } });
   const valid = await verifyPassword(user?.passwordHash ?? (await dummyHash), password);
   if (!user || !valid || !user.isActive) {
-    noteFailure(keys);
+    await noteFailure(keys);
     return { ok: false, reason: 'invalid' };
   }
 
-  for (const key of keys) failures.delete(key);
+  await clear(...keys);
   (await cookies()).set(SESSION_COOKIE, await signSession(user.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

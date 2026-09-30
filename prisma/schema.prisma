@@ -312,3 +312,16 @@ model ContactMessage {
 
   @@map("contact_messages")
 }
+
+// ---------------------------------------------------------------------------
+// Rate limiting — fixed-window counters shared by every app instance
+// ---------------------------------------------------------------------------
+
+model RateLimitBucket {
+  key     String   @id // e.g. "contact:ip:1.2.3.4", "otp:phone:0912..."
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limit_buckets")
+}

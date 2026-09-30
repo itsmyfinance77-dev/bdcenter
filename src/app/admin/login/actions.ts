@@ -1,7 +1,7 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { clientIp } from '@/lib/client-ip';
 import type { FormState } from '@/lib/form-state';
 import { login } from '@/modules/auth/service';
 
@@ -13,10 +13,7 @@ function safeNext(value: FormDataEntryValue | null): string {
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = String(formData.get('email') ?? '');
   const password = String(formData.get('password') ?? '');
-  const headerList = await headers();
-  const clientIp = headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
-
-  const result = await login(email, password, clientIp);
+  const result = await login(email, password, await clientIp());
   if (!result.ok) {
     const message =
       result.reason === 'throttled'
