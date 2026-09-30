@@ -31,6 +31,7 @@ export default async function EditArticlePage({
     eventStartsAt: article.eventStartsAt ? formatJalaliInput(article.eventStartsAt) : '',
     eventEndsAt: article.eventEndsAt ? formatJalaliInput(article.eventEndsAt) : '',
     eventLocation: article.eventLocation ?? '',
+    coverAlt: article.coverImage?.altText ?? '',
   };
 
   return (
@@ -61,7 +62,12 @@ export default async function EditArticlePage({
         </p>
       ) : null}
       {/* key: remount with fresh defaults after each save */}
-      <ArticleForm key={article.updatedAt.toISOString()} id={article.id} initial={initial} />
+      <ArticleForm
+        key={article.updatedAt.toISOString()}
+        id={article.id}
+        initial={initial}
+        coverUrl={article.coverImage ? `/admin/media/${article.coverImage.id}/sm` : null}
+      />
     </>
   );
 }

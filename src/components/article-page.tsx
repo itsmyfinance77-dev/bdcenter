@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ArticleList, articleBasePath } from '@/components/article-list';
+import { ArticleList, articleBasePath, coverUrl } from '@/components/article-list';
+import { MarkdownBody } from '@/components/markdown';
 import { PageHeader } from '@/components/page-header';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { ArticleKind } from '@/lib/prisma';
@@ -27,14 +29,12 @@ export async function ArticleIndexPage({ kind }: { kind: ArticleKind }) {
 
 /**
  * Shared detail page for /news/[slug] and /events/[slug]. The body is stored
- * as Markdown; until a sanitizing renderer is added it is shown as plain
- * paragraphs, never as raw HTML.
+ * as Markdown and rendered by `MarkdownBody`, which never emits raw HTML.
  */
 export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slug: string }) {
   const article = await getPublishedArticle(kind, slug);
   if (!article) notFound();
 
-  const paragraphs = article.bodyMarkdown.split(/\n{2,}/).filter((p) => p.trim() !== '');
   return (
     <>
       <PageHeader
@@ -46,6 +46,19 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
         ]}
       />
       <article className="mx-auto max-w-3xl px-4 py-12">
+        {article.coverImage ? (
+          <div className="relative mb-8 aspect-video overflow-hidden rounded-panel bg-surface-2">
+            <Image
+              src={coverUrl(article.coverImage.id, 'lg')}
+              alt={article.coverImage.altText ?? article.title}
+              fill
+              unoptimized
+              priority
+              sizes="(min-width: 48rem) 48rem, 100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
         <dl className="mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
           {article.publishedAt ? (
             <div>
@@ -66,13 +79,7 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
             </div>
           ) : null}
         </dl>
-        <div className="space-y-4 text-base leading-8 text-ink">
-          {paragraphs.map((paragraph, index) => (
-            <p key={index} className="whitespace-pre-line">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+        <MarkdownBody source={article.bodyMarkdown} />
       </article>
     </>
   );
@@ -85,6 +92,10 @@ export async function articleMetadata(kind: ArticleKind, slug: string): Promise<
     title: article.title,
     description: article.excerpt ?? undefined,
     alternates: { canonical: `${articleBasePath[kind]}/${article.slug}` },
-    openGraph: { type: 'article', title: article.title },
+    openGraph: {
+      type: 'article',
+      title: article.title,
+      images: article.coverImage ? [coverUrl(article.coverImage.id, 'lg')] : undefined,
+    },
   };
 }

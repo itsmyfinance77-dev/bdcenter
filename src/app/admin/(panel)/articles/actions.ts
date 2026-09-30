@@ -19,7 +19,8 @@ export async function saveArticleAction(
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
 
-  const result = await saveArticle(id, parsed.data, admin.id);
+  const cover = formData.get('coverImage');
+  const result = await saveArticle(id, parsed.data, cover instanceof File ? cover : null, admin.id);
   if (!result.ok) {
     return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
   }

@@ -3,6 +3,9 @@ import { parseJalaliDateTime } from '@/lib/jalali';
 import { prisma, type ArticleKind } from '@/lib/prisma';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
+import { checkImageUpload, deleteStoredImage, storeImage } from '@/modules/files/service';
+
+const coverSelect = { select: { id: true, altText: true } } as const;
 
 const articleSummarySelect = {
   id: true,
@@ -13,6 +16,7 @@ const articleSummarySelect = {
   publishedAt: true,
   eventStartsAt: true,
   eventLocation: true,
+  coverImage: coverSelect,
 } as const;
 
 /** Published news/events, newest first. Omit `kind` to mix both (home page). */
@@ -28,7 +32,10 @@ export async function listPublishedArticles(options: { kind?: ArticleKind; limit
 export type ArticleSummary = Awaited<ReturnType<typeof listPublishedArticles>>[number];
 
 export async function getPublishedArticle(kind: ArticleKind, slug: string) {
-  return prisma.article.findFirst({ where: { kind, slug, status: 'PUBLISHED' } });
+  return prisma.article.findFirst({
+    where: { kind, slug, status: 'PUBLISHED' },
+    include: { coverImage: coverSelect },
+  });
 }
 
 /** Slugs and last-modified times for the sitemap. */
@@ -67,7 +74,7 @@ export async function listArticlesForAdmin(page: number) {
 }
 
 export async function getArticleForAdmin(id: string) {
-  return prisma.article.findUnique({ where: { id } });
+  return prisma.article.findUnique({ where: { id }, include: { coverImage: coverSelect } });
 }
 
 /** Unicode letters/digits separated by single hyphens; Persian slugs are allowed. */
@@ -109,6 +116,8 @@ export const articleInputSchema = z
     eventStartsAt: jalaliDateTime('زمان شروع'),
     eventEndsAt: jalaliDateTime('زمان پایان'),
     eventLocation: optionalText('مکان', 200),
+    coverAlt: optionalText('توضیح عکس', 200),
+    removeCover: z.preprocess((value) => value === 'on', z.boolean()),
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
   })
   .transform((value) => ({
@@ -136,12 +145,23 @@ export type ArticleInput = z.infer<typeof articleInputSchema>;
 
 export type SaveResult = { ok: true; id: string } | { ok: false; errors: Record<string, string> };
 
-/** Creates (no id) or updates an article. `publishedAt` is stamped on first publish. */
+/**
+ * Creates (no id) or updates an article. `publishedAt` is stamped on first
+ * publish. `coverFile` (an empty file input counts as none) replaces the
+ * current cover; `input.removeCover` drops it.
+ */
 export async function saveArticle(
   id: string | null,
   input: ArticleInput,
+  coverFile: File | null,
   actorId: string,
 ): Promise<SaveResult> {
+  const newCover = coverFile && coverFile.size > 0 ? coverFile : null;
+  if (newCover) {
+    const problem = checkImageUpload(newCover);
+    if (problem) return { ok: false, errors: { coverImage: problem } };
+  }
+
   const clash = await prisma.article.findFirst({
     where: { slug: input.slug, NOT: id ? { id } : undefined },
     select: { id: true },
@@ -167,14 +187,34 @@ export async function saveArticle(
   };
 
   const existing = id
-    ? await prisma.article.findUnique({ where: { id }, select: { publishedAt: true } })
+    ? await prisma.article.findUnique({
+        where: { id },
+        select: { publishedAt: true, coverImageId: true },
+      })
     : null;
   if (id && !existing) return { ok: false, errors: { _form: 'این مطلب پیدا نشد.' } };
   const publishedAt = existing?.publishedAt ?? (input.status === 'PUBLISHED' ? new Date() : null);
 
+  const oldCoverId = existing?.coverImageId ?? null;
+  let coverImageId = input.removeCover ? null : oldCoverId;
+  if (newCover) {
+    const stored = await storeImage('covers', newCover);
+    if (!stored) return { ok: false, errors: { coverImage: 'فایل تصویر معتبر نیست.' } };
+    const asset = await prisma.mediaAsset.create({
+      data: { ...stored, altText: input.coverAlt ?? null },
+    });
+    coverImageId = asset.id;
+  } else if (coverImageId) {
+    await prisma.mediaAsset.update({
+      where: { id: coverImageId },
+      data: { altText: input.coverAlt ?? null },
+    });
+  }
+
   const article = id
-    ? await prisma.article.update({ where: { id }, data: { ...data, publishedAt } })
-    : await prisma.article.create({ data: { ...data, publishedAt } });
+    ? await prisma.article.update({ where: { id }, data: { ...data, publishedAt, coverImageId } })
+    : await prisma.article.create({ data: { ...data, publishedAt, coverImageId } });
+  if (oldCoverId && oldCoverId !== coverImageId) await deleteMediaIfUnused(oldCoverId);
 
   await recordAudit({
     actorId,
@@ -187,7 +227,11 @@ export async function saveArticle(
 }
 
 export async function deleteArticle(id: string, actorId: string) {
-  const article = await prisma.article.delete({ where: { id }, select: { title: true } });
+  const article = await prisma.article.delete({
+    where: { id },
+    select: { title: true, coverImageId: true },
+  });
+  if (article.coverImageId) await deleteMediaIfUnused(article.coverImageId);
   await recordAudit({
     actorId,
     action: 'content.delete',
@@ -195,6 +239,37 @@ export async function deleteArticle(id: string, actorId: string) {
     entityId: id,
     metadata: { title: article.title },
   });
+}
+
+/** Deletes a media asset and its files once no article points at it any more. */
+async function deleteMediaIfUnused(assetId: string) {
+  const inUse = await prisma.article.count({ where: { coverImageId: assetId } });
+  if (inUse > 0) return;
+  const asset = await prisma.mediaAsset.delete({
+    where: { id: assetId },
+    select: { storageKey: true },
+  });
+  await deleteStoredImage(asset.storageKey);
+}
+
+/**
+ * Storage key of a cover image the public may see: one used by a published
+ * article. Drafts' covers are only served through the admin route.
+ */
+export async function getPublicCoverKey(assetId: string): Promise<string | null> {
+  const asset = await prisma.mediaAsset.findFirst({
+    where: { id: assetId, articles: { some: { status: 'PUBLISHED' } } },
+    select: { storageKey: true },
+  });
+  return asset?.storageKey ?? null;
+}
+
+export async function getCoverKeyForAdmin(assetId: string): Promise<string | null> {
+  const asset = await prisma.mediaAsset.findUnique({
+    where: { id: assetId },
+    select: { storageKey: true },
+  });
+  return asset?.storageKey ?? null;
 }
 
 export async function countArticlesByStatus() {

@@ -1,7 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useActionState, useState } from 'react';
 import {
+  Field,
   fieldState,
   FormMessage,
   SelectField,
@@ -15,7 +17,15 @@ import { saveArticleAction } from './actions';
 
 export type ArticleFormValues = Record<string, string>;
 
-export function ArticleForm({ id, initial }: { id: string | null; initial: ArticleFormValues }) {
+export function ArticleForm({
+  id,
+  initial,
+  coverUrl = null,
+}: {
+  id: string | null;
+  initial: ArticleFormValues;
+  coverUrl?: string | null;
+}) {
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveArticleAction.bind(null, id), initialState);
   const [kind, setKind] = useState(initial.kind ?? 'NEWS');
@@ -42,9 +52,48 @@ export function ArticleForm({ id, initial }: { id: string | null; initial: Artic
         label="متن"
         required
         rows={14}
-        hint="پاراگراف‌ها را با یک خط خالی از هم جدا کنید."
+        hint="پاراگراف‌ها را با یک خط خالی جدا کنید. قالب‌بندی: «## » تیتر، «- » فهرست، «1. » فهرست شماره‌دار، **پررنگ**، [متن پیوند](https://...)"
         {...field('bodyMarkdown')}
       />
+      <fieldset className="space-y-4 rounded-card border border-line p-4">
+        <legend className="px-1 text-sm font-medium text-ink">عکس کاور</legend>
+        {coverUrl ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative aspect-video w-48 overflow-hidden rounded-card bg-surface-2">
+              <Image
+                src={coverUrl}
+                alt=""
+                fill
+                unoptimized
+                sizes="12rem"
+                className="object-cover"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                name="removeCover"
+                defaultChecked={state.status === 'error' && state.values.removeCover === 'on'}
+                className="size-4 accent-primary"
+              />
+              حذف عکس فعلی
+            </label>
+          </div>
+        ) : null}
+        <Field
+          {...field('coverImage')}
+          label={coverUrl ? 'عکس جدید' : 'عکس'}
+          defaultValue={undefined}
+          hint="JPG، PNG یا WebP تا ۱۰ مگابایت. اگر فرم خطا داد، عکس را دوباره انتخاب کنید."
+        >
+          {(control) => <input {...control} type="file" accept="image/jpeg,image/png,image/webp" />}
+        </Field>
+        <TextField
+          label="توضیح عکس (برای نابینایان و موتورهای جستجو)"
+          hint="خالی بگذارید تا عنوان مطلب استفاده شود."
+          {...field('coverAlt')}
+        />
+      </fieldset>
       {kind === 'EVENT' ? (
         <fieldset className="grid gap-4 rounded-card border border-line p-4 sm:grid-cols-3">
           <legend className="px-1 text-sm font-medium text-ink">مشخصات رویداد</legend>
