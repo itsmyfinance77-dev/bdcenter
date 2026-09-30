@@ -24,6 +24,9 @@
   --color-line: #e3e7ef;
   --color-line-hover: #9fb6e6;
 
+  --color-success: #17693a;
+  --color-danger: #b42318;
+
   --radius-chip: 4px;
   --radius-control: 6px;
   --radius-card: 8px;
