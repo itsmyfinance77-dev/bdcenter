@@ -44,6 +44,7 @@ export default async function ConsultingDetailPage({
     ],
     ['موضوع', request.topic],
     ['تاریخ ثبت', formatDateTime(request.createdAt)],
+    ['ثبت از', request.memberId ? 'حساب کاربری عضو سایت' : 'فرم بدون ورود'],
   ];
 
   return (

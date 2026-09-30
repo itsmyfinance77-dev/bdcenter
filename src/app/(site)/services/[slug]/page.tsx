@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { consultingCopy } from '@/content/members';
 import { servicePageCopy, serviceTiles } from '@/content/site';
+import { getCurrentMember } from '@/modules/members/service';
 import { ConsultingForm } from './consulting-form';
 
 type Params = { slug: string };
@@ -34,6 +37,16 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
   const crumbs = [{ title: 'خدمات', href: '/#services-heading' }, { title: tile.title }];
 
   if (tile.slug === 'consulting') {
+    const member = await getCurrentMember();
+    const prefill = member
+      ? {
+          fullName: member.fullName ?? '',
+          companyName: member.companyName ?? '',
+          nationalId: member.nationalId ?? '',
+          phone: member.phone,
+          email: member.email ?? '',
+        }
+      : undefined;
     return (
       <>
         <PageHeader title={tile.title} lead={servicePageCopy.consulting} crumbs={crumbs} />
@@ -45,7 +58,19 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
             <h2 id="consulting-form-heading" className="mb-4 text-lg font-bold text-brand-900">
               ثبت درخواست مشاوره
             </h2>
-            <ConsultingForm />
+            {member ? null : (
+              <p className="mb-4 text-sm text-ink-2">
+                <Link
+                  href="/account/login?next=/services/consulting"
+                  className="text-primary hover:underline"
+                >
+                  ورود به حساب کاربری
+                </Link>
+                {' — '}
+                {consultingCopy.signInHint}
+              </p>
+            )}
+            <ConsultingForm prefill={prefill} />
           </section>
         </div>
       </>

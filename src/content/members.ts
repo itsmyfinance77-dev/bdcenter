@@ -11,3 +11,11 @@ export const memberCopy = {
   accountCreated: 'حساب شما ساخته شد.',
   completeProfile: 'برای ادامه، ابتدا نام خود را در حساب کاربری ثبت کنید.',
 } as const;
+
+/** Consulting requests as seen from the member area. */
+export const consultingCopy = {
+  trackInAccount: 'وضعیت آن را در «حساب کاربری» ببینید.',
+  signInHint:
+    'اگر وارد حساب کاربری شوید، اطلاعات شما خودکار پر می‌شود و وضعیت درخواست را در حساب خود می‌بینید.',
+  none: 'هنوز درخواست مشاوره‌ای ثبت نکرده‌اید.',
+} as const;

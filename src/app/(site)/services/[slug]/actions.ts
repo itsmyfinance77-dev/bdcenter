@@ -1,5 +1,6 @@
 'use server';
 
+import { consultingCopy } from '@/content/members';
 import { clientIp } from '@/lib/client-ip';
 import {
   formValues,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { consultingRequestSchema, createConsultingRequest } from '@/modules/consulting/service';
+import { getCurrentMember } from '@/modules/members/service';
 import { consume, LIMITS } from '@/modules/ratelimit/service';
 
 export async function submitConsultingRequest(
@@ -28,6 +30,10 @@ export async function submitConsultingRequest(
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
 
-  await createConsultingRequest(parsed.data);
-  return { status: 'success', message: SUCCESS_MESSAGE };
+  const member = await getCurrentMember();
+  await createConsultingRequest(parsed.data, member?.id ?? null);
+  return {
+    status: 'success',
+    message: member ? `${SUCCESS_MESSAGE} ${consultingCopy.trackInAccount}` : SUCCESS_MESSAGE,
+  };
 }

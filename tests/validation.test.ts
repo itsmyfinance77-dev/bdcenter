@@ -37,9 +37,12 @@ describe('nationalId and digits', () => {
 });
 
 describe('safeMemberNext', () => {
-  it.each(['/account', '/courses', '/courses/%D8%AF-x'])('keeps %s', (next) => {
-    expect(safeMemberNext(next)).toBe(next);
-  });
+  it.each(['/account', '/courses', '/courses/%D8%AF-x', '/services/consulting'])(
+    'keeps %s',
+    (next) => {
+      expect(safeMemberNext(next)).toBe(next);
+    },
+  );
 
   it.each([
     '//evil.com',

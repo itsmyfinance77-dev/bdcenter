@@ -266,6 +266,8 @@ model Enrollment {
 /// "مرکز مشاوره (ویژه شرکت‌های فناور و دانش‌بنیان)" — request intake only.
 model ConsultingRequest {
   id             String        @id @default(cuid())
+  /// Set when a signed-in member sent it (members domain; a plain id, not a relation).
+  memberId       String?
   fullName       String
   nationalId     String?
   phone          String
@@ -278,6 +280,7 @@ model ConsultingRequest {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  @@index([memberId])
   @@map("consulting_requests")
 }
 

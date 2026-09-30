@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
-import { memberCopy } from '@/content/members';
+import { consultingCopy, memberCopy } from '@/content/members';
 import { formatDate, formatDateTime, toPersianDigits } from '@/lib/format';
+import { listMemberConsultingRequests } from '@/modules/consulting/service';
 import { requireMember } from '@/modules/members/service';
 import { listMemberEnrollments } from '@/modules/training/service';
 import {
@@ -27,7 +28,10 @@ export default async function AccountPage({
 }) {
   const member = await requireMember();
   const { welcome, next } = await searchParams;
-  const enrollments = await listMemberEnrollments(member.id);
+  const [enrollments, consultingRequests] = await Promise.all([
+    listMemberEnrollments(member.id),
+    listMemberConsultingRequests(member.id),
+  ]);
 
   const initial = {
     fullName: member.fullName ?? '',
@@ -105,6 +109,32 @@ export default async function AccountPage({
                         </button>
                       </form>
                     ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-panel border border-line bg-white p-6">
+            <div className="mb-4 flex items-baseline justify-between gap-4">
+              <h2 id="consulting-heading" className="text-lg font-bold text-brand-900">
+                درخواست‌های مشاوره من
+              </h2>
+              <Link href="/services/consulting" className="text-sm text-primary hover:underline">
+                درخواست جدید
+              </Link>
+            </div>
+            {consultingRequests.length === 0 ? (
+              <p className="text-sm text-ink-2">{consultingCopy.none}</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {consultingRequests.map((request) => (
+                  <li key={request.id} className="py-3">
+                    <p className="font-medium text-ink">{request.topic}</p>
+                    <p className="text-xs text-ink-2">
+                      ثبت: {formatDate(request.createdAt)} · وضعیت:{' '}
+                      {requestStatusLabel[request.status]}
+                    </p>
                   </li>
                 ))}
               </ul>

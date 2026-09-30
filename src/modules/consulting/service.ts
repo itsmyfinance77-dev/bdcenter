@@ -16,12 +16,28 @@ export const consultingRequestSchema = z.object({
 
 export type ConsultingRequestInput = z.infer<typeof consultingRequestSchema>;
 
-/** Records a consulting request. The tier is stored for later review only (OQ-BD-01). */
-export async function createConsultingRequest(input: ConsultingRequestInput) {
+/**
+ * Records a consulting request. The tier is stored for later review only
+ * (OQ-BD-01). `memberId` links it to a signed-in member's account so they
+ * can follow it on /account; anonymous requests stay allowed.
+ */
+export async function createConsultingRequest(
+  input: ConsultingRequestInput,
+  memberId: string | null = null,
+) {
   const membershipTier = await getMembershipTier(input.nationalId);
   return prisma.consultingRequest.create({
-    data: { ...input, membershipTier },
+    data: { ...input, membershipTier, memberId },
     select: { id: true },
+  });
+}
+
+/** A member's own requests, newest first. */
+export async function listMemberConsultingRequests(memberId: string) {
+  return prisma.consultingRequest.findMany({
+    where: { memberId },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, topic: true, status: true, createdAt: true, updatedAt: true },
   });
 }
 
