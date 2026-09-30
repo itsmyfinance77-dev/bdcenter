@@ -65,3 +65,23 @@ sibling Roshd Afarinan project's baseline, unless the employer says otherwise)
 Everything the Chamber's own site (yazdccima.com) already provides and this
 site only needs to **link to**: bazaar card issuance, member directory, arbitration
 center, dialogue council, commissions, press clips. We do not rebuild these.
+
+## Update (2026-09-30): additions requested by the owner
+
+The owner asked for these on top of the brief; they are built (see ADR-0002):
+
+- **Member accounts:** regular visitors sign up / sign in with their mobile
+  number and an SMS one-time code (no passwords). `/account` holds their
+  profile and their course enrollments.
+- **On-site training enrollment:** staff publish courses (description,
+  instructor, dates, place, capacity) and review enrollments; signed-in
+  members enroll on `/courses`. The "آموزش و توانمندسازی" tile now opens
+  `/courses`, which still links to the Chamber's `/services/edu` for its
+  other courses. No price is shown or charged (OQ-BD-01).
+- **News/events:** a cover image per item and formatted bodies (headings,
+  lists, links, tables) written in Markdown.
+- **Abuse protection:** every public form and the sign-in flow are rate
+  limited.
+
+Still needed from the employer for these: an SMS provider (OQ-BD-11) and a
+privacy notice for the stored phone numbers (OQ-BD-12).

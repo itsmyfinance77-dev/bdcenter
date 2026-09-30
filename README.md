@@ -3,13 +3,13 @@
 Public microsite for the Business Development Center affiliated with the Yazd
 Chamber of Commerce. Independent project from `F:/RoshdAfrinan Site`.
 
-|                            |                                                                                    |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| Requirements               | [docs/product/requirements.md](docs/product/requirements.md)                       |
-| Open questions             | [docs/product/open-questions.md](docs/product/open-questions.md)                   |
-| Architecture decision      | [docs/decisions/ADR-0001-architecture.md](docs/decisions/ADR-0001-architecture.md) |
-| Engineering rules          | [CLAUDE.md](CLAUDE.md)                                                             |
-| Current state & next steps | [docs/HANDOFF.md](docs/HANDOFF.md)                                                 |
+|                            |                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------ |
+| Requirements               | [docs/product/requirements.md](docs/product/requirements.md)                         |
+| Open questions             | [docs/product/open-questions.md](docs/product/open-questions.md)                     |
+| Architecture decisions     | [docs/decisions/](docs/decisions/) (ADR-0001 architecture, ADR-0002 member accounts) |
+| Engineering rules          | [CLAUDE.md](CLAUDE.md)                                                               |
+| Current state & next steps | [docs/HANDOFF.md](docs/HANDOFF.md)                                                   |
 
 ## Stack
 
@@ -24,15 +24,29 @@ Prerequisites: Node 22+, Docker (for the dev database).
 npm install
 docker compose up -d          # PostgreSQL 16 on 127.0.0.1:5434
 cp .env.example .env          # fill SESSION_SECRET and OTP_SECRET
-npm run db:migrate:dev -- --name init
+npm run db:generate           # Prisma client (prisma/generated, git-ignored)
+npm run db:migrate:deploy     # apply prisma/migrations
 npm run db:seed
-npm run dev                   # http://localhost:3000
+npm run dev                   # http://localhost:3000 (bound to 127.0.0.1)
 ```
+
+## Public site
+
+Home, about, contact, news & events (cover images, Markdown bodies), service
+tiles, consulting request form, dynamic forms with uploads, and training
+courses at `/courses`.
+
+**Member accounts** (`/account`, ADR-0002): visitors sign up / sign in with a
+mobile number and a 6-digit SMS code, keep a profile and enroll in courses.
+In development the code is printed in the server log (`SMS_PROVIDER=console`);
+production needs a real SMS provider (OQ-BD-11).
 
 ## Admin panel
 
-`/admin` — news & events, consulting requests, contact messages, form builder
-with submissions (status, CSV export, attachment download), users and audit log.
+`/admin` — news & events (with cover image), training courses and their
+enrollments (status, CSV export), consulting requests, contact messages, form
+builder with submissions (status, CSV export, attachment download), site
+members, panel users and audit log.
 
 - Create the first account (password is printed once unless `ADMIN_PASSWORD` is set):
 
@@ -40,19 +54,25 @@ with submissions (status, CSV export, attachment download), users and audit log.
   npm run admin:create -- --email you@example.com --name "Full Name"
   ```
 
-- Roles: **ADMIN** manages everything; **EDITOR** handles content and incoming
-  requests but not forms, users or the audit log.
-- Sessions are signed with `SESSION_SECRET` (8 h). Deactivating a user takes
-  effect on their next request. Login is throttled per email and per IP
-  (in-memory — single instance only).
+- Roles: **ADMIN** manages everything; **EDITOR** handles content, courses and
+  incoming requests but not forms, members, users or the audit log.
+- Sessions are signed with `SESSION_SECRET` (8 h). Logout, a password change
+  or deactivation revokes every copy of the session at once.
+- Login, public forms and SMS codes are rate limited in the database
+  (`rate_limit_buckets`), so limits hold across restarts and instances.
 - Event dates are typed in the Solar Hijri calendar, Tehran time
   (`۱۴۰۵/۰۷/۱۵ ۱۸:۳۰`).
 
 ## Quality gate
 
 ```bash
-npm run verify   # lint + typecheck + build
+npm run verify    # lint + typecheck + unit tests + build
+npm run test:db   # integration tests against the dev database
 ```
+
+On Windows without Developer Mode, the final `standalone` step of `next build`
+fails with `EPERM ... symlink` (it cannot create symlinks); the code itself has
+compiled by then. Build on Linux/Docker for deployment.
 
 ---
 
