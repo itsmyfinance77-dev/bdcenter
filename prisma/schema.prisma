@@ -32,6 +32,15 @@ model AdminUser {
   isActive     Boolean   @default(true)
   /// Bumped on logout / password change; tokens carrying an older value are refused.
   sessionVersion Int     @default(0)
+  /// Two-step login (TOTP). Secrets are AES-GCM encrypted with DATA_ENCRYPTION_KEY.
+  totpSecret        String?
+  /// Generated during setup, promoted to totpSecret once a code confirms it.
+  totpPendingSecret String?
+  totpEnabledAt     DateTime?
+  /// Last accepted time step: a code cannot be replayed.
+  totpLastStep      Int?
+  /// SHA-256 hashes of unused one-time recovery codes.
+  recoveryCodeHashes String[] @default([])
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
