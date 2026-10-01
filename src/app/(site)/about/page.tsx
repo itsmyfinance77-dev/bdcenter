@@ -11,5 +11,7 @@ export function generateMetadata(): Promise<Metadata> {
 
 export default async function AboutPage() {
   const page = await getSystemPageContent('about');
-  return <InstitutionalPage title="درباره مرکز" lead={siteInfo.parentOrg} page={page} />;
+  return (
+    <InstitutionalPage title="درباره مرکز" lead={siteInfo.parentOrg} page={page} aboutLayout />
+  );
 }

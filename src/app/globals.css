@@ -2,43 +2,142 @@
 
 /*
  * Design tokens. Change values here, not in components.
- * Palette is a neutral placeholder — swap for the center's real brand
- * colors once OQ-BD-04 (visual identity) is answered.
+ * Values follow the "BDC Yazd" design handoff (tokens-proposal.css):
+ * navy brand, blue primary and the Yazd-tile turquoise accent.
  */
 @theme {
-  --font-sans: 'Vazirmatn', Tahoma, sans-serif;
+  /* Fonts are self-hosted through next/font (src/app/fonts.ts). */
+  --font-sans: var(--font-vazirmatn), Tahoma, sans-serif;
+  --font-display: var(--font-anjoman), var(--font-vazirmatn), Tahoma, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  --color-brand-950: #081a44; /* hero, footer */
   --color-brand-900: #0b2257;
+  --color-brand-850: #0a1d4a; /* mobile menu */
+  --color-brand-800: #0d2660;
   --color-brand-700: #2e4b8c;
   --color-primary: #1450c8;
+  --color-primary-bright: #2a6cf0; /* gradient start, glow */
   --color-primary-hover: #0f3e9e;
+  --color-primary-tint: #e8effc;
+  --color-primary-wash: #f0f4fb; /* menu hover */
+
+  --color-accent: #14a3a8; /* Yazd-tile turquoise: focus ring, highlights */
+  --color-accent-ink: #0b6f73; /* accent text on light (AA) */
+  --color-accent-light: #5ed6db; /* accent on dark */
+  --color-accent-glow: #9ff0f2;
+  --color-accent-tint: #dcf3f3;
 
   --color-ink: #0e1a33;
   --color-ink-2: #3a4660;
+  --color-ink-3: #5b6780;
+  --color-ink-soon: #2b3650;
 
   --color-on-dark: #c9d4ea;
   --color-on-dark-2: #a9b8d8;
 
-  --color-surface: #f3f6fa;
-  --color-surface-2: #eef2f8;
-  --color-line: #e3e7ef;
+  --color-surface: #f4f6fa;
+  --color-surface-2: #eaeef5;
+  --color-surface-3: #dfe5ee;
+  --color-line: #e1e6ee;
+  --color-line-strong: #c3ccdb; /* dashed "soon" borders */
   --color-line-hover: #9fb6e6;
 
   --color-success: #17693a;
   --color-danger: #b42318;
   --color-warning: #9a5b00;
 
-  --radius-chip: 4px;
-  --radius-control: 6px;
-  --radius-card: 8px;
-  --radius-panel: 10px;
+  --radius-chip: 6px;
+  --radius-control: 12px;
+  --radius-card: 20px;
+  --radius-panel: 28px;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --container-page: 1200px;
   /* Desktop nav switches on above this width; see SiteHeader. */
   --breakpoint-nav: 73.75rem;
+
+  --animate-float-a: bdc-float-a 16s ease-in-out infinite alternate;
+  --animate-float-b: bdc-float-b 20s ease-in-out infinite alternate;
+  --animate-pulse-ring: bdc-pulse 2s ease-out infinite;
 }
 
-body {
-  background-color: var(--color-surface);
-  color: var(--color-ink);
+@keyframes bdc-float-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-14%, 12%, 0) scale(1.15);
+  }
+}
+
+@keyframes bdc-float-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(16%, -10%, 0) scale(0.92);
+  }
+}
+
+@keyframes bdc-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+
+@layer base {
+  html {
+    scroll-padding-top: 88px;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Dotted texture used on dark bands. */
+.bg-dots {
+  background-image: radial-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1.2px);
+  background-size: 28px 28px;
+}
+
+/* Striped placeholder for items without a picture. */
+.bg-placeholder-stripes {
+  background: repeating-linear-gradient(135deg, #e6ebf3 0 12px, #eef2f8 12px 24px);
 }

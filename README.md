@@ -27,7 +27,7 @@ cp .env.example .env          # fill SESSION_SECRET and OTP_SECRET
 npm run db:generate           # Prisma client (prisma/generated, git-ignored)
 npm run db:migrate:deploy     # apply prisma/migrations
 npm run db:seed
-npm run dev                   # http://localhost:3000 (bound to 127.0.0.1)
+npm run dev                   # http://localhost:3010 (bound to 127.0.0.1)
 ```
 
 ## Public site

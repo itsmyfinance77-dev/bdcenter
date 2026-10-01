@@ -33,7 +33,7 @@ export default async function CalendarPage({
   const grid = await getMonthGrid(requested ?? current);
   const feedUrl = new URL(
     '/calendar.ics',
-    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010',
   ).toString();
 
   return (

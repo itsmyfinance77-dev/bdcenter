@@ -1,10 +1,11 @@
 'use client';
 
 import { useFormStatus } from 'react-dom';
+import { Icon } from '@/components/site/icons';
 import { HONEYPOT_FIELD, type FormState } from '@/lib/form-state';
 
 const controlClass =
-  'block w-full rounded-control border border-line bg-white px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 aria-invalid:border-danger';
+  'block min-h-12 w-full rounded-control border-[1.5px] border-line bg-white px-3.5 py-2.5 text-[15px] leading-[1.9] text-ink outline-none transition-[border-color,box-shadow] duration-200 focus:border-primary focus:shadow-[0_0_0_4px_rgba(20,80,200,.15)] focus-visible:outline-none aria-invalid:border-danger';
 
 type FieldProps = {
   name: string;
@@ -31,10 +32,15 @@ export function Field({ name, label, required, error, hint, defaultValue, childr
     .filter(Boolean)
     .join(' ');
   return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-ink">
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-semibold text-ink">
         {label}
-        {required ? <span className="text-danger"> *</span> : null}
+        {required ? (
+          <span aria-hidden="true" className="text-danger">
+            {' '}
+            *
+          </span>
+        ) : null}
       </label>
       {children({
         id,
@@ -46,12 +52,16 @@ export function Field({ name, label, required, error, hint, defaultValue, childr
         className: controlClass,
       })}
       {hint ? (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-2">
+        <p id={`${id}-hint`} className="text-[12.5px] leading-[1.8] text-ink-2">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} className="mt-1 text-xs text-danger">
+        <p
+          id={`${id}-error`}
+          className="flex items-center gap-1.5 text-[13px] font-semibold text-danger"
+        >
+          <Icon name="alert" size={14} strokeWidth={2.2} className="flex-none" />
           {error}
         </p>
       ) : null}
@@ -136,7 +146,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-control bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+      className="inline-flex min-h-[50px] cursor-pointer items-center gap-2.5 rounded-control bg-[linear-gradient(135deg,#2a6cf0,#1450c8)] px-[26px] text-[15.5px] font-bold text-white shadow-[0_12px_28px_-12px_rgba(20,80,200,.8)] transition-[transform,box-shadow] duration-250 ease-(--ease-out-soft) hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-12px_rgba(20,80,200,.95)] disabled:translate-y-0 disabled:opacity-60"
     >
       {pending ? 'در حال ارسال…' : children}
     </button>
@@ -146,12 +156,16 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
 /** Success/error banner; announced to screen readers when it changes. */
 export function FormMessage({ state }: { state: FormState }) {
   if (state.status === 'idle') return null;
-  const tone =
-    state.status === 'success'
-      ? 'border-success/30 bg-success/10 text-success'
-      : 'border-danger/30 bg-danger/10 text-danger';
+  const success = state.status === 'success';
+  const tone = success
+    ? 'border-success/30 bg-success/10 text-success'
+    : 'border-danger/30 bg-danger/10 text-danger';
   return (
-    <p role="status" className={`rounded-control border px-4 py-3 text-sm ${tone}`}>
+    <p
+      role="status"
+      className={`flex items-center gap-2.5 rounded-control border px-4 py-3 text-[14.5px] font-semibold ${tone}`}
+    >
+      <Icon name={success ? 'check' : 'alert'} size={20} strokeWidth={2} className="flex-none" />
       {state.message}
     </p>
   );

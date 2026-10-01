@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
-import { ContactDetails } from '@/components/contact-details';
 import { PageHeader } from '@/components/page-header';
+import { FormCard, InfoCard, PageBody } from '@/components/site/page-body';
+import { siteInfo } from '@/content/site';
+import { toPersianDigits } from '@/lib/format';
 import { ContactForm } from './contact-form';
 
 export const metadata: Metadata = {
@@ -10,26 +12,50 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
+  const { address, postalCode, phone, phoneExtension, email } = siteInfo.contact;
   return (
     <>
       <PageHeader title="تماس با ما" crumbs={[{ title: 'تماس با ما' }]} />
-      <div className="mx-auto grid max-w-(--container-page) gap-10 px-4 py-12 lg:grid-cols-[1fr_2fr]">
-        <section aria-labelledby="contact-info-heading">
-          <h2 id="contact-info-heading" className="mb-4 text-lg font-bold text-brand-900">
-            اطلاعات تماس
-          </h2>
-          <ContactDetails className="space-y-2 text-sm leading-7 text-ink-2" />
-        </section>
-        <section
-          aria-labelledby="contact-form-heading"
-          className="rounded-panel border border-line bg-white p-6"
-        >
-          <h2 id="contact-form-heading" className="mb-4 text-lg font-bold text-brand-900">
-            ارسال پیام
-          </h2>
-          <ContactForm />
-        </section>
-      </div>
+      <PageBody>
+        <div className="grid items-start gap-[clamp(24px,4vw,48px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <section aria-labelledby="contact-info-heading" className="flex flex-col gap-5">
+            <h2 id="contact-info-heading" className="text-xl font-extrabold text-brand-900">
+              اطلاعات تماس
+            </h2>
+            {/* OQ-BD-02, OQ-BD-03: unconfirmed postal code and email stay hidden. */}
+            <ul className="flex flex-col gap-3">
+              <InfoCard icon="pin" label="آدرس">
+                {address}
+              </InfoCard>
+              <InfoCard icon="phone" label="تلفن">
+                <a
+                  href={`tel:${phone.replace(/\D/g, '')}`}
+                  dir="ltr"
+                  className="self-start font-bold text-brand-900"
+                >
+                  {toPersianDigits(phone)}
+                </a>
+                {phoneExtension ? <span>داخلی {toPersianDigits(phoneExtension)}</span> : null}
+              </InfoCard>
+              {email ? (
+                <InfoCard icon="mail" label="ایمیل">
+                  <a href={`mailto:${email}`} dir="ltr" className="self-start font-bold">
+                    {email}
+                  </a>
+                </InfoCard>
+              ) : null}
+              {postalCode ? (
+                <InfoCard icon="box" label="کدپستی">
+                  {toPersianDigits(postalCode)}
+                </InfoCard>
+              ) : null}
+            </ul>
+          </section>
+          <FormCard id="contact-form-heading" title="ارسال پیام">
+            <ContactForm />
+          </FormCard>
+        </div>
+      </PageBody>
     </>
   );
 }

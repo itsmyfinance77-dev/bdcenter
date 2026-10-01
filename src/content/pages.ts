@@ -99,6 +99,7 @@ export const pageCopy = {
 export const linkSections = {
   'chamber-services': 'دسترسی به خدمات اتاق بازرگانی یزد (صفحه اصلی)',
   'useful-links': 'پیوندهای مفید (پاورقی)',
+  social: 'شبکه‌های اجتماعی (پاورقی)',
 } as const;
 
 export type LinkSection = keyof typeof linkSections;

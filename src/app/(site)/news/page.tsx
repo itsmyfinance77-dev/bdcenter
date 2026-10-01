@@ -5,10 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'اخبار',
-  description: 'اخبار مرکز توسعه کسب‌وکار اتاق بازرگانی یزد.',
+  description: 'اخبار و رویدادهای مرکز توسعه کسب‌وکار اتاق بازرگانی یزد.',
   alternates: { canonical: '/news' },
 };
 
-export default function Page() {
-  return <ArticleIndexPage kind="NEWS" />;
+/** `?view=all` lists news and events together (the "همه" tab). */
+export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
+  return <ArticleIndexPage kind={view === 'all' ? 'ALL' : 'NEWS'} />;
 }

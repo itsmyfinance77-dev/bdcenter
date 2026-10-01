@@ -9,7 +9,7 @@ import { listPublishedCourseUrls } from '@/modules/training/service';
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010';
   const url = (path: string) => new URL(path, base).toString();
 
   const staticPaths = ['/', '/about', '/contact', '/news', '/events', '/forms', '/courses'];

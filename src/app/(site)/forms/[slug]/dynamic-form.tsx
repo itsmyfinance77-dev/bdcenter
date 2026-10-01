@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import {
   Field,
   fieldState,
@@ -10,6 +10,7 @@ import {
   TextareaField,
   TextField,
 } from '@/components/form-controls';
+import { Icon } from '@/components/site/icons';
 import { initialFormState } from '@/lib/form-state';
 import type { PublicForm, PublicFormField } from '@/modules/forms/service';
 import { submitDynamicForm } from './actions';
@@ -21,6 +22,45 @@ const inputTypes = {
   NUMBER: 'number',
   DATE: 'date',
 } as const;
+
+/** Field types that take the full row in the two-column layout. */
+const wide = new Set(['TEXTAREA', 'FILE', 'CHECKBOX']);
+
+/** File input styled as a dashed drop zone that shows the chosen file name. */
+function FileDrop({
+  control,
+  accept,
+}: {
+  control: { id: string; name: string; className: string; [key: string]: unknown };
+  accept: string;
+}) {
+  const [fileName, setFileName] = useState<string | null>(null);
+  const { className: _unused, defaultValue: _none, ...input } = control;
+  void _unused;
+  void _none;
+  return (
+    <div className="relative flex min-h-[72px] items-center gap-3.5 rounded-[14px] border-[1.5px] border-dashed border-line-strong bg-surface px-4 py-3.5 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-primary focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(20,80,200,.15)] has-aria-invalid:border-danger">
+      <span className="grid size-10 flex-none place-items-center rounded-[11px] bg-primary-tint text-primary">
+        <Icon name="upload" size={20} />
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-[14.5px] font-bold text-brand-900">
+          {fileName ?? 'انتخاب فایل'}
+        </span>
+        <span className="text-[12.5px] text-ink-2">
+          برای انتخاب کلیک کنید یا فایل را اینجا رها کنید
+        </span>
+      </span>
+      <input
+        {...input}
+        type="file"
+        accept={accept}
+        onChange={(event) => setFileName(event.target.files?.[0]?.name ?? null)}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
+      />
+    </div>
+  );
+}
 
 export function DynamicForm({
   form,
@@ -65,7 +105,7 @@ export function DynamicForm({
             defaultValue={undefined}
             hint={`حداکثر ۱۰ مگابایت — ${acceptedExtensions.join('، ')}`}
           >
-            {(control) => <input {...control} type="file" accept={acceptedExtensions.join(',')} />}
+            {(control) => <FileDrop control={control} accept={acceptedExtensions.join(',')} />}
           </Field>
         );
       case 'CHECKBOX':
@@ -83,7 +123,12 @@ export function DynamicForm({
               {field.label}
               {field.isRequired ? <span className="text-danger">*</span> : null}
             </label>
-            {common.error ? <p className="mt-1 text-xs text-danger">{common.error}</p> : null}
+            {common.error ? (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-danger">
+                <Icon name="alert" size={14} strokeWidth={2.2} className="flex-none" />
+                {common.error}
+              </p>
+            ) : null}
           </div>
         );
       default:
@@ -92,13 +137,21 @@ export function DynamicForm({
   }
 
   return (
-    <form action={action} className="relative space-y-4" noValidate>
-      <FormMessage state={state} />
+    <form action={action} className="relative grid gap-x-4 gap-y-[18px] sm:grid-cols-2" noValidate>
+      {state.status === 'idle' ? null : (
+        <div className="sm:col-span-2">
+          <FormMessage state={state} />
+        </div>
+      )}
       {form.fields.map((field) => (
-        <div key={field.key}>{renderField(field)}</div>
+        <div key={field.key} className={wide.has(field.type) ? 'sm:col-span-2' : undefined}>
+          {renderField(field)}
+        </div>
       ))}
       <Honeypot />
-      <SubmitButton>ارسال</SubmitButton>
+      <div className="mt-1.5 sm:col-span-2">
+        <SubmitButton>ثبت درخواست</SubmitButton>
+      </div>
     </form>
   );
 }

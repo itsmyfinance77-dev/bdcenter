@@ -62,3 +62,63 @@ export function ArticleList({
     </ul>
   );
 }
+
+const cardBadge = {
+  NEWS: 'bg-primary-tint text-primary',
+  EVENT: 'bg-accent-tint text-accent-ink',
+} as const;
+
+/** Grid card for a news item or event (BDC Yazd design). */
+export function ArticleCard({ article }: { article: ArticleSummary }) {
+  const date = article.kind === 'EVENT' ? article.eventStartsAt : article.publishedAt;
+  return (
+    <Link
+      href={`${articleBasePath[article.kind]}/${encodeURIComponent(article.slug)}`}
+      className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-white text-ink transition-[transform,box-shadow,border-color] duration-350 ease-(--ease-out-soft) hover:-translate-y-1.5 hover:border-[#c9d6ee] hover:text-ink hover:shadow-[0_24px_48px_-24px_rgba(11,34,87,.35)]"
+    >
+      <div className="bg-placeholder-stripes relative aspect-[16/10]">
+        {article.coverImage ? (
+          <Image
+            src={coverUrl(article.coverImage.id, 'sm')}
+            alt=""
+            fill
+            unoptimized
+            sizes="(min-width: 1200px) 380px, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+          />
+        ) : null}
+        <span
+          className={`absolute top-3.5 right-3.5 rounded-full px-3 py-[5px] text-[13px] font-bold ${cardBadge[article.kind]}`}
+        >
+          {kindLabel[article.kind]}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-3 px-5 pt-5 pb-[22px]">
+        {date ? (
+          <span className="flex items-center gap-2 text-[13.5px] text-ink-2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5zM4 10h16M8 3v4M16 3v4" />
+            </svg>
+            <time dateTime={date.toISOString()}>{formatDate(date)}</time>
+          </span>
+        ) : null}
+        <h2 className="text-[17px] leading-[1.8] font-bold text-pretty text-ink">
+          {article.title}
+        </h2>
+        {article.excerpt ? (
+          <p className="line-clamp-2 text-sm leading-7 text-ink-2">{article.excerpt}</p>
+        ) : null}
+      </div>
+    </Link>
+  );
+}

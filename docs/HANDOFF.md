@@ -24,7 +24,7 @@ GitHub CLI has three accounts logged in; the active one must be
 
 ```bash
 docker compose up -d          # start PostgreSQL (Docker Desktop must be running)
-npm run dev                   # http://localhost:3000 (127.0.0.1 only), admin at /admin
+npm run dev                   # http://localhost:3010 (127.0.0.1 only; port 3000 is left for another project), admin at /admin
 npm run verify                # lint + typecheck + unit tests + build
 npm run test:db               # integration tests against the dev DB (they clean up)
 ```

@@ -20,23 +20,29 @@ export function ConsultingForm({ prefill = {} }: { prefill?: Record<string, stri
     return { ...current, defaultValue: current.defaultValue ?? prefill[name] };
   };
   return (
-    <form action={action} className="relative space-y-4" noValidate>
-      <FormMessage state={state} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label="نام و نام خانوادگی" required {...field('fullName')} />
-        <TextField label="نام شرکت" {...field('companyName')} />
-        <TextField
-          label="کد ملی / شناسه ملی شرکت"
-          hint="برای شناسایی عضویت شما در اتاق بازرگانی"
-          {...field('nationalId')}
-        />
-        <TextField label="شماره تماس" type="tel" required {...field('phone')} />
-        <TextField label="ایمیل" type="email" {...field('email')} />
-        <TextField label="موضوع مشاوره" required {...field('topic')} />
+    <form action={action} className="relative grid gap-x-4 gap-y-[18px] sm:grid-cols-2" noValidate>
+      {state.status === 'idle' ? null : (
+        <div className="sm:col-span-2">
+          <FormMessage state={state} />
+        </div>
+      )}
+      <TextField label="نام و نام خانوادگی" required {...field('fullName')} />
+      <TextField label="نام شرکت" {...field('companyName')} />
+      <TextField
+        label="کد ملی / شناسه ملی شرکت"
+        hint="برای شناسایی عضویت شما در اتاق بازرگانی"
+        {...field('nationalId')}
+      />
+      <TextField label="شماره تماس" type="tel" required {...field('phone')} />
+      <TextField label="ایمیل" type="email" {...field('email')} />
+      <TextField label="موضوع مشاوره" required {...field('topic')} />
+      <div className="sm:col-span-2">
+        <TextareaField label="توضیحات" {...field('description')} />
       </div>
-      <TextareaField label="توضیحات" {...field('description')} />
       <Honeypot />
-      <SubmitButton>ثبت درخواست</SubmitButton>
+      <div className="mt-1.5 sm:col-span-2">
+        <SubmitButton>ثبت درخواست</SubmitButton>
+      </div>
     </form>
   );
 }

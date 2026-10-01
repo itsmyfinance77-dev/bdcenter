@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { FormCard, PageBody } from '@/components/site/page-body';
 import { ACCEPTED_UPLOAD_EXTENSIONS } from '@/modules/files/service';
 import { getPublishedForm } from '@/modules/forms/service';
 import { DynamicForm } from './dynamic-form';
@@ -30,11 +31,11 @@ export default async function FormPage({ params }: { params: Promise<Params> }) 
         lead={form.description ?? undefined}
         crumbs={[{ title: 'فرم‌ها', href: '/forms' }, { title: form.title }]}
       />
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <div className="rounded-panel border border-line bg-white p-6">
+      <PageBody narrow>
+        <FormCard id="form-heading" title={form.title}>
           <DynamicForm form={form} acceptedExtensions={ACCEPTED_UPLOAD_EXTENSIONS} />
-        </div>
-      </div>
+        </FormCard>
+      </PageBody>
     </>
   );
 }
