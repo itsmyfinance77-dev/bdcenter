@@ -22,7 +22,15 @@ export const newAdminSchema = z.object({
 export async function listAdmins() {
   return prisma.adminUser.findMany({
     orderBy: { createdAt: 'asc' },
-    select: { id: true, fullName: true, email: true, role: true, isActive: true, createdAt: true },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      totpEnabledAt: true,
+    },
   });
 }
 

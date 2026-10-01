@@ -50,5 +50,5 @@ export const adminNav = [
   { href: '/admin/members', title: 'اعضای سایت', adminOnly: true },
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
-  { href: '/admin/account', title: 'تغییر رمز عبور', adminOnly: false },
+  { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
 ] as const;

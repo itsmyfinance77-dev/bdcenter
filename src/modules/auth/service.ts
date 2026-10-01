@@ -7,11 +7,14 @@ import { recordAudit } from '@/modules/audit/service';
 import { clear, consume, isExhausted, LIMITS } from '@/modules/ratelimit/service';
 import { hashPassword, verifyPassword } from './password';
 import {
+  ADMIN_2FA_COOKIE,
+  ADMIN_2FA_MAX_AGE_SECONDS,
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
   signSession,
   verifySession,
 } from './session-token';
+import { verifySecondFactor } from './two-factor';
 import type { AdminRole } from './users';
 
 export type CurrentAdmin = { id: string; fullName: string; email: string; role: AdminRole };
@@ -31,7 +34,8 @@ async function noteFailure(keys: string[]) {
   await Promise.all(keys.map((key) => consume(key, LIMITS.adminLogin)));
 }
 
-export type LoginResult = { ok: true } | { ok: false; reason: 'invalid' | 'throttled' };
+export type LoginResult =
+  { ok: true; secondStep: boolean } | { ok: false; reason: 'invalid' | 'throttled' };
 
 export async function login(
   email: string,
@@ -50,12 +54,77 @@ export async function login(
   }
 
   await clear(...keys);
+  if (user.totpEnabledAt) {
+    // Password is right; the session is only issued after the second step.
+    (await cookies()).set(
+      ADMIN_2FA_COOKIE,
+      await signSession(user.id, 'admin-2fa', user.sessionVersion),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/admin/login',
+        maxAge: ADMIN_2FA_MAX_AGE_SECONDS,
+      },
+    );
+    return { ok: true, secondStep: true };
+  }
   await setAdminCookie(user.id, user.sessionVersion);
   await recordAudit({
     actorId: user.id,
     action: 'auth.login',
     entity: 'AdminUser',
     entityId: user.id,
+  });
+  return { ok: true, secondStep: false };
+}
+
+/** The admin waiting for the second step, if the pending cookie is valid. */
+export async function pendingSecondStep(): Promise<{ id: string; email: string } | null> {
+  const session = await verifySession((await cookies()).get(ADMIN_2FA_COOKIE)?.value, 'admin-2fa');
+  if (!session) return null;
+  const user = await prisma.adminUser.findUnique({
+    where: { id: session.uid },
+    select: { id: true, email: true, isActive: true, sessionVersion: true, totpEnabledAt: true },
+  });
+  if (!user?.isActive || !user.totpEnabledAt || user.sessionVersion !== session.ver) return null;
+  return { id: user.id, email: user.email };
+}
+
+export type SecondStepResult =
+  { ok: true } | { ok: false; reason: 'expired' | 'invalid' | 'throttled' };
+
+/**
+ * Finishes a two-step login with an authenticator or recovery code. Wrong
+ * codes count against the same limit as wrong passwords.
+ */
+export async function completeSecondStep(
+  code: string,
+  clientIp: string,
+): Promise<SecondStepResult> {
+  const pending = await pendingSecondStep();
+  if (!pending) return { ok: false, reason: 'expired' };
+  const keys = [`admin-2fa:user:${pending.id}`, `admin-login:ip:${clientIp}`];
+  if (await isThrottled(keys)) return { ok: false, reason: 'throttled' };
+
+  const method = await verifySecondFactor(pending.id, code);
+  if (!method) {
+    await noteFailure(keys);
+    return { ok: false, reason: 'invalid' };
+  }
+  await clear(...keys);
+  const user = await prisma.adminUser.findUniqueOrThrow({
+    where: { id: pending.id },
+    select: { sessionVersion: true },
+  });
+  (await cookies()).delete({ name: ADMIN_2FA_COOKIE, path: '/admin/login' });
+  await setAdminCookie(pending.id, user.sessionVersion);
+  await recordAudit({
+    actorId: pending.id,
+    action: 'auth.login',
+    entity: 'AdminUser',
+    entityId: pending.id,
+    metadata: { secondFactor: method },
   });
   return { ok: true };
 }

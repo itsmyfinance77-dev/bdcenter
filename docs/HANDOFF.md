@@ -1,8 +1,8 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-09-30 (second session). Read this first in a new session,
+Last updated: 2026-10-01 (third session). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
-`docs/product/open-questions.md` and both ADRs in `docs/decisions/`.
+`docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
 The owner communicates in Persian and prefers short, concrete Persian
 explanations; code, commits and technical docs stay in English (see `CLAUDE.md`).
@@ -66,40 +66,61 @@ enroll/full/duplicate, withdraw, admin course/enrollment/CSV/members,
 deactivation revoking sessions, covers, Markdown sanitizing, CSP). Test data was
 removed afterwards; the DB has no articles, courses or members.
 
+Third session (2026-09-30 → 2026-10-01), all on `main`:
+
+1. `723156c` **Editable pages and links** — `src/modules/pages` (about,
+   privacy, terms, custom `/pages/<slug>`; the privacy/terms drafts list only
+   what the code collects, gaps in `[…]`), `src/modules/links`
+   (chamber-services, useful-links, social; a data migration inserts the nine
+   Chamber links).
+2. `d043227` **Consulting in the member account** — `ConsultingRequest.memberId`,
+   listed on `/account`, form prefilled from the profile.
+3. `c00d285` **SMS adapters, email, notifications** — `src/modules/messaging`
+   (Kavenegar and SMS.ir, tested with mocked HTTP only; SMTP via nodemailer),
+   `src/modules/notifications` (applicant SMS/email on accepted/rejected/done,
+   opt-out checkbox, every attempt logged and shown in the panel).
+4. `7ebfb88` **Search** — `/search` with Persian-normalized matching
+   (`src/lib/search-text.ts`).
+5. `a6fc9b5` **Events calendar** — `/events/calendar` (Jalali month grid),
+   `.ics` per event/course and the `/calendar.ics` feed.
+6. `f4d30f9` **Appointment booking** (ADR-0003) — staff profiles, slots
+   (single or weekly pattern), `/appointments/<consulting|service-desk>`; one
+   live booking per slot, enforced by a unique column and a row lock.
+7. `8db2495` + the two-step commit — **Admin two-step login**: TOTP + recovery
+   codes (`src/modules/auth/two-factor.ts`), second step at
+   `/admin/login/2fa`, setup on `/admin/account`, ADMIN reset on
+   `/admin/users`. Needs `DATA_ENCRYPTION_KEY`.
+8. `8dc9a48` **BDC Yazd design** — tokens, fonts (Vazirmatn + Anjoman; the
+   owner holds the license, document to follow), header/footer, home page
+   (intro, hero networks, about reveal, news carousel, bento), restyled inner
+   pages and form controls. The mockup's sample data is never shown.
+
+The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
+and the dev server now runs on port **3010** (3000 belongs to another project).
+
 ## Known limitations (deliberate, documented)
 
-- SMS: only the dev `console` provider exists and it is refused in production,
-  so member sign-in does not work in production until OQ-BD-11 is answered and
-  an adapter is added to `src/modules/members/sms.ts`.
+- SMS: set `SMS_PROVIDER` and that provider's keys (`.env.example`); without
+  one, production sign-in shows "SMS unavailable" (OQ-BD-11).
 - Admin logout signs that admin out on **every** device (it bumps
-  `sessionVersion`). Member logout is per device; "خروج از همه دستگاه‌ها" is
-  explicit.
-- CSP allows `'unsafe-inline'` scripts (Next.js inline bootstrap). A nonce-based
-  CSP would need every page rendered dynamically.
-- Public cover responses are cached for one day (`max-age=86400`); an
-  unpublished article's cover can stay in a proxy/browser cache that long.
-- No price/payment for courses or consulting (OQ-BD-01); enrollment results are
-  only shown on `/account`, no SMS/email notification (OQ-BD-13).
-- No privacy notice page yet (OQ-BD-12).
-- Public form DATE fields use the browser's Gregorian date input; only admin
-  dates use Solar Hijri text input (`src/lib/jalali.ts`).
-- Contact/consulting forms show the "phone or email required" error only once
-  the other fields are valid (Zod refine ordering).
-- Consulting requests are not linked to member accounts yet.
+  `sessionVersion`). Member logout is per device.
+- CSP allows `'unsafe-inline'` scripts (Next.js bootstrap and the home intro's
+  pre-paint script).
+- Public cover responses are cached for one day (`max-age=86400`).
+- No price/payment (OQ-BD-01, OQ-BD-15); no membership roster import (OQ-BD-01).
+- Booking limits are safe defaults (OQ-BD-14): 3 upcoming per service, no overlaps.
+- Production mode sends `Secure` cookies, HSTS and `upgrade-insecure-requests`,
+  so it must be served over HTTPS; plain-HTTP access by IP will not keep sessions.
+- Public form DATE fields use the browser's Gregorian date input.
 
-## Suggested next steps (owner has not chosen yet)
+## Remaining work (owner asked for all of it on 2026-10-01)
 
-1. SMS provider adapter once OQ-BD-11 is answered (then real sign-in works).
-2. Deployment: Dockerfile for `output: 'standalone'`, `prisma migrate deploy`,
-   persistent volume for `storage/`, HTTPS reverse proxy that sets
-   `CLIENT_IP_HEADER` — blocked on OQ-BD-08.
-3. Privacy notice page + retention rules (OQ-BD-12).
-4. Link consulting requests to members and show them on `/account`.
-5. Notifications on enrollment/request status changes (OQ-BD-13).
-6. Membership roster import (CSV/Excel) — needs OQ-BD-01.
-7. Admin-editable institutional pages (the `Page` model is still unused) and
-   the Chamber-links / footer lists (`ExternalLink` model unused).
-8. Backups for the database and `storage/`; error monitoring.
+1. Stats dashboard (visits, enrollments, requests).
+2. Error reporting and automatic backups of the database and `storage/`.
+3. Deployment: Dockerfile (`output: 'standalone'`), compose with PostgreSQL and
+   an HTTPS reverse proxy, `prisma migrate deploy` (host/DNS: OQ-BD-08).
+4. Course-completion certificates as PDF (wording/signatory: OQ-BD-16).
+5. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
 
 ## Gotchas learned in this repo
 
@@ -122,6 +143,11 @@ removed afterwards; the DB has no articles, courses or members.
   and apply it with `prisma migrate deploy`.
 - After a schema change, restart the dev server: the cached Prisma client in
   `globalThis` does not know new models.
+- Nested `Prisma.sql` fragments are not recognized inside the Next.js bundle
+  (they are sent as JSON values). Build dynamic SQL as text with numbered
+  parameters (`SqlParams` in `src/lib/search-text.ts`).
+- This machine runs a system proxy (Clash/NekoBox, `HTTP_PROXY=127.0.0.1:12334`)
+  whose `NO_PROXY` does not cover `192.168.*`; use `curl --noproxy '*'` for LAN tests.
 - Scripts run with `tsx` cannot import modules that use `next/navigation` /
   `next/headers` or `server-only`; keep pure logic in its own file (e.g.
   `src/modules/members/next-path.ts`). Vitest aliases `server-only` to a stub.

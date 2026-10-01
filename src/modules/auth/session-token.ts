@@ -13,15 +13,20 @@
 export const SESSION_COOKIE = 'bd_admin';
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
+/** Short-lived proof that the password step passed; only the second step accepts it. */
+export const ADMIN_2FA_COOKIE = 'bd_admin_2fa';
+export const ADMIN_2FA_MAX_AGE_SECONDS = 5 * 60;
+
 export const MEMBER_COOKIE = 'bd_member';
 export const MEMBER_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-export type SessionAudience = 'admin' | 'member';
+export type SessionAudience = 'admin' | 'admin-2fa' | 'member';
 
 export type SessionPayload = { uid: string; aud: SessionAudience; ver: number; exp: number };
 
 const maxAge: Record<SessionAudience, number> = {
   admin: SESSION_MAX_AGE_SECONDS,
+  'admin-2fa': ADMIN_2FA_MAX_AGE_SECONDS,
   member: MEMBER_SESSION_MAX_AGE_SECONDS,
 };
 

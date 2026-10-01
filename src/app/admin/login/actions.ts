@@ -3,7 +3,8 @@
 import { redirect } from 'next/navigation';
 import { clientIp } from '@/lib/client-ip';
 import type { FormState } from '@/lib/form-state';
-import { login } from '@/modules/auth/service';
+import { toLatinDigits } from '@/lib/validation';
+import { completeSecondStep, login } from '@/modules/auth/service';
 
 /** Only same-site admin paths are allowed as a post-login destination. */
 function safeNext(value: FormDataEntryValue | null): string {
@@ -20,6 +21,22 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
         ? 'تعداد تلاش‌های ناموفق زیاد است. ۱۵ دقیقه دیگر دوباره تلاش کنید.'
         : 'ایمیل یا رمز عبور نادرست است.';
     return { status: 'error', message, errors: {}, values: { email } };
+  }
+  const next = safeNext(formData.get('next'));
+  if (result.secondStep) redirect(`/admin/login/2fa?next=${encodeURIComponent(next)}`);
+  redirect(next);
+}
+
+export async function secondStepAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const code = String(formData.get('code') ?? '').trim();
+  const result = await completeSecondStep(toLatinDigits(code), await clientIp());
+  if (!result.ok) {
+    if (result.reason === 'expired') redirect('/admin/login?expired=1');
+    const message =
+      result.reason === 'throttled'
+        ? 'تعداد تلاش‌های ناموفق زیاد است. ۱۵ دقیقه دیگر دوباره تلاش کنید.'
+        : 'کد واردشده درست نیست.';
+    return { status: 'error', message, errors: { code: message }, values: {} };
   }
   redirect(safeNext(formData.get('next')));
 }

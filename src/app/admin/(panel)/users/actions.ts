@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
+import { resetTotpFor } from '@/modules/auth/two-factor';
 import { createAdmin, newAdminSchema, setAdminActive } from '@/modules/auth/users';
 
 export async function createAdminAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -33,5 +34,11 @@ export async function createAdminAction(_prev: FormState, formData: FormData): P
 export async function setAdminActiveAction(userId: string, isActive: boolean) {
   const admin = await requireAdmin('ADMIN');
   await setAdminActive(userId, isActive, admin);
+  revalidatePath('/admin/users');
+}
+
+export async function resetTwoFactorAction(userId: string) {
+  const admin = await requireAdmin('ADMIN');
+  await resetTotpFor(userId, admin);
   revalidatePath('/admin/users');
 }

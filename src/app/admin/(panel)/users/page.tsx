@@ -4,7 +4,7 @@ import { adminRoleLabel } from '@/content/admin';
 import { formatDate } from '@/lib/format';
 import { requireAdmin } from '@/modules/auth/service';
 import { listAdmins } from '@/modules/auth/users';
-import { setAdminActiveAction } from './actions';
+import { resetTwoFactorAction, setAdminActiveAction } from './actions';
 import { NewUserForm } from './new-user-form';
 
 export const metadata = { title: 'کاربران پنل' };
@@ -17,7 +17,7 @@ export default async function UsersPage() {
     <>
       <AdminHeading title="کاربران پنل" />
       <div className="space-y-6">
-        <Table head={['نام', 'ایمیل', 'نقش', 'وضعیت', 'تاریخ ساخت', '']}>
+        <Table head={['نام', 'ایمیل', 'نقش', 'وضعیت', 'ورود دومرحله‌ای', 'تاریخ ساخت', '']}>
           {users.map((user) => (
             <tr key={user.id}>
               <Td className="font-medium">{user.fullName}</Td>
@@ -30,6 +30,23 @@ export default async function UsersPage() {
                   <Badge tone="ACCEPTED">فعال</Badge>
                 ) : (
                   <Badge tone="REJECTED">غیرفعال</Badge>
+                )}
+              </Td>
+              <Td>
+                {user.totpEnabledAt ? (
+                  <div className="space-y-1">
+                    <Badge tone="ACCEPTED">فعال</Badge>
+                    {user.id === admin.id ? null : (
+                      <ConfirmButton
+                        action={resetTwoFactorAction.bind(null, user.id)}
+                        message={`ورود دومرحله‌ای ${user.email} برداشته شود؟ (برای گوشی گم‌شده) نشست‌های او هم بسته می‌شود.`}
+                      >
+                        بازنشانی
+                      </ConfirmButton>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-ink-2">غیرفعال</span>
                 )}
               </Td>
               <Td>{formatDate(user.createdAt)}</Td>

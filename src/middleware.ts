@@ -20,7 +20,10 @@ const areas: { prefix: string; login: string; cookie: string; aud: SessionAudien
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const area = areas.find((a) => pathname === a.prefix || pathname.startsWith(`${a.prefix}/`));
-  if (!area || pathname === area.login) return NextResponse.next();
+  // The login pages themselves (including the admin second step) are public.
+  if (!area || pathname === area.login || pathname.startsWith(`${area.login}/`)) {
+    return NextResponse.next();
+  }
 
   const session = await verifySession(request.cookies.get(area.cookie)?.value, area.aud);
   if (session) return NextResponse.next();
