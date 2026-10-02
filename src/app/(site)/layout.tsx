@@ -1,5 +1,6 @@
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { PageViewBeacon } from '@/components/site/page-view-beacon';
 import { RevealOnScroll } from '@/components/site/reveal';
 
 /** Public site chrome. The admin panel gets its own layout outside this group. */
@@ -19,6 +20,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       </main>
       <SiteFooter />
       <RevealOnScroll />
+      <PageViewBeacon />
     </>
   );
 }

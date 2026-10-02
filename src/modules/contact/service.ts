@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { email, phone, requiredText } from '@/lib/validation';
+import { countCreatedPerDay } from '@/lib/daily-counts';
 
 export const contactMessageSchema = z
   .object({
@@ -42,4 +43,9 @@ export async function countRecentContactMessages(days = 7) {
   return prisma.contactMessage.count({
     where: { createdAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) } },
   });
+}
+
+/** Contact messages per Tehran day, for the statistics dashboard. */
+export function countMessagesPerDay(from: Date) {
+  return countCreatedPerDay('messages', from);
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { email, nationalId, optionalText, phone, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
+import { countCreatedPerDay } from '@/lib/daily-counts';
 
 export const consultingRequestSchema = z.object({
   fullName: requiredText('نام و نام خانوادگی', 120),
@@ -87,4 +88,9 @@ export async function setConsultingStatus(id: string, status: RequestStatus, act
 
 export async function countNewConsultingRequests() {
   return prisma.consultingRequest.count({ where: { status: 'NEW' } });
+}
+
+/** Consulting requests per Tehran day, for the statistics dashboard. */
+export function countConsultingPerDay(from: Date) {
+  return countCreatedPerDay('consulting', from);
 }

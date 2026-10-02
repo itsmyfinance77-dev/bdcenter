@@ -19,6 +19,8 @@ export const LIMITS = {
   otpSendPerIp: { max: 10, windowSeconds: 60 * 60 },
   // Safety valve against SMS pumping from many addresses: all numbers together.
   otpSendGlobal: { max: 300, windowSeconds: 60 * 60 },
+  // Anonymous page-view beacons: generous, only stops one address inflating the counts.
+  pageViews: { max: 600, windowSeconds: 60 * 60 },
   // Wrong codes, per phone: stops guessing a 6-digit code.
   otpVerifyPerPhone: { max: 5, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, Limit>;

@@ -4,6 +4,7 @@ import { parseJalaliDateTime } from '@/lib/jalali';
 import { prisma, Prisma } from '@/lib/prisma';
 import { email, optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
+import { countCreatedPerDay } from '@/lib/daily-counts';
 
 /**
  * Appointment booking for consulting and the service desk (ADR-0003). Admins
@@ -607,4 +608,9 @@ export async function listUpcomingBookings(now = new Date(), limit = 100) {
 
 export async function countUpcomingBookings(now = new Date()) {
   return prisma.booking.count({ where: { status: 'BOOKED', slot: { endsAt: { gt: now } } } });
+}
+
+/** Bookings made per Tehran day, for the statistics dashboard. */
+export function countBookingsPerDay(from: Date) {
+  return countCreatedPerDay('bookings', from);
 }

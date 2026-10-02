@@ -1,3 +1,4 @@
+import { countCreatedPerDay } from '@/lib/daily-counts';
 import { z } from 'zod';
 import { prisma, type FormFieldType, type Prisma } from '@/lib/prisma';
 import {
@@ -397,4 +398,9 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
     metadata: { rows: rows.length },
   });
   return { filename: `${form.slug}-submissions.csv`, content: toCsv([header, ...rows]) };
+}
+
+/** Form submissions per Tehran day, for the statistics dashboard. */
+export function countSubmissionsPerDay(from: Date) {
+  return countCreatedPerDay('submissions', from);
 }

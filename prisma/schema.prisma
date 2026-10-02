@@ -488,3 +488,18 @@ model Booking {
   @@index([slotId])
   @@map("bookings")
 }
+
+// ---------------------------------------------------------------------------
+// Statistics — anonymous daily page-view counts (no IP, cookie or visitor id)
+// ---------------------------------------------------------------------------
+
+model PageViewDaily {
+  /// Calendar day in Tehran time.
+  day   DateTime @db.Date
+  path  String
+  count Int      @default(0)
+
+  @@id([day, path])
+  @@index([day])
+  @@map("page_views_daily")
+}

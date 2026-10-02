@@ -9,6 +9,7 @@ import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
+import { countCreatedPerDay } from '@/lib/daily-counts';
 
 /**
  * Training courses and on-site enrollment (ADR-0002). Enrolling needs a
@@ -392,4 +393,9 @@ export async function exportEnrollmentsCsv(courseId: string, actorId: string) {
 
 export async function countNewEnrollments() {
   return prisma.enrollment.count({ where: { status: 'NEW' } });
+}
+
+/** Enrollments per Tehran day, for the statistics dashboard. */
+export function countEnrollmentsPerDay(from: Date) {
+  return countCreatedPerDay('enrollments', from);
 }
