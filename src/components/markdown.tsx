@@ -49,7 +49,7 @@ const components: Components = {
     );
   },
   code: ({ children }) => (
-    <code dir="ltr" className="rounded-chip bg-surface-2 px-1 py-0.5 text-sm">
+    <code dir="ltr" className="rounded-chip bg-surface-2 px-1 py-0.5 font-sans text-sm">
       {children}
     </code>
   ),

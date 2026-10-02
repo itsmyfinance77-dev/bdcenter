@@ -187,6 +187,7 @@ test('admin pages load', async ({ page }) => {
     ['/admin/stats', 'آمار'],
     ['/admin/system', 'وضعیت سامانه'],
     ['/admin/audit', 'گزارش فعالیت'],
+    ['/admin/help', 'راهنمای پنل مدیریت'],
     ['/admin/appointments', null],
     ['/admin/members', null],
   ] as const) {

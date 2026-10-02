@@ -119,7 +119,11 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
     check at `/certificates/<code>` (noindex). Wording is a draft in
     `src/content/certificate.ts` (OQ-BD-16). Persian PDF text goes through
     `src/lib/rtl-text.ts` (see gotchas).
-13. **Browser tests** — `npm run test:e2e` (Playwright, `e2e/`): every public
+13. **Staff guide** — `/admin/help` («راهنما» in the panel menu): every
+    panel section in plain Persian, in the panel's own button names, from
+    `src/content/admin-guide.ts`; ADMIN-only sections are hidden from editors.
+    Update it whenever a panel screen changes.
+14. **Browser tests** — `npm run test:e2e` (Playwright, `e2e/`): every public
     page, member sign-up by SMS code (fake Kavenegar API), wrong code,
     enrollment capacity, booking without double-booking, admin review with
     SMS notice and certificate, course creation, admin pages.

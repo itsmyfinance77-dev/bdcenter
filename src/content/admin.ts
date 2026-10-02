@@ -53,4 +53,5 @@ export const adminNav = [
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
   { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
+  { href: '/admin/help', title: 'راهنما', adminOnly: false },
 ] as const;
