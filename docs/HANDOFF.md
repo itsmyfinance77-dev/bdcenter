@@ -159,8 +159,19 @@ and the dev server now runs on port **3010** (3000 belongs to another project).
   `attachmentDisposition()` (`src/lib/csv.ts`); header values must be ASCII.
 - The editing tools in this environment normalize `\u200c` escapes into the
   literal ZWNJ character; `slugify` uses `String.fromCharCode(0x200c)`.
-- `prisma` client output is `prisma/generated/client` (git-ignored); run
-  `npm run db:generate` after a fresh clone.
+- The Prisma client is generated to its default place (`@prisma/client`);
+  run `npm run db:generate` after a fresh clone. It used to live in
+  `prisma/generated`, but inside the project Next.js's file tracer analysed it
+  and, via the bundled dotenv's `~` handling, crawled the whole home folder
+  (`C:\Users\Mohammad/**`), which fails on Docker Desktop's unreadable socket.
+- **LAN / public-IP preview:** `npm run preview:build` then `npm run preview`
+  serves a production build over plain HTTP on `0.0.0.0:3020`
+  (`INSECURE_HTTP_PREVIEW=1`, built into `.next-preview`; see `src/lib/https.ts`).
+  The existing Windows rule for Node.js already allows the port; from outside,
+  forward a router port to `192.168.100.100:3020`. Never use this mode for the
+  real deployment.
+- Drive C is nearly full: point `TEMP`/`TMP` at `F:\SITE SEARCH\.tmp-build`
+  (git-ignored) for long builds.
 - A layout's metadata title template does not apply to the page in the same
   segment (see the dashboard page).
 - Next.js only fills `X-Forwarded-For` when a request has none, so a visitor

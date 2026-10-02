@@ -8,7 +8,7 @@ import { enroll } from '@/modules/training/service';
  * they create uses a `test-` prefix and is removed afterwards.
  */
 
-const PREFIX = 'test-';
+const PREFIX = 'test-train-';
 
 async function cleanup() {
   await prisma.course.deleteMany({ where: { slug: { startsWith: PREFIX } } });

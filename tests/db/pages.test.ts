@@ -11,7 +11,7 @@ import {
 
 /** Built-in and custom pages against the dev database; everything is removed afterwards. */
 
-const PREFIX = 'test-';
+const PREFIX = 'test-pages-';
 let actorId: string;
 let privacyBefore: Awaited<ReturnType<typeof prisma.page.findUnique>>;
 

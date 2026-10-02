@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { z } from 'zod';
 import { memberCopy } from '@/content/members';
+import { servedOverHttps } from '@/lib/https';
 import { prisma } from '@/lib/prisma';
 import {
   email,
@@ -146,7 +147,7 @@ export async function verifyOtp(phone: string, code: string): Promise<OtpVerifyR
     await signSession(member.id, 'member', member.sessionVersion),
     {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: servedOverHttps(),
       sameSite: 'lax',
       path: '/',
       maxAge: MEMBER_SESSION_MAX_AGE_SECONDS,

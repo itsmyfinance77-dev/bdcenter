@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../prisma/generated/client';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Single Prisma instance, reused across hot reloads in dev.
@@ -13,4 +13,4 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
-export { ArticleKind, FormFieldType, MembershipTier, Prisma } from '../../prisma/generated/client';
+export { ArticleKind, FormFieldType, MembershipTier, Prisma } from '@prisma/client';

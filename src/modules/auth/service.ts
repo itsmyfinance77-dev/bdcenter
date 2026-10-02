@@ -2,6 +2,7 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { servedOverHttps } from '@/lib/https';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/modules/audit/service';
 import { clear, consume, isExhausted, LIMITS } from '@/modules/ratelimit/service';
@@ -61,7 +62,7 @@ export async function login(
       await signSession(user.id, 'admin-2fa', user.sessionVersion),
       {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: servedOverHttps(),
         sameSite: 'lax',
         path: '/admin/login',
         maxAge: ADMIN_2FA_MAX_AGE_SECONDS,
@@ -132,7 +133,7 @@ export async function completeSecondStep(
 async function setAdminCookie(adminId: string, sessionVersion: number) {
   (await cookies()).set(SESSION_COOKIE, await signSession(adminId, 'admin', sessionVersion), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: servedOverHttps(),
     sameSite: 'lax',
     path: '/admin',
     maxAge: SESSION_MAX_AGE_SECONDS,

@@ -24,7 +24,7 @@ Prerequisites: Node 22+, Docker (for the dev database).
 npm install
 docker compose up -d          # PostgreSQL 16 on 127.0.0.1:5434
 cp .env.example .env          # fill SESSION_SECRET and OTP_SECRET
-npm run db:generate           # Prisma client (prisma/generated, git-ignored)
+npm run db:generate           # Prisma client (node_modules/.prisma/client)
 npm run db:migrate:deploy     # apply prisma/migrations
 npm run db:seed
 npm run dev                   # http://localhost:3010 (bound to 127.0.0.1)

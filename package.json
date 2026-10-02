@@ -10,6 +10,8 @@
     "dev": "next dev -H 127.0.0.1 -p 3010",
     "build": "next build",
     "start": "next start",
+    "preview:build": "node scripts/preview.mjs build",
+    "preview": "node scripts/preview.mjs start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/db/**\"",

@@ -3,9 +3,10 @@
 // function, never through a direct Prisma relation across domain lines,
 // unless the relation is intrinsic to the record (e.g. AuditLog.actorId).
 
+// Default output (node_modules/.prisma/client, imported as @prisma/client):
+// Next.js treats it as an external package and does not crawl it while tracing.
 generator client {
   provider = "prisma-client-js"
-  output   = "../prisma/generated/client"
 }
 
 datasource db {
