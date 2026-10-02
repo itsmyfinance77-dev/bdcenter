@@ -10,6 +10,7 @@ import { optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
+import { certificateAvailable, syncCertificate } from './certificates';
 
 /**
  * Training courses and on-site enrollment (ADR-0002). Enrolling needs a
@@ -186,16 +187,23 @@ export async function getMemberEnrollment(courseId: string, memberId: string) {
 }
 
 export async function listMemberEnrollments(memberId: string) {
-  return prisma.enrollment.findMany({
+  const enrollments = await prisma.enrollment.findMany({
     where: { memberId },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
       status: true,
       createdAt: true,
-      course: { select: { slug: true, title: true, startsAt: true, status: true } },
+      course: {
+        select: { slug: true, title: true, startsAt: true, status: true, certificateEnabled: true },
+      },
+      certificate: { select: { revokedAt: true } },
     },
   });
+  return enrollments.map((enrollment) => ({
+    ...enrollment,
+    hasCertificate: certificateAvailable(enrollment),
+  }));
 }
 
 /** A member may withdraw while the enrollment has not been reviewed yet. */
@@ -236,6 +244,9 @@ export const courseInputSchema = z
     capacity: optionalCapacity,
     enrollmentOpen: z.preprocess((value) => value === 'on', z.boolean()),
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+    certificateEnabled: z.preprocess((value) => value === 'on', z.boolean()),
+    certificateSignatory: optionalText('نام امضاکننده', 120),
+    certificateSignatoryTitle: optionalText('سمت امضاکننده', 160),
   })
   .transform((value) => ({
     ...value,
@@ -290,6 +301,9 @@ export async function saveCourse(
     capacity: input.capacity ?? null,
     enrollmentOpen: input.enrollmentOpen,
     status: input.status,
+    certificateEnabled: input.certificateEnabled,
+    certificateSignatory: input.certificateSignatory ?? null,
+    certificateSignatoryTitle: input.certificateSignatoryTitle ?? null,
   };
   if (id && !(await prisma.course.findUnique({ where: { id }, select: { id: true } }))) {
     return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
@@ -321,7 +335,11 @@ export async function deleteCourse(id: string, actorId: string) {
 }
 
 export async function listEnrollments(courseId: string) {
-  return prisma.enrollment.findMany({ where: { courseId }, orderBy: { createdAt: 'asc' } });
+  return prisma.enrollment.findMany({
+    where: { courseId },
+    orderBy: { createdAt: 'asc' },
+    include: { certificate: { select: { code: true, revokedAt: true } } },
+  });
 }
 
 export const enrollmentStatusSchema = z.enum(['NEW', 'IN_REVIEW', 'ACCEPTED', 'REJECTED', 'DONE']);
@@ -335,10 +353,15 @@ export async function setEnrollmentStatus(
     where: { id: enrollmentId },
     select: { status: true },
   });
-  const enrollment = await prisma.enrollment.update({
-    where: { id: enrollmentId },
-    data: { status },
-    select: { courseId: true },
+  // The certificate follows the status: issued on DONE, revoked otherwise.
+  const enrollment = await prisma.$transaction(async (tx) => {
+    const updated = await tx.enrollment.update({
+      where: { id: enrollmentId },
+      data: { status },
+      select: { courseId: true },
+    });
+    await syncCertificate(tx, enrollmentId);
+    return updated;
   });
   await recordAudit({
     actorId,

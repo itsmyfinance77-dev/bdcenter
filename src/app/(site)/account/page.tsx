@@ -175,6 +175,14 @@ export default async function AccountPage({
                         {requestStatusLabel[enrollment.status]}
                       </p>
                     </div>
+                    {enrollment.hasCertificate ? (
+                      <a
+                        href={`/account/certificates/${enrollment.id}`}
+                        className="rounded-control border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5"
+                      >
+                        دریافت گواهی پایان دوره (PDF)
+                      </a>
+                    ) : null}
                     {enrollment.status === 'NEW' ? (
                       <form action={cancelEnrollmentAction.bind(null, enrollment.id)}>
                         <button type="submit" className="text-xs text-danger hover:underline">

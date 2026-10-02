@@ -110,6 +110,14 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
     build, migrations on an empty DB, admin creation, pages/argon2/sharp in the
     image, error grouping in the container, HTTPS via Caddy (internal CA),
     backup/rotation/restore/failure runs.
+12. **Course-completion certificates** (item 9) — per-course switch (off by
+    default) with optional signatory; a `Certificate` row (snapshot + public
+    code `BDC-XXXX-XXXX`) is issued when an enrollment becomes DONE and
+    revoked if it leaves DONE. PDF (A4 landscape, Vazirmatn, logo, QR) from
+    `/account/certificates/<enrollmentId>` and the admin course page; public
+    check at `/certificates/<code>` (noindex). Wording is a draft in
+    `src/content/certificate.ts` (OQ-BD-16). Persian PDF text goes through
+    `src/lib/rtl-text.ts` (see gotchas).
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
@@ -131,15 +139,26 @@ and the dev server now runs on port **3010** (3000 belongs to another project).
 
 ## Remaining work (owner asked for all of it on 2026-10-01)
 
-1. Course-completion certificates as PDF (wording/signatory: OQ-BD-16).
-2. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
-3. Hosting and DNS (OQ-BD-08), then the first real deploy per
+1. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
+2. Hosting and DNS (OQ-BD-08), then the first real deploy per
    `docs/operations/deploy.md`; off-site backup copies (OQ-BD-19).
+3. Certificate wording, signatory and which courses issue them (OQ-BD-16),
+   then turn certificates on per course.
 
 On 2026-10-02 the owner dropped the plain-HTTP public-IP preview; do not spend
 more time on it (the `npm run preview` scripts stay for LAN viewing).
 
 ## Gotchas learned in this repo
+
+- **Persian text in PDFs:** PDFKit shapes through fontkit, which reverses
+  Arabic-script runs (including Persian digits) and lays words out left to
+  right. Never pass a Persian line to `doc.text()` directly; use
+  `layoutLine()` from `src/lib/rtl-text.ts` and draw piece by piece (see
+  `certificate-pdf.ts`). PDF embedding needs the static TTFs in `src/fonts`
+  (the variable woff2 crashes subsetting). To look at a PDF:
+  `pdftoppm -png -r 90 file.pdf out` (installed); for pages while the app
+  window is minimized: headless Chrome
+  (`chrome.exe --headless=new --no-proxy-server --screenshot=... URL`).
 
 - **`next build` on this Windows machine fails at the very end** with
   `EPERM ... symlink` while copying `.next/standalone` (Windows needs Developer

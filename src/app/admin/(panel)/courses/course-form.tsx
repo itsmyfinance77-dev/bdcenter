@@ -24,6 +24,8 @@ export function CourseForm({
   const [state, action] = useActionState(saveCourseAction.bind(null, id), initialState);
   const field = (name: string) => fieldState(state, name);
   const enrollmentOpen = state.status === 'error' ? state.values.enrollmentOpen === 'on' : true;
+  const certificateEnabled =
+    state.status === 'error' ? state.values.certificateEnabled === 'on' : false;
 
   return (
     <form action={action} className="space-y-4 rounded-panel border border-line bg-white p-6">
@@ -68,6 +70,35 @@ export function CourseForm({
           {...field('capacity')}
         />
       </div>
+      <fieldset className="space-y-4 rounded-control border border-line p-4">
+        <legend className="px-1 text-sm font-semibold text-brand-900">گواهی پایان دوره</legend>
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            key={String(certificateEnabled)}
+            type="checkbox"
+            name="certificateEnabled"
+            defaultChecked={certificateEnabled}
+            className="size-4 accent-primary"
+          />
+          برای ثبت‌نام‌های «انجام شده» گواهی PDF صادر شود
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="نام امضاکننده"
+            hint="اختیاری؛ زیر گواهی چاپ می‌شود."
+            {...field('certificateSignatory')}
+          />
+          <TextField
+            label="سمت امضاکننده"
+            hint="مثلاً «مدیر مرکز»"
+            {...field('certificateSignatoryTitle')}
+          />
+        </div>
+        <p className="text-xs leading-6 text-ink-2">
+          متن گواهی پیش‌نویس است تا مرکز متن، امضاکننده و اعتبار آن را تأیید کند (OQ-BD-16). هر
+          گواهی یک شمارهٔ استعلام و کد QR دارد که در صفحهٔ /certificates بررسی می‌شود.
+        </p>
+      </fieldset>
       <SubmitButton>ذخیره</SubmitButton>
     </form>
   );

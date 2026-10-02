@@ -241,6 +241,10 @@ model Course {
   capacity    Int?
   /// Admins close enrollment without unpublishing the course.
   enrollmentOpen Boolean @default(true)
+  /// Completion certificates (OQ-BD-16): off until the center decides per course.
+  certificateEnabled        Boolean @default(false)
+  certificateSignatory      String?
+  certificateSignatoryTitle String?
   status      ContentStatus @default(DRAFT)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -268,9 +272,32 @@ model Enrollment {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  certificate Certificate?
+
   @@unique([courseId, memberId])
   @@index([memberId])
   @@map("enrollments")
+}
+
+/// A course-completion certificate. Name, course and signatory are copied at
+/// issue time, so later edits do not change a certificate already handed out.
+model Certificate {
+  id             String     @id @default(cuid())
+  /// Printed on the certificate and checked at /certificates/<code>.
+  code           String     @unique
+  enrollmentId   String     @unique
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  fullName       String
+  courseTitle    String
+  courseStartsAt DateTime?
+  courseEndsAt   DateTime?
+  signatory      String?
+  signatoryTitle String?
+  issuedAt       DateTime   @default(now())
+  /// Set when the enrollment stops being DONE; cleared if it becomes DONE again.
+  revokedAt      DateTime?
+
+  @@map("certificates")
 }
 
 /// "مرکز مشاوره (ویژه شرکت‌های فناور و دانش‌بنیان)" — request intake only.

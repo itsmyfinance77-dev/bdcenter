@@ -22,6 +22,7 @@ const actionLabel: Record<string, string> = {
   'admin.password': 'تغییر رمز عبور',
   'error.resolve': 'علامت حل‌شده برای خطا',
   'error.reopen': 'باز کردن دوبارهٔ خطا',
+  'certificate.refresh': 'به‌روزرسانی متن گواهی',
 };
 
 export default async function AuditPage() {

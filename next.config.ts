@@ -48,6 +48,13 @@ const nextConfig: NextConfig = {
   // Keep file tracing inside the project; otherwise it can wander into
   // unreadable folders elsewhere on the machine.
   outputFileTracingRoot: path.resolve('.'),
+  // PDFKit reads its own data files from node_modules at run time; don't bundle it.
+  serverExternalPackages: ['pdfkit'],
+  // Certificate PDFs read the static fonts from disk (src/modules/training/certificate-pdf.ts).
+  outputFileTracingIncludes: {
+    '/account/certificates/[id]': ['./src/fonts/Vazirmatn-*.ttf'],
+    '/admin/courses/[id]/certificates/[enrollmentId]': ['./src/fonts/Vazirmatn-*.ttf'],
+  },
   poweredByHeader: false,
   experimental: {
     serverActions: {

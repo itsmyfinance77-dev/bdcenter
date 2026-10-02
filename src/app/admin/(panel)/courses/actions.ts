@@ -7,6 +7,7 @@ import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
 import { notifyEnrollmentStatus } from '@/modules/notifications/service';
+import { refreshCertificate } from '@/modules/training/certificates';
 import {
   courseInputSchema,
   deleteCourse,
@@ -49,5 +50,11 @@ export async function setEnrollmentStatusAction(enrollmentId: string, formData: 
     // After the response: a slow SMS provider must not hold up the panel.
     after(() => notifyEnrollmentStatus(enrollmentId, status));
   }
+  revalidatePath(`/admin/courses/${courseId}`);
+}
+
+export async function refreshCertificateAction(courseId: string, enrollmentId: string) {
+  const admin = await requireAdmin();
+  await refreshCertificate(enrollmentId, admin.id);
   revalidatePath(`/admin/courses/${courseId}`);
 }
