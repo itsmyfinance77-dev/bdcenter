@@ -98,7 +98,7 @@ export function SiteHeader() {
               <span className="font-display text-[17px] font-extrabold text-white">
                 {siteInfo.name}
               </span>
-              <span className="truncate text-[11.5px] font-medium text-on-dark-2">
+              <span className="truncate text-xs font-medium text-on-dark-2">
                 {siteInfo.parentOrg}
               </span>
             </span>

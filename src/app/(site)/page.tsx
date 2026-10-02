@@ -165,7 +165,10 @@ export default async function HomePage() {
                 </h2>
               </div>
             </div>
-            <p className="text-sm text-ink-2">{homeCopy.aboutHint}</p>
+            <p className="text-sm text-ink-2">
+              <span className="[@media(hover:none)]:hidden">{homeCopy.aboutHint}</span>
+              <span className="hidden [@media(hover:none)]:inline">{homeCopy.aboutHintTouch}</span>
+            </p>
           </div>
           <div data-reveal="" data-reveal-delay="100">
             <AboutReveal text={about} />

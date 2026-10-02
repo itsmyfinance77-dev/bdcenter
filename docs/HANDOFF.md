@@ -158,6 +158,14 @@ more time on it (the `npm run preview` scripts stay for LAN viewing).
 
 ## Gotchas learned in this repo
 
+- **Middleware redirects show `http://localhost:<port>` locally.** Next.js
+  relativizes same-origin middleware redirects against the address it listens
+  on, but rewrites `127.0.0.1` to `localhost` in `request.url`, so with
+  `-H 127.0.0.1` (dev, e2e) the two differ and the redirect stays absolute
+  (and Lighthouse reports a CSP error for the prefetch). In Docker
+  (`HOSTNAME=0.0.0.0`) they match and the Location is relative. Not a bug on
+  the real site; checked in `next/dist/server/lib/router-utils/resolve-routes.js`.
+
 - **The e2e database is never reset.** `prisma migrate reset` refuses to run
   under an AI agent without the owner's explicit consent, and wiping is not
   needed: every e2e run uses its own names (`runId`) and its own rate-limit

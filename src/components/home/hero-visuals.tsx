@@ -111,7 +111,7 @@ export function Ecosystem() {
                   <Icon name={icon} size={22} />
                 )}
               </span>
-              <span className="absolute top-[calc(100%+8px)] left-1/2 w-[clamp(88px,28vw,136px)] -translate-x-1/2 text-center text-[clamp(11.5px,2.8vw,13.5px)] leading-[1.55] font-bold text-white [text-shadow:0_1px_10px_rgba(8,26,68,.95)]">
+              <span className="absolute top-[calc(100%+8px)] left-1/2 w-[clamp(88px,28vw,136px)] -translate-x-1/2 text-center text-[clamp(12px,2.8vw,13.5px)] leading-[1.55] font-bold text-white [text-shadow:0_1px_10px_rgba(8,26,68,.95)]">
                 {homeCopy.ecosystem[index]}
               </span>
             </div>
@@ -129,7 +129,7 @@ export function Ecosystem() {
             height={44}
             className="block h-auto w-[30%]"
           />
-          <span className="font-display text-[clamp(11.5px,2.8vw,14.5px)] leading-[1.45] font-extrabold text-white">
+          <span className="font-display text-[clamp(12px,2.8vw,14.5px)] leading-[1.45] font-extrabold text-white">
             {siteInfo.name}
           </span>
         </div>

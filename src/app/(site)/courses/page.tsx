@@ -65,7 +65,7 @@ export default async function CoursesPage() {
             href={trainingCopy.chamberUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary hover:underline"
+            className="text-primary underline underline-offset-4 hover:no-underline"
           >
             {trainingCopy.chamberLinkLabel}
           </a>

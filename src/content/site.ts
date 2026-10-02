@@ -113,6 +113,8 @@ export const homeCopy = {
   aboutKicker: 'نمای مرکز',
   aboutTitle: 'درباره مرکز',
   aboutHint: 'برای خواندن معرفی، نشانگر را روی تصویر ببرید یا دکمه را بزنید.',
+  /** Phones and tablets have no hover. */
+  aboutHintTouch: 'برای خواندن معرفی، دکمهٔ روی تصویر را بزنید.',
   aboutPhotoAlt: 'سردر مرکز توسعه کسب‌وکار اتاق بازرگانی یزد',
   aboutOpen: 'مطالعه معرفی مرکز',
   aboutClose: 'بستن معرفی',

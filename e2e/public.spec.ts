@@ -44,6 +44,25 @@ test('private areas send visitors to sign in', async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fcourses/);
 });
 
+test('sign-in redirects go to the login page and ignore a forged Host', async ({ request }) => {
+  // Next.js turns same-origin middleware redirects into relative ones on a
+  // real server; here (127.0.0.1, which Next.js rewrites to localhost) the
+  // origin may differ, so only the path is checked.
+  for (const [path, target] of [
+    ['/account', '/account/login'],
+    ['/admin/courses', '/admin/login?next=%2Fadmin%2Fcourses'],
+  ] as const) {
+    const response = await request.get(path, {
+      maxRedirects: 0,
+      headers: { Host: 'evil.example' },
+    });
+    expect(response.status()).toBe(307);
+    const location = response.headers().location ?? '';
+    expect(location.endsWith(target)).toBe(true);
+    expect(location).not.toContain('evil.example');
+  }
+});
+
 test('health check and security headers', async ({ request }) => {
   const response = await request.get('/api/health');
   expect(await response.json()).toEqual({ ok: true });

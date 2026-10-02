@@ -114,8 +114,10 @@ if (process.env.E2E_REUSE_BUILD !== '1' || !existsSync('.next-e2e/BUILD_ID')) {
   // A build into another folder rewrites next-env.d.ts and tsconfig.json to
   // point at it; put both back so the checkout stays unchanged.
   const kept = ['next-env.d.ts', 'tsconfig.json'].map((file) => [file, readFileSync(file, 'utf8')]);
+  const restore = () => kept.forEach(([file, content]) => writeFileSync(file, content));
+  process.once('exit', restore); // also when the build fails and run() exits
   run('node_modules/next/dist/bin/next', ['build'], { NODE_OPTIONS: '--max-old-space-size=2560' });
-  for (const [file, content] of kept) writeFileSync(file, content);
+  restore();
 }
 
 // Fake Kavenegar: records every message, always answers "accepted".

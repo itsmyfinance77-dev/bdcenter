@@ -209,11 +209,9 @@ export async function renderCertificatePdf(
 }
 
 /** The PDF as a download response (route handlers only map input to this). */
-export async function certificateResponse(
-  certificate: CertificateRecord,
-  requestUrl: string,
-): Promise<Response> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(requestUrl).origin;
+export async function certificateResponse(certificate: CertificateRecord): Promise<Response> {
+  // Not the request URL: behind a proxy that is the server's own address.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010';
   const pdf = await renderCertificatePdf(certificate, siteUrl);
   return new Response(new Uint8Array(pdf), {
     headers: {

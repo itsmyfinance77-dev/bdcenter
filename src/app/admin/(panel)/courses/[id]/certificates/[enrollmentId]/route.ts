@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** A participant's certificate as a PDF, for staff (to print or send). */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string; enrollmentId: string }> },
 ) {
   const admin = await getCurrentAdmin();
@@ -14,5 +14,5 @@ export async function GET(
   const { id, enrollmentId } = await params;
   const certificate = await getOrIssueCertificate(enrollmentId, { courseId: id });
   if (!certificate) return new Response('Not found', { status: 404 });
-  return certificateResponse(certificate, request.url);
+  return certificateResponse(certificate);
 }

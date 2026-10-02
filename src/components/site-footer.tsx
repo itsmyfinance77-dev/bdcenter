@@ -45,7 +45,7 @@ export async function SiteFooter() {
                 <span className="font-display text-lg font-extrabold text-white">
                   {siteInfo.name}
                 </span>
-                <span className="text-[clamp(11px,3.2vw,12.5px)] whitespace-nowrap text-on-dark-2">
+                <span className="text-[clamp(12px,3.2vw,12.5px)] whitespace-nowrap text-on-dark-2">
                   {siteInfo.parentOrg}
                 </span>
               </span>

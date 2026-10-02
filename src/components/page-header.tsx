@@ -26,7 +26,7 @@ export function PageHeader({
         <nav aria-label="مسیر صفحه">
           <ol className="flex flex-wrap items-center gap-1.5 text-[13.5px] text-on-dark-2">
             <li>
-              <Link href="/" className="text-on-dark hover:text-white">
+              <Link href="/" className="inline-block py-1 text-on-dark hover:text-white">
                 خانه
               </Link>
             </li>
@@ -34,7 +34,10 @@ export function PageHeader({
               <li key={`${crumb.title}-${index}`} className="flex items-center gap-1.5">
                 <Icon name="chevronCrumb" size={14} strokeWidth={2} />
                 {crumb.href ? (
-                  <Link href={crumb.href} className="text-on-dark hover:text-white">
+                  <Link
+                    href={crumb.href}
+                    className="inline-block py-1 text-on-dark hover:text-white"
+                  >
                     {crumb.title}
                   </Link>
                 ) : (

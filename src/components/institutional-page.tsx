@@ -98,7 +98,8 @@ export async function systemPageMetadata(slug: string): Promise<Metadata> {
   const page = await getSystemPageContent(slug);
   return {
     title: page?.title ?? definition.title,
-    description: page ? (page.seoDesc ?? plainExcerpt(page.body)) : undefined,
+    // An empty page must not output an empty description: fall back to the site's.
+    description: (page && (page.seoDesc || plainExcerpt(page.body))) || undefined,
     alternates: { canonical: pagePath(slug) },
   };
 }

@@ -70,7 +70,7 @@ export function AboutReveal({ text }: { text: string }) {
       />
 
       <div
-        className={`absolute inset-x-0 bottom-0 p-[clamp(20px,3.5vw,40px)] pe-[clamp(180px,22vw,260px)] transition-[opacity,transform] duration-500 ease-(--ease-out-soft) ${
+        className={`absolute inset-x-0 bottom-0 p-[clamp(20px,3.5vw,40px)] pb-[88px] sm:pb-[clamp(20px,3.5vw,40px)] sm:pe-[clamp(180px,22vw,260px)] transition-[opacity,transform] duration-500 ease-(--ease-out-soft) ${
           open ? 'translate-y-3 opacity-0' : 'opacity-100'
         }`}
       >

@@ -48,7 +48,10 @@ export default async function CalendarPage({
           aria-label="ماه‌ها"
           className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line bg-white px-4 py-3"
         >
-          <Link href={monthHref(grid.previous)} className="text-sm text-primary hover:underline">
+          <Link
+            href={monthHref(grid.previous)}
+            className="-my-2 inline-flex min-h-11 items-center px-2 text-sm text-primary hover:underline"
+          >
             → {calendarCopy.previous}
           </Link>
           <h2 className="text-lg font-bold text-brand-900" aria-live="polite">
@@ -56,11 +59,17 @@ export default async function CalendarPage({
           </h2>
           <div className="flex items-center gap-4 text-sm">
             {grid.month.year !== current.year || grid.month.month !== current.month ? (
-              <Link href="/events/calendar" className="text-ink-2 hover:underline">
+              <Link
+                href="/events/calendar"
+                className="-my-2 inline-flex min-h-11 items-center px-2 text-ink-2 hover:underline"
+              >
                 {calendarCopy.thisMonth}
               </Link>
             ) : null}
-            <Link href={monthHref(grid.next)} className="text-primary hover:underline">
+            <Link
+              href={monthHref(grid.next)}
+              className="-my-2 inline-flex min-h-11 items-center px-2 text-primary hover:underline"
+            >
               {calendarCopy.next} ←
             </Link>
           </div>
@@ -108,7 +117,7 @@ export default async function CalendarPage({
                       <Link
                         href={item.href}
                         tabIndex={-1}
-                        className={`block truncate rounded-chip px-1 py-0.5 text-[11px] leading-4 sm:text-xs ${kindTone[item.kind]}`}
+                        className={`block truncate rounded-chip px-1 py-0.5 text-xs leading-4 ${kindTone[item.kind]}`}
                         title={item.title}
                       >
                         <span className="hidden sm:inline">{item.title}</span>
