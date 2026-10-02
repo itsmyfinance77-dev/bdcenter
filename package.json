@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/db/**\"",
     "test:db": "node --env-file=.env node_modules/vitest/vitest.mjs run tests/db --no-file-parallelism",
+    "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "prisma generate",
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.7",
     "@types/pdfkit": "^0.17.6",

@@ -52,7 +52,9 @@ function guarded(provider: string, send: () => Promise<boolean>): Promise<boolea
 export function kavenegar(env: Env): SmsSender | null {
   const apiKey = env.KAVENEGAR_API_KEY?.trim();
   if (!apiKey) return null;
-  const base = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}`;
+  // KAVENEGAR_API_URL is for tests (a local fake) or an outbound proxy; normally unset.
+  const api = (env.KAVENEGAR_API_URL?.trim() || 'https://api.kavenegar.com').replace(/\/$/, '');
+  const base = `${api}/v1/${encodeURIComponent(apiKey)}`;
   const succeeded = (json: unknown) =>
     (json as { return?: { status?: number } } | null)?.return?.status === 200;
   const logFailure = (json: unknown) => {

@@ -27,6 +27,7 @@ docker compose up -d          # start PostgreSQL (Docker Desktop must be running
 npm run dev                   # http://localhost:3010 (127.0.0.1 only; port 3000 is left for another project), admin at /admin
 npm run verify                # lint + typecheck + unit tests + build
 npm run test:db               # integration tests against the dev DB (they clean up)
+npm run test:e2e              # browser tests (Playwright + the installed Chrome), ~2 min with the build
 ```
 
 Member sign-in in development: enter any `09…` number on `/account/login`; the
@@ -118,6 +119,13 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
     check at `/certificates/<code>` (noindex). Wording is a draft in
     `src/content/certificate.ts` (OQ-BD-16). Persian PDF text goes through
     `src/lib/rtl-text.ts` (see gotchas).
+13. **Browser tests** — `npm run test:e2e` (Playwright, `e2e/`): every public
+    page, member sign-up by SMS code (fake Kavenegar API), wrong code,
+    enrollment capacity, booking without double-booking, admin review with
+    SMS notice and certificate, course creation, admin pages.
+    `scripts/e2e-server.mjs` prepares the separate `bdcenter_e2e` database,
+    a per-run admin and secrets, builds into `.next-e2e` and serves on 3030.
+    `E2E_REUSE_BUILD=1` skips the build when the code has not changed.
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
@@ -149,6 +157,14 @@ On 2026-10-02 the owner dropped the plain-HTTP public-IP preview; do not spend
 more time on it (the `npm run preview` scripts stay for LAN viewing).
 
 ## Gotchas learned in this repo
+
+- **The e2e database is never reset.** `prisma migrate reset` refuses to run
+  under an AI agent without the owner's explicit consent, and wiping is not
+  needed: every e2e run uses its own names (`runId`) and its own rate-limit
+  key (`x-e2e-client` header via `CLIENT_IP_HEADER`). Drop `bdcenter_e2e`
+  by hand if it ever grows too big; the next run recreates it.
+- Playwright loads test files before `webServer` starts, so anything read
+  from `.tmp-build/e2e-state.json` must be read lazily (in hooks/tests).
 
 - **Persian text in PDFs:** PDFKit shapes through fontkit, which reverses
   Arabic-script runs (including Persian digits) and lays words out left to
