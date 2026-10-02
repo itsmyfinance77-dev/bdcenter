@@ -45,7 +45,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <aside>
           <AdminNav items={items.map(({ href, title }) => ({ href, title }))} />
         </aside>
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {admin.mustChangePassword ? (
+            <p
+              role="status"
+              className="mb-6 rounded-control border border-warning/40 bg-warning/10 px-4 py-3 text-sm leading-7 text-ink"
+            >
+              رمز عبور شما را شخص دیگری تعیین کرده است. لطفاً همین حالا در{' '}
+              <Link href="/admin/account" className="font-semibold text-primary underline">
+                حساب من و امنیت
+              </Link>{' '}
+              رمز تازه‌ای انتخاب کنید که فقط خودتان می‌دانید.
+            </p>
+          ) : null}
+          {children}
+        </div>
       </div>
     </div>
   );

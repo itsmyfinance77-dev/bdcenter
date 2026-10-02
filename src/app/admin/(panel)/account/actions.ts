@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import type { FormState } from '@/lib/form-state';
 import { reissueAdminSession, requireAdmin } from '@/modules/auth/service';
 import { changeOwnPassword, passwordSchema } from '@/modules/auth/users';
@@ -30,5 +31,7 @@ export async function changePasswordAction(
     };
   }
   await reissueAdminSession(admin.id);
+  // The panel layout drops its "choose your own password" notice.
+  if (admin.mustChangePassword) revalidatePath('/admin', 'layout');
   return { status: 'success', message: 'رمز عبور تغییر کرد. نشست‌های دیگر شما بسته شد.' };
 }

@@ -1,6 +1,8 @@
+import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/modules/audit/service';
+import { clear } from '@/modules/ratelimit/service';
 import { hashPassword, verifyPassword } from './password';
 
 /** Admin account management. Free of request APIs so CLI scripts can use it too. */
@@ -30,6 +32,7 @@ export async function listAdmins() {
       isActive: true,
       createdAt: true,
       totpEnabledAt: true,
+      mustChangePassword: true,
     },
   });
 }
@@ -43,6 +46,8 @@ export async function createAdmin(input: z.infer<typeof newAdminSchema>, actorId
       email: input.email,
       role: input.role,
       passwordHash: await hashPassword(input.password),
+      // Someone else chose this password: the new user is asked to replace it.
+      mustChangePassword: actorId !== null,
     },
   });
   if (actorId) {
@@ -81,7 +86,11 @@ export async function changeOwnPassword(actor: { id: string }, current: string, 
   await prisma.adminUser.update({
     where: { id: actor.id },
     // Also signs out every other browser; the caller re-issues this one's cookie.
-    data: { passwordHash: await hashPassword(next), sessionVersion: { increment: 1 } },
+    data: {
+      passwordHash: await hashPassword(next),
+      sessionVersion: { increment: 1 },
+      mustChangePassword: false,
+    },
   });
   await recordAudit({
     actorId: actor.id,
@@ -90,4 +99,66 @@ export async function changeOwnPassword(actor: { id: string }, current: string, 
     entityId: actor.id,
   });
   return { ok: true as const };
+}
+
+/** Rate-limit key for failed admin logins per email (used by login and by password reset). */
+export function adminLoginEmailKey(email: string): string {
+  return `admin-login:email:${email.trim().toLowerCase()}`;
+}
+
+/** Letters and digits that cannot be confused when read out or copied by hand. */
+const PASSWORD_ALPHABET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+/** A random password like "k7Pq-Xm3w-RtZ9-b2Fh" (16 characters, about 95 bits). */
+export function generatePassword(): string {
+  const chars = Array.from(
+    { length: 16 },
+    () => PASSWORD_ALPHABET[randomInt(PASSWORD_ALPHABET.length)],
+  );
+  return [0, 4, 8, 12].map((i) => chars.slice(i, i + 4).join('')).join('-');
+}
+
+export const resetPasswordSchema = z.object({
+  // Empty: the system generates one.
+  password: z.union([z.literal(''), passwordSchema]),
+});
+
+/**
+ * An ADMIN sets a new password for another user who forgot theirs. Signs the
+ * user out everywhere, lifts a login lockout, and asks them to choose their
+ * own password after signing in. Returns the generated password, if any, to
+ * be shown once.
+ */
+export async function resetAdminPassword(
+  userId: string,
+  password: string,
+  actor: { id: string },
+): Promise<{ ok: true; generated: string | null } | { ok: false; error: string }> {
+  if (userId === actor.id) {
+    return { ok: false, error: 'رمز خودتان را از «حساب من و امنیت» تغییر دهید.' };
+  }
+  const user = await prisma.adminUser.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!user) return { ok: false, error: 'این کاربر پیدا نشد.' };
+
+  const generated = password ? null : generatePassword();
+  await prisma.adminUser.update({
+    where: { id: userId },
+    data: {
+      passwordHash: await hashPassword(password || generated!),
+      sessionVersion: { increment: 1 },
+      mustChangePassword: true,
+    },
+  });
+  await clear(adminLoginEmailKey(user.email));
+  await recordAudit({
+    actorId: actor.id,
+    action: 'admin.password.reset',
+    entity: 'AdminUser',
+    entityId: userId,
+    metadata: { email: user.email, generated: generated !== null },
+  });
+  return { ok: true, generated };
 }

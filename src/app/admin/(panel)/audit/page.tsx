@@ -20,6 +20,7 @@ const actionLabel: Record<string, string> = {
   'admin.activate': 'فعال کردن کاربر',
   'admin.deactivate': 'غیرفعال کردن کاربر',
   'admin.password': 'تغییر رمز عبور',
+  'admin.password.reset': 'تعیین رمز تازه برای کاربر',
   'error.resolve': 'علامت حل‌شده برای خطا',
   'error.reopen': 'باز کردن دوبارهٔ خطا',
   'certificate.refresh': 'به‌روزرسانی متن گواهی',

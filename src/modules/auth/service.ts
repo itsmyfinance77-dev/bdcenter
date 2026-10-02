@@ -16,9 +16,16 @@ import {
   verifySession,
 } from './session-token';
 import { verifySecondFactor } from './two-factor';
-import type { AdminRole } from './users';
+import { adminLoginEmailKey, type AdminRole } from './users';
 
-export type CurrentAdmin = { id: string; fullName: string; email: string; role: AdminRole };
+export type CurrentAdmin = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  /** Someone else set the password; the panel asks for a new one. */
+  mustChangePassword: boolean;
+};
 
 // Verified against when the email is unknown, so response time does not reveal
 // which addresses have accounts.
@@ -44,7 +51,7 @@ export async function login(
   clientIp: string,
 ): Promise<LoginResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  const keys = [`admin-login:email:${normalizedEmail}`, `admin-login:ip:${clientIp}`];
+  const keys = [adminLoginEmailKey(normalizedEmail), `admin-login:ip:${clientIp}`];
   if (await isThrottled(keys)) return { ok: false, reason: 'throttled' };
 
   const user = await prisma.adminUser.findUnique({ where: { email: normalizedEmail } });
@@ -176,10 +183,17 @@ export const getCurrentAdmin = cache(async (): Promise<CurrentAdmin | null> => {
       role: true,
       isActive: true,
       sessionVersion: true,
+      mustChangePassword: true,
     },
   });
   if (!user?.isActive || user.sessionVersion !== session.ver) return null;
-  return { id: user.id, fullName: user.fullName, email: user.email, role: user.role };
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+  };
 });
 
 /**

@@ -6,6 +6,7 @@ import { requireAdmin } from '@/modules/auth/service';
 import { listAdmins } from '@/modules/auth/users';
 import { resetTwoFactorAction, setAdminActiveAction } from './actions';
 import { NewUserForm } from './new-user-form';
+import { ResetPasswordForm } from './reset-password-form';
 
 export const metadata = { title: 'کاربران پنل' };
 
@@ -17,7 +18,9 @@ export default async function UsersPage() {
     <>
       <AdminHeading title="کاربران پنل" />
       <div className="space-y-6">
-        <Table head={['نام', 'ایمیل', 'نقش', 'وضعیت', 'ورود دومرحله‌ای', 'تاریخ ساخت', '']}>
+        <Table
+          head={['نام', 'ایمیل', 'نقش', 'وضعیت', 'ورود دومرحله‌ای', 'تاریخ ساخت', 'رمز عبور', '']}
+        >
           {users.map((user) => (
             <tr key={user.id}>
               <Td className="font-medium">{user.fullName}</Td>
@@ -31,6 +34,9 @@ export default async function UsersPage() {
                 ) : (
                   <Badge tone="REJECTED">غیرفعال</Badge>
                 )}
+                {user.mustChangePassword ? (
+                  <p className="mt-1 text-xs text-ink-2">منتظر تغییر رمز توسط خود کاربر</p>
+                ) : null}
               </Td>
               <Td>
                 {user.totpEnabledAt ? (
@@ -50,6 +56,11 @@ export default async function UsersPage() {
                 )}
               </Td>
               <Td>{formatDate(user.createdAt)}</Td>
+              <Td>
+                {user.id === admin.id ? null : (
+                  <ResetPasswordForm userId={user.id} email={user.email} />
+                )}
+              </Td>
               <Td>
                 {user.id === admin.id ? (
                   <span className="text-xs text-ink-2">حساب شما</span>

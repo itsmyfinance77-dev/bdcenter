@@ -33,6 +33,9 @@ model AdminUser {
   isActive     Boolean   @default(true)
   /// Bumped on logout / password change; tokens carrying an older value are refused.
   sessionVersion Int     @default(0)
+  /// Set when someone else chose the password (new account or reset by an ADMIN);
+  /// the panel asks the user to pick their own. Cleared by changing it.
+  mustChangePassword Boolean @default(false)
   /// Two-step login (TOTP). Secrets are AES-GCM encrypted with DATA_ENCRYPTION_KEY.
   totpSecret        String?
   /// Generated during setup, promoted to totpSecret once a code confirms it.

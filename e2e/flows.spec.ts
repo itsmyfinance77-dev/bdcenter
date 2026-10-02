@@ -196,3 +196,41 @@ test('admin pages load', async ({ page }) => {
     if (heading) await expect(page.locator('h1').first()).toContainText(heading);
   }
 });
+
+test('an ADMIN sets a new password for a colleague, who then picks their own', async ({
+  page,
+  browser,
+}) => {
+  const email = `e2e-editor-${run}@bdcenter.test`;
+  await db().adminUser.create({
+    data: { email, fullName: 'ویراستار آزمون', passwordHash: 'unused', role: 'EDITOR' },
+  });
+
+  await signInAdmin(page);
+  await page.goto('/admin/users');
+  const row = page.getByRole('row').filter({ hasText: email });
+  await row.getByText('تعیین رمز تازه').click();
+  await row.getByRole('button', { name: 'ثبت رمز تازه' }).click();
+  const shown = row.locator('code');
+  await expect(shown).toBeVisible();
+  const password = (await shown.textContent())!.trim();
+  expect(password).toMatch(/^[a-zA-Z2-9]{4}(-[a-zA-Z2-9]{4}){3}$/);
+
+  const colleague = await browser.newContext();
+  const other = await colleague.newPage();
+  await other.goto('/admin/login');
+  await other.getByLabel('ایمیل').fill(email);
+  await other.getByLabel('رمز عبور').fill(password);
+  await other.getByRole('button', { name: 'ورود', exact: true }).click();
+  await expect(other).toHaveURL(/\/admin\/?$/);
+  const notice = other.getByText('رمز عبور شما را شخص دیگری تعیین کرده است');
+  await expect(notice).toBeVisible();
+
+  await other.goto('/admin/account');
+  await other.getByLabel('رمز عبور فعلی').fill(password);
+  await other.getByLabel('رمز عبور جدید').fill(`own-password-${run}`);
+  await other.getByRole('button', { name: 'تغییر رمز' }).click();
+  await expect(other.getByText('رمز عبور تغییر کرد')).toBeVisible();
+  await expect(notice).toHaveCount(0);
+  await colleague.close();
+});
