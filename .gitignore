@@ -6,6 +6,7 @@ out/
 dist/
 storage/
 .env
+.env.production
 .env.*.local
 *.tsbuildinfo
 prisma/generated/

@@ -503,3 +503,31 @@ model PageViewDaily {
   @@index([day])
   @@map("page_views_daily")
 }
+
+// ---------------------------------------------------------------------------
+// Error reporting — server errors grouped by fingerprint (see modules/errors)
+// ---------------------------------------------------------------------------
+
+model ErrorGroup {
+  id          String    @id @default(cuid())
+  /// Hash of the error name, its message with numbers/ids masked, and the route.
+  fingerprint String    @unique
+  name        String
+  message     String
+  stack       String?
+  /// Route pattern such as /courses/[slug]; never a query string.
+  route       String?
+  /// "render" | "route" | "action" | "middleware"
+  routeType   String?
+  method      String?
+  lastPath    String?
+  digest      String?
+  count       Int       @default(1)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  /// Set by an admin; a new occurrence clears it (the error is open again).
+  resolvedAt  DateTime?
+
+  @@index([resolvedAt, lastSeenAt])
+  @@map("error_groups")
+}

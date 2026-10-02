@@ -1,0 +1,21 @@
+node_modules
+.next
+.next-preview
+.tmp-build
+.git
+.claude
+storage
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*
+docs
+tests
+# Mounted from the checkout at run time, or not needed in the image; kept out
+# so editing them does not invalidate the build cache.
+deploy
+Dockerfile
+docker-compose*.yml
+README.md
+CLAUDE.md

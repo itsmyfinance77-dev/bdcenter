@@ -1,0 +1,109 @@
+# Production stack (docs/operations/deploy.md):
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+#   caddy    HTTPS on 80/443, the only service exposed to the internet
+#   app      the Next.js site (image target "runner")
+#   migrate  applies Prisma migrations, then exits; app waits for it
+#   db       PostgreSQL 16, reachable only inside this stack
+#   backup   daily database + files backup into the backups volume
+#
+# Every secret comes from .env.production (template: deploy/env.production.example).
+
+x-database-url: &database-url postgresql://bdcenter:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/bdcenter?schema=public
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bdcenter
+      POSTGRES_DB: bdcenter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bdcenter -d bdcenter']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      target: tools
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL}
+    image: bdcenter-tools
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL}
+    image: bdcenter-app
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: *database-url
+      STORAGE_DIR: /app/storage
+      BACKUP_DIR: /backups
+      CLIENT_IP_HEADER: x-real-ip
+    volumes:
+      - storage:/app/storage
+      - backups:/backups:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+      TLS_EMAIL: ${TLS_EMAIL:?set TLS_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ['sh', '/backup/schedule.sh']
+    environment:
+      DATABASE_URL: *database-url
+      BACKUP_DIR: /backups
+      STORAGE_DIR: /storage
+      BACKUP_AT: ${BACKUP_AT:-00:30}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    volumes:
+      - ./deploy/backup:/backup:ro
+      - backups:/backups
+      - storage:/storage:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      # The app mounts the storage volume first, so it is created owned by the
+      # app's user (an empty volume takes the owner of the image's folder).
+      app:
+        condition: service_started
+
+volumes:
+  pg-data:
+  storage:
+  backups:
+  caddy-data:
+  caddy-config:

@@ -1,6 +1,6 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-01 (third session). Read this first in a new session,
+Last updated: 2026-10-02 (third session). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -95,6 +95,22 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
    (intro, hero networks, about reveal, news carousel, bento), restyled inner
    pages and form controls. The mockup's sample data is never shown.
 
+9. `abde3ef` **Plain-HTTP LAN preview** (`npm run preview`, see gotchas).
+10. `508235d` **Stats dashboard** — `/admin/stats`: anonymous per-day page-view
+    counts (`/api/pv` beacon, no IP/cookie/visitor id, private areas and bots
+    excluded) and daily activity charts over 7/30/90 days.
+11. **Error reporting, backups, deployment** (ADR-0004) —
+    `src/instrumentation.ts` → `src/modules/errors` (grouped `ErrorGroup` rows,
+    alert email to `ERROR_ALERT_EMAIL`, Persian error pages with the digest);
+    `deploy/backup/*.sh` (pg_dump + storage tar, rotation, restore);
+    `/admin/system` (ADMIN) shows errors and backup freshness; `Dockerfile`
+    (targets `runner`, `tools`), `docker-compose.prod.yml` (caddy, app,
+    migrate, db, backup), `deploy/Caddyfile`, `/api/health`. How-tos:
+    `docs/operations/deploy.md`, `docs/operations/backup.md`. Tested: image
+    build, migrations on an empty DB, admin creation, pages/argon2/sharp in the
+    image, error grouping in the container, HTTPS via Caddy (internal CA),
+    backup/rotation/restore/failure runs.
+
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
 
@@ -115,12 +131,13 @@ and the dev server now runs on port **3010** (3000 belongs to another project).
 
 ## Remaining work (owner asked for all of it on 2026-10-01)
 
-1. Stats dashboard (visits, enrollments, requests).
-2. Error reporting and automatic backups of the database and `storage/`.
-3. Deployment: Dockerfile (`output: 'standalone'`), compose with PostgreSQL and
-   an HTTPS reverse proxy, `prisma migrate deploy` (host/DNS: OQ-BD-08).
-4. Course-completion certificates as PDF (wording/signatory: OQ-BD-16).
-5. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
+1. Course-completion certificates as PDF (wording/signatory: OQ-BD-16).
+2. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
+3. Hosting and DNS (OQ-BD-08), then the first real deploy per
+   `docs/operations/deploy.md`; off-site backup copies (OQ-BD-19).
+
+On 2026-10-02 the owner dropped the plain-HTTP public-IP preview; do not spend
+more time on it (the `npm run preview` scripts stay for LAN viewing).
 
 ## Gotchas learned in this repo
 

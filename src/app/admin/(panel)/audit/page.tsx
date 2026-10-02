@@ -20,6 +20,8 @@ const actionLabel: Record<string, string> = {
   'admin.activate': 'فعال کردن کاربر',
   'admin.deactivate': 'غیرفعال کردن کاربر',
   'admin.password': 'تغییر رمز عبور',
+  'error.resolve': 'علامت حل‌شده برای خطا',
+  'error.reopen': 'باز کردن دوبارهٔ خطا',
 };
 
 export default async function AuditPage() {

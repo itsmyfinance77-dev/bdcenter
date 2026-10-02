@@ -21,6 +21,8 @@ export const LIMITS = {
   otpSendGlobal: { max: 300, windowSeconds: 60 * 60 },
   // Anonymous page-view beacons: generous, only stops one address inflating the counts.
   pageViews: { max: 600, windowSeconds: 60 * 60 },
+  // Error alert emails, all errors together: a broken deploy must not flood the inbox.
+  errorAlerts: { max: 10, windowSeconds: 60 * 60 },
   // Wrong codes, per phone: stops guessing a 6-digit code.
   otpVerifyPerPhone: { max: 5, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, Limit>;

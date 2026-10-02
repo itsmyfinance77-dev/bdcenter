@@ -36,7 +36,7 @@ export const formFieldTypeLabel = {
   CHECKBOX: 'تیک تأیید',
 } as const;
 
-/** EDITOR handles content and incoming requests; ADMIN also manages forms, users and the audit log. */
+/** EDITOR handles content and incoming requests; ADMIN also manages forms, users, the audit log and system status. */
 export const adminNav = [
   { href: '/admin', title: 'داشبورد', adminOnly: false },
   { href: '/admin/stats', title: 'آمار', adminOnly: false },
@@ -51,5 +51,6 @@ export const adminNav = [
   { href: '/admin/members', title: 'اعضای سایت', adminOnly: true },
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
+  { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
   { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
 ] as const;

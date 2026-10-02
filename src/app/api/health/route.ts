@@ -1,0 +1,16 @@
+import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Liveness/readiness for Docker and uptime monitors: 200 when the app can
+ * reach its database, 503 otherwise. Says nothing else about the system.
+ */
+export async function GET() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    return Response.json({ ok: false }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
+}
