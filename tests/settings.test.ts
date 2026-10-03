@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { contactInputSchema, parseHomeStats, parseRecipients } from '@/modules/settings/service';
+import {
+  contactInputSchema,
+  parseHomeStats,
+  parseRecipients,
+  parseSiteMenu,
+} from '@/modules/settings/service';
 
 describe('staff alert recipients', () => {
   it('splits mobile numbers and emails, normalizing digits and prefixes', () => {
@@ -33,5 +38,41 @@ describe('home-page figures', () => {
       parseHomeStats({ label0: 'شرکت آموزش‌دیده', value0: '۱۲۰+', label2: '', value2: '' }),
     ).toEqual({ stats: [{ label: 'شرکت آموزش‌دیده', value: '۱۲۰+' }], errors: {} });
     expect(parseHomeStats({ value1: '9' }).errors).toHaveProperty('label1');
+  });
+});
+
+describe('site menu', () => {
+  it('keeps filled rows in order with internal or http(s) links', () => {
+    const { menu, errors } = parseSiteMenu({
+      s0title: 'دوره‌ها',
+      s0href: '/courses',
+      s0icon: 'cap',
+      s1title: '',
+      s1href: '',
+      m0title: 'اتاق یزد',
+      m0href: 'https://yazdccima.com',
+    });
+    expect(errors).toEqual({});
+    expect(menu.services).toEqual([{ title: 'دوره‌ها', href: '/courses', icon: 'cap' }]);
+    expect(menu.main).toEqual([{ title: 'اتاق یزد', href: 'https://yazdccima.com' }]);
+  });
+
+  it('refuses scripts, protocol-relative links and unknown icons', () => {
+    const { menu, errors } = parseSiteMenu({
+      m0title: 'بد',
+      m0href: 'javascript:alert(1)',
+      m1title: 'بد',
+      m1href: '//evil.test',
+      s0title: 'x',
+      s0href: '/x',
+      s0icon: 'nope',
+    });
+    expect(Object.keys(errors).sort()).toEqual(['m0href', 'm1href']);
+    expect(menu.services[0]?.icon).toBe('link');
+  });
+
+  it('brings back the built-in menu on reset', () => {
+    const { menu } = parseSiteMenu({ reset: '1' });
+    expect(menu.main.map((item) => item.href)).toContain('/contact');
   });
 });

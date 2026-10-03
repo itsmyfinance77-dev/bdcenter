@@ -9,6 +9,7 @@ import {
   contactInputSchema,
   parseHomeStats,
   parseRecipients,
+  parseSiteMenu,
   saveContactInfo,
   setSetting,
   type AlertKind,
@@ -64,5 +65,23 @@ export async function saveStatsAction(_prev: FormState, formData: FormData): Pro
       stats.length > 0
         ? 'اعداد در صفحهٔ اصلی نمایش داده می‌شوند.'
         : 'بخش «مرکز در یک نگاه» پنهان شد.',
+  };
+}
+
+export async function saveMenuAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const { menu, errors } = parseSiteMenu(values);
+  if (Object.keys(errors).length > 0) {
+    return { status: 'error', message: GENERIC_ERROR, errors, values };
+  }
+  await setSetting('site.menu', menu, admin.id);
+  revalidatePath('/', 'layout');
+  return {
+    status: 'success',
+    message:
+      values.reset === '1'
+        ? 'منوی پیش‌فرض برگردانده شد.'
+        : 'منو ذخیره شد و در همهٔ صفحه‌ها نمایش داده می‌شود.',
   };
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { siteInfo } from '@/content/site';
+import { menuIconLabel } from '@/content/admin';
+import { mainNav, servicesMenu, siteInfo } from '@/content/site';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/modules/audit/service';
 
@@ -8,6 +9,9 @@ import { recordAudit } from '@/modules/audit/service';
  * JSON value per key in `site_settings`. Each setting has a typed default, so
  * a missing (or malformed) row simply means "not changed yet".
  */
+
+export const MAX_SERVICE_ITEMS = 12;
+export const MAX_MAIN_ITEMS = 6;
 
 const contactSchema = z.object({
   address: z.string(),
@@ -29,6 +33,18 @@ const alertsSchema = z.record(z.enum(ALERT_KINDS), recipientsSchema);
 const statsSchema = z.array(z.object({ label: z.string(), value: z.string() })).max(4);
 export type HomeStat = z.infer<typeof statsSchema>[number];
 
+const menuItemSchema = z.object({ title: z.string(), href: z.string() });
+const menuSchema = z.object({
+  services: z.array(menuItemSchema.extend({ icon: z.string() })).max(MAX_SERVICE_ITEMS),
+  main: z.array(menuItemSchema).max(MAX_MAIN_ITEMS),
+});
+export type SiteMenu = z.infer<typeof menuSchema>;
+
+const defaultMenu: SiteMenu = {
+  services: servicesMenu.map(({ title, href, icon }) => ({ title, href, icon })),
+  main: mainNav.map(({ title, href }) => ({ title, href })),
+};
+
 const definitions = {
   /** Members must upload an image of their national card (owner's request: optional until an ADMIN decides). */
   'members.nationalCardRequired': { schema: z.boolean(), fallback: false },
@@ -39,6 +55,8 @@ const definitions = {
    * center enters; the band stays hidden while the list is empty.
    */
   'home.stats': { schema: statsSchema, fallback: [] as HomeStat[] },
+  /** The header: the «خدمات» dropdown and the top-level links (owner's request, 2026-10-03). */
+  'site.menu': { schema: menuSchema, fallback: defaultMenu },
   /** Who hears (SMS / email) about each kind of new request. */
   'alerts.recipients': {
     schema: alertsSchema,
@@ -181,4 +199,49 @@ export function parseHomeStats(values: Record<string, string>) {
     stats.push({ label, value });
   }
   return { stats, errors };
+}
+
+/** The header menu; the built-in one when nothing is saved or the database is unreachable. */
+export async function getSiteMenu(): Promise<SiteMenu> {
+  try {
+    return await getSetting('site.menu');
+  } catch (error) {
+    console.error('getSiteMenu: using the built-in menu', error);
+    return defaultMenu;
+  }
+}
+
+/** Internal paths (/…) or full http(s) addresses only. */
+function validHref(href: string) {
+  return /^\/(?!\/)[^\s]*$/.test(href) || /^https?:\/\/[^\s]+$/.test(href);
+}
+
+/**
+ * Reads the menu form: `s<i>title` / `s<i>href` / `s<i>icon` rows for the
+ * «خدمات» dropdown and `m<i>title` / `m<i>href` rows for the top links. Empty
+ * rows are dropped; `reset` brings back the built-in menu.
+ */
+export function parseSiteMenu(values: Record<string, string>) {
+  if (values.reset === '1') return { menu: defaultMenu, errors: {} };
+  const errors: Record<string, string> = {};
+  const read = (prefix: string, count: number) => {
+    const rows: { title: string; href: string; icon: string }[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const title = (values[`${prefix}${i}title`] ?? '').trim();
+      const href = (values[`${prefix}${i}href`] ?? '').trim();
+      const icon = values[`${prefix}${i}icon`] ?? 'link';
+      if (!title && !href) continue;
+      if (!title) errors[`${prefix}${i}title`] = 'عنوان را بنویسید.';
+      else if (title.length > 40) errors[`${prefix}${i}title`] = 'عنوان بیش از حد طولانی است.';
+      if (!validHref(href)) {
+        errors[`${prefix}${i}href`] =
+          'نشانی باید با / (صفحه‌ای از همین سایت) یا https:// شروع شود.';
+      }
+      rows.push({ title, href, icon: Object.hasOwn(menuIconLabel, icon) ? icon : 'link' });
+    }
+    return rows;
+  };
+  const services = read('s', MAX_SERVICE_ITEMS);
+  const main = read('m', MAX_MAIN_ITEMS).map(({ title, href }) => ({ title, href }));
+  return { menu: { services, main }, errors };
 }

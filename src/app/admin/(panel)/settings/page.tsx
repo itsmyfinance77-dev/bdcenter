@@ -1,7 +1,17 @@
 import { AdminHeading } from '@/components/admin/ui';
 import { requireAdmin } from '@/modules/auth/service';
-import { ALERT_KINDS, getSetting } from '@/modules/settings/service';
-import { AlertSettingsForm, ContactSettingsForm, StatsSettingsForm } from './settings-forms';
+import {
+  ALERT_KINDS,
+  getSetting,
+  MAX_MAIN_ITEMS,
+  MAX_SERVICE_ITEMS,
+} from '@/modules/settings/service';
+import {
+  AlertSettingsForm,
+  ContactSettingsForm,
+  MenuSettingsForm,
+  StatsSettingsForm,
+} from './settings-forms';
 
 export const metadata = { title: 'تنظیمات سایت' };
 
@@ -25,11 +35,22 @@ function Section({
 
 export default async function SettingsPage() {
   await requireAdmin('ADMIN');
-  const [contact, alerts, stats] = await Promise.all([
+  const [contact, alerts, stats, menu] = await Promise.all([
     getSetting('site.contact'),
     getSetting('alerts.recipients'),
     getSetting('home.stats'),
+    getSetting('site.menu'),
   ]);
+  const menuValues: Record<string, string> = {};
+  menu.services.forEach((item, i) => {
+    menuValues[`s${i}title`] = item.title;
+    menuValues[`s${i}href`] = item.href;
+    menuValues[`s${i}icon`] = item.icon;
+  });
+  menu.main.forEach((item, i) => {
+    menuValues[`m${i}title`] = item.title;
+    menuValues[`m${i}href`] = item.href;
+  });
   const statValues = Object.fromEntries(
     stats.flatMap((stat, i) => [
       [`label${i}`, stat.label],
@@ -59,6 +80,16 @@ export default async function SettingsPage() {
               email: contact.email ?? '',
               postalCode: contact.postalCode ?? '',
             }}
+          />
+        </Section>
+        <Section
+          title="منوی سایت"
+          lead="منوی بالای همهٔ صفحه‌ها: زیرمنوی «خدمات» و پیوندهای کنار آن. ردیف خالی نمایش داده نمی‌شود؛ ترتیب ردیف‌ها همان ترتیب منو است. «حساب کاربری» و جستجو همیشه در منو هستند."
+        >
+          <MenuSettingsForm
+            initial={menuValues}
+            serviceRows={MAX_SERVICE_ITEMS}
+            mainRows={MAX_MAIN_ITEMS}
           />
         </Section>
         <Section

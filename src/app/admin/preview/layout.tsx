@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { requireAdmin } from '@/modules/auth/service';
+import { getSiteMenu } from '@/modules/settings/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
  */
 export default async function PreviewLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
+  const menu = await getSiteMenu();
   return (
     <>
       <p
@@ -24,7 +26,7 @@ export default async function PreviewLayout({ children }: { children: React.Reac
       >
         پیش‌نمایش — این صفحه همان‌طور است که پس از انتشار دیده می‌شود. فقط کارمندان آن را می‌بینند.
       </p>
-      <SiteHeader />
+      <SiteHeader menu={menu} />
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
       </main>

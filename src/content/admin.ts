@@ -100,3 +100,21 @@ export const broadcastAudienceLabel = {
   legal: 'نمایندگان تأییدشدهٔ اشخاص حقوقی',
   course: 'ثبت‌نام‌کنندگان یک دوره',
 } as const;
+
+/** Icons staff can pick for a «خدمات» menu item (names from src/components/site/icons.tsx). */
+export const menuIconLabel = {
+  cap: 'کلاه آموزش',
+  chat: 'گفت‌وگو',
+  clock: 'ساعت',
+  calendar: 'تقویم',
+  clipboard: 'فرم',
+  factory: 'کارخانه',
+  cup: 'فنجان',
+  trend: 'نمودار رشد',
+  briefcase: 'کیف',
+  users: 'افراد',
+  building: 'ساختمان',
+  globe: 'کره زمین',
+  spark: 'ستاره',
+  link: 'پیوند',
+} as const;

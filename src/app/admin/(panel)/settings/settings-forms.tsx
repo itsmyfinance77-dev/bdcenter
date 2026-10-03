@@ -4,13 +4,14 @@ import { useActionState } from 'react';
 import {
   fieldState,
   FormMessage,
+  SelectField,
   SubmitButton,
   TextareaField,
   TextField,
 } from '@/components/form-controls';
-import { alertKindLabel } from '@/content/admin';
+import { alertKindLabel, menuIconLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
-import { saveAlertsAction, saveContactAction, saveStatsAction } from './actions';
+import { saveAlertsAction, saveContactAction, saveMenuAction, saveStatsAction } from './actions';
 
 function useForm(
   action: (prev: FormState, data: FormData) => Promise<FormState>,
@@ -85,6 +86,64 @@ export function StatsSettingsForm({ initial }: { initial: Record<string, string>
         </div>
       ))}
       <SubmitButton>ذخیرهٔ اعداد</SubmitButton>
+    </form>
+  );
+}
+
+export function MenuSettingsForm({
+  initial,
+  serviceRows,
+  mainRows,
+}: {
+  initial: Record<string, string>;
+  serviceRows: number;
+  mainRows: number;
+}) {
+  const { state, formAction, field } = useForm(saveMenuAction, initial);
+  const row = (prefix: string, i: number, withIcon: boolean) => (
+    <div
+      key={`${prefix}${i}`}
+      className={`grid gap-3 ${withIcon ? 'sm:grid-cols-[1fr_1fr_160px]' : 'sm:grid-cols-2'}`}
+    >
+      <TextField
+        label={`عنوان ${new Intl.NumberFormat('fa-IR').format(i + 1)}`}
+        {...field(`${prefix}${i}title`)}
+      />
+      <TextField
+        label="نشانی"
+        hint={i === 0 ? 'مثلاً /courses یا https://...' : undefined}
+        {...field(`${prefix}${i}href`)}
+      />
+      {withIcon ? (
+        <SelectField label="نماد" options={menuIconLabel} {...field(`${prefix}${i}icon`)} />
+      ) : null}
+    </div>
+  );
+  return (
+    <form action={formAction} className="space-y-6">
+      <Message state={state} />
+      <fieldset className="space-y-3">
+        <legend className="mb-2 text-sm font-semibold text-ink">زیرمنوی «خدمات»</legend>
+        {Array.from({ length: serviceRows }, (_, i) => row('s', i, true))}
+      </fieldset>
+      <fieldset className="space-y-3">
+        <legend className="mb-2 text-sm font-semibold text-ink">پیوندهای کنار «خدمات»</legend>
+        {Array.from({ length: mainRows }, (_, i) => row('m', i, false))}
+      </fieldset>
+      <div className="flex flex-wrap items-center gap-4">
+        <SubmitButton>ذخیرهٔ منو</SubmitButton>
+        <button
+          type="submit"
+          name="reset"
+          value="1"
+          onClick={(event) => {
+            if (!window.confirm('منوی پیش‌فرض سایت برگردانده شود؟')) event.preventDefault();
+          }}
+          className="text-sm text-danger hover:underline"
+        >
+          برگرداندن منوی پیش‌فرض
+        </button>
+      </div>
     </form>
   );
 }
