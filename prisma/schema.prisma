@@ -182,7 +182,26 @@ model Page {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  revisions PageRevision[]
+
   @@map("pages")
+}
+
+/// The previous content of a page, saved before each change (owner's request,
+/// 2026-10-03), so a mistake can be undone. The newest 30 per page are kept.
+model PageRevision {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  title       String
+  sections    Json
+  seoDesc     String?
+  /// Who saved the change that replaced this version (admin id, audit domain).
+  replacedById String?
+  createdAt   DateTime @default(now())
+
+  @@index([pageId, createdAt])
+  @@map("page_revisions")
 }
 
 enum ArticleKind {

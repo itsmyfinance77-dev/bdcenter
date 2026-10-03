@@ -5,7 +5,12 @@ import { redirect } from 'next/navigation';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
-import { deletePage, pageInputSchema, savePage } from '@/modules/pages/service';
+import {
+  deletePage,
+  pageInputSchema,
+  restorePageRevision,
+  savePage,
+} from '@/modules/pages/service';
 
 export async function savePageAction(
   slug: string | null,
@@ -32,4 +37,11 @@ export async function deletePageAction(slug: string) {
   await deletePage(slug, admin.id);
   revalidatePath('/', 'layout');
   redirect('/admin/pages');
+}
+
+export async function restoreRevisionAction(slug: string, revisionId: string) {
+  const admin = await requireAdmin();
+  const restored = await restorePageRevision(slug, revisionId, admin.id);
+  revalidatePath('/', 'layout');
+  redirect(`/admin/pages/${encodeURIComponent(slug)}?${restored ? 'restored=1' : 'saved=0'}`);
 }

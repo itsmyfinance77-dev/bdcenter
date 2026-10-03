@@ -265,6 +265,7 @@ export async function savePage(
     status: input.status,
     publishedAt: existing?.publishedAt ?? (input.status === 'PUBLISHED' ? new Date() : null),
   };
+  if (existing) await keepRevision(existing, data, actorId);
   const page = existing
     ? await prisma.page.update({ where: { id: existing.id }, data })
     : await prisma.page.create({ data });
@@ -291,6 +292,106 @@ export async function deletePage(slug: string, actorId: string): Promise<boolean
     entity: 'Page',
     entityId: page.id,
     metadata: { slug },
+  });
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Revisions: the content a save replaced, so a mistake can be undone
+// ---------------------------------------------------------------------------
+
+const KEEP_REVISIONS = 30;
+
+type PageRow = NonNullable<Awaited<ReturnType<typeof prisma.page.findUnique>>>;
+
+/** JSON with object keys sorted: PostgreSQL's jsonb does not keep the key order it was given. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([x], [y]) => x.localeCompare(y)))
+      : item,
+  );
+}
+
+/** Stores the current content before it is replaced, when the content actually changes. */
+async function keepRevision(
+  current: PageRow,
+  next: { title: string; sections: unknown; seoDesc: string | null },
+  actorId: string,
+) {
+  const same =
+    current.title === next.title &&
+    current.seoDesc === next.seoDesc &&
+    stableJson(current.sections) === stableJson(next.sections);
+  if (same) return;
+  await prisma.pageRevision.create({
+    data: {
+      pageId: current.id,
+      title: current.title,
+      sections: current.sections ?? [],
+      seoDesc: current.seoDesc,
+      replacedById: actorId,
+    },
+  });
+  const old = await prisma.pageRevision.findMany({
+    where: { pageId: current.id },
+    orderBy: { createdAt: 'desc' },
+    skip: KEEP_REVISIONS,
+    select: { id: true },
+  });
+  if (old.length > 0) {
+    await prisma.pageRevision.deleteMany({ where: { id: { in: old.map((row) => row.id) } } });
+  }
+}
+
+/** Earlier versions of a page, newest first. */
+export async function listPageRevisions(slug: string) {
+  return prisma.pageRevision.findMany({
+    where: { page: { slug } },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, title: true, createdAt: true, replacedById: true },
+  });
+}
+
+/** One earlier version as the site would show it (preview). */
+export async function getPageRevision(slug: string, revisionId: string) {
+  const revision = await prisma.pageRevision.findFirst({
+    where: { id: revisionId, page: { slug } },
+  });
+  if (!revision) return null;
+  const content = contentOf(revision.sections);
+  return {
+    title: revision.title,
+    html: editorHtml(content),
+    seoDesc: revision.seoDesc,
+    createdAt: revision.createdAt,
+  };
+}
+
+/** Puts an earlier version back; the version it replaces is kept as a revision too. */
+export async function restorePageRevision(
+  slug: string,
+  revisionId: string,
+  actorId: string,
+): Promise<boolean> {
+  const page = await prisma.page.findUnique({ where: { slug } });
+  const revision = page
+    ? await prisma.pageRevision.findFirst({ where: { id: revisionId, pageId: page.id } })
+    : null;
+  if (!page || !revision) return false;
+  const data = {
+    title: revision.title,
+    sections: revision.sections ?? [],
+    seoDesc: revision.seoDesc,
+  };
+  await keepRevision(page, data, actorId);
+  await prisma.page.update({ where: { id: page.id }, data });
+  await recordAudit({
+    actorId,
+    action: 'page.restore',
+    entity: 'Page',
+    entityId: page.id,
+    metadata: { slug, revisionId, from: revision.createdAt.toISOString() },
   });
   return true;
 }
