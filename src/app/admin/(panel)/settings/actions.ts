@@ -7,6 +7,7 @@ import { requireAdmin } from '@/modules/auth/service';
 import {
   ALERT_KINDS,
   contactInputSchema,
+  parseHomeStats,
   parseRecipients,
   saveContactInfo,
   setSetting,
@@ -46,4 +47,22 @@ export async function saveAlertsAction(_prev: FormState, formData: FormData): Pr
   await setSetting('alerts.recipients', recipients, admin.id);
   revalidatePath('/admin/settings');
   return { status: 'success', message: 'گیرندگان اطلاع‌رسانی ذخیره شدند.' };
+}
+
+export async function saveStatsAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const { stats, errors } = parseHomeStats(values);
+  if (Object.keys(errors).length > 0) {
+    return { status: 'error', message: GENERIC_ERROR, errors, values };
+  }
+  await setSetting('home.stats', stats, admin.id);
+  revalidatePath('/');
+  return {
+    status: 'success',
+    message:
+      stats.length > 0
+        ? 'اعداد در صفحهٔ اصلی نمایش داده می‌شوند.'
+        : 'بخش «مرکز در یک نگاه» پنهان شد.',
+  };
 }

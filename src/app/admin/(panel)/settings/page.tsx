@@ -1,7 +1,7 @@
 import { AdminHeading } from '@/components/admin/ui';
 import { requireAdmin } from '@/modules/auth/service';
 import { ALERT_KINDS, getSetting } from '@/modules/settings/service';
-import { AlertSettingsForm, ContactSettingsForm } from './settings-forms';
+import { AlertSettingsForm, ContactSettingsForm, StatsSettingsForm } from './settings-forms';
 
 export const metadata = { title: 'تنظیمات سایت' };
 
@@ -25,10 +25,17 @@ function Section({
 
 export default async function SettingsPage() {
   await requireAdmin('ADMIN');
-  const [contact, alerts] = await Promise.all([
+  const [contact, alerts, stats] = await Promise.all([
     getSetting('site.contact'),
     getSetting('alerts.recipients'),
+    getSetting('home.stats'),
   ]);
+  const statValues = Object.fromEntries(
+    stats.flatMap((stat, i) => [
+      [`label${i}`, stat.label],
+      [`value${i}`, stat.value],
+    ]),
+  );
   const alertValues = Object.fromEntries(
     ALERT_KINDS.map((kind) => [
       kind,
@@ -53,6 +60,12 @@ export default async function SettingsPage() {
               postalCode: contact.postalCode ?? '',
             }}
           />
+        </Section>
+        <Section
+          title="مرکز در یک نگاه"
+          lead="تا چهار عدد واقعی از کارنامهٔ مرکز (مثلاً شرکت‌های آموزش‌دیده یا جلسات مشاوره) که در صفحهٔ اصلی نمایش داده می‌شود. تا وقتی همه خالی باشند، این بخش در سایت دیده نمی‌شود."
+        >
+          <StatsSettingsForm initial={statValues} />
         </Section>
         <Section
           title="خبر دادن به کارمندان دربارهٔ درخواست‌های تازه"

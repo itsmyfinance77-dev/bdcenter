@@ -10,7 +10,7 @@ import {
 } from '@/components/form-controls';
 import { alertKindLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
-import { saveAlertsAction, saveContactAction } from './actions';
+import { saveAlertsAction, saveContactAction, saveStatsAction } from './actions';
 
 function useForm(
   action: (prev: FormState, data: FormData) => Promise<FormState>,
@@ -61,6 +61,30 @@ export function AlertSettingsForm({ initial }: { initial: Record<string, string>
         />
       ))}
       <SubmitButton>ذخیرهٔ گیرندگان</SubmitButton>
+    </form>
+  );
+}
+
+export function StatsSettingsForm({ initial }: { initial: Record<string, string> }) {
+  const { state, formAction, field } = useForm(saveStatsAction, initial);
+  return (
+    <form action={formAction} className="space-y-4">
+      <Message state={state} />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="grid gap-3 sm:grid-cols-[1fr_180px]">
+          <TextField
+            label={`عنوان ${['اول', 'دوم', 'سوم', 'چهارم'][i]}`}
+            hint={i === 0 ? 'مثلاً «شرکت آموزش‌دیده»' : undefined}
+            {...field(`label${i}`)}
+          />
+          <TextField
+            label="عدد"
+            hint={i === 0 ? 'مثلاً «۱۲۰+»' : undefined}
+            {...field(`value${i}`)}
+          />
+        </div>
+      ))}
+      <SubmitButton>ذخیرهٔ اعداد</SubmitButton>
     </form>
   );
 }

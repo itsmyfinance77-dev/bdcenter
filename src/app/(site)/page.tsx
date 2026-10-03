@@ -13,7 +13,8 @@ import { formatDate } from '@/lib/format';
 import { plainText } from '@/lib/text';
 import { listPublishedArticles, type ArticleSummary } from '@/modules/content/service';
 import { getSystemPageContent } from '@/modules/pages/service';
-import { getContactInfo, type ContactInfo } from '@/modules/settings/service';
+import { getContactInfo, getHomeStats, type ContactInfo } from '@/modules/settings/service';
+import { AtAGlance } from '@/components/home/at-a-glance';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,10 +78,11 @@ function toCard(article: ArticleSummary): NewsCard {
 const sectionTitle = 'text-[clamp(28px,3.4vw,40px)] leading-[1.35] font-extrabold text-brand-900';
 
 export default async function HomePage() {
-  const [articles, about, contact] = await Promise.all([
+  const [articles, about, contact, stats] = await Promise.all([
     latestArticles(),
     aboutSummary(),
     getContactInfo(),
+    getHomeStats(),
   ]);
 
   return (
@@ -180,6 +182,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <AtAGlance stats={stats} />
 
       <section
         id="news"

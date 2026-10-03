@@ -102,6 +102,7 @@ export const chamberLinkIcons: Record<string, string> = {
 
 /** Home page copy (BDC Yazd design). */
 export const homeCopy = {
+  glanceTitle: 'مرکز در یک نگاه',
   heroBadge: 'پارک علم و فناوری یزد',
   heroLead:
     'بستری مناسب برای معرفی ایده‌ها، طرح‌ها و ظرفیت‌های نوآورانه به صنایع، واحدهای تولیدی و سرمایه‌گذاران',

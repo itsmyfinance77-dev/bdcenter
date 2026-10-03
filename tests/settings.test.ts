@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contactInputSchema, parseRecipients } from '@/modules/settings/service';
+import { contactInputSchema, parseHomeStats, parseRecipients } from '@/modules/settings/service';
 
 describe('staff alert recipients', () => {
   it('splits mobile numbers and emails, normalizing digits and prefixes', () => {
@@ -24,5 +24,14 @@ describe('contact details', () => {
       address: 'یزد',
       phone: '035-91091050',
     });
+  });
+});
+
+describe('home-page figures', () => {
+  it('keeps filled pairs, skips empty rows and flags half-filled ones', () => {
+    expect(
+      parseHomeStats({ label0: 'شرکت آموزش‌دیده', value0: '۱۲۰+', label2: '', value2: '' }),
+    ).toEqual({ stats: [{ label: 'شرکت آموزش‌دیده', value: '۱۲۰+' }], errors: {} });
+    expect(parseHomeStats({ value1: '9' }).errors).toHaveProperty('label1');
   });
 });

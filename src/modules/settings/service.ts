@@ -26,11 +26,19 @@ const recipientsSchema = z.object({ phones: z.array(z.string()), emails: z.array
 export type AlertRecipients = z.infer<typeof recipientsSchema>;
 const alertsSchema = z.record(z.enum(ALERT_KINDS), recipientsSchema);
 
+const statsSchema = z.array(z.object({ label: z.string(), value: z.string() })).max(4);
+export type HomeStat = z.infer<typeof statsSchema>[number];
+
 const definitions = {
   /** Members must upload an image of their national card (owner's request: optional until an ADMIN decides). */
   'members.nationalCardRequired': { schema: z.boolean(), fallback: false },
   /** The center's contact details shown in the footer, contact page and structured data. */
   'site.contact': { schema: contactSchema, fallback: { ...siteInfo.contact } as ContactInfo },
+  /**
+   * «مرکز در یک نگاه» figures on the home page (OQ-BD-18): real numbers the
+   * center enters; the band stays hidden while the list is empty.
+   */
+  'home.stats': { schema: statsSchema, fallback: [] as HomeStat[] },
   /** Who hears (SMS / email) about each kind of new request. */
   'alerts.recipients': {
     schema: alertsSchema,
@@ -146,4 +154,31 @@ export function parseRecipients(text: string): AlertRecipients & { invalid: stri
     }
   }
   return { phones, emails, invalid };
+}
+
+/** The home-page figures; empty (band hidden) when the database is unreachable. */
+export async function getHomeStats(): Promise<HomeStat[]> {
+  try {
+    return await getSetting('home.stats');
+  } catch (error) {
+    console.error('getHomeStats: hiding the band', error);
+    return [];
+  }
+}
+
+/** Reads the four label/value pairs of the settings form; half-filled rows are errors. */
+export function parseHomeStats(values: Record<string, string>) {
+  const stats: HomeStat[] = [];
+  const errors: Record<string, string> = {};
+  for (let i = 0; i < 4; i += 1) {
+    const label = (values[`label${i}`] ?? '').trim();
+    const value = (values[`value${i}`] ?? '').trim();
+    if (!label && !value) continue;
+    if (!label) errors[`label${i}`] = 'عنوان این عدد را بنویسید.';
+    else if (label.length > 60) errors[`label${i}`] = 'عنوان بیش از حد طولانی است.';
+    if (!value) errors[`value${i}`] = 'عدد را بنویسید.';
+    else if (value.length > 20) errors[`value${i}`] = 'عدد بیش از حد طولانی است.';
+    stats.push({ label, value });
+  }
+  return { stats, errors };
 }
