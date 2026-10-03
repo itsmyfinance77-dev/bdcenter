@@ -1,7 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useActionState } from 'react';
 import {
+  Field,
   fieldState,
   FormMessage,
   SelectField,
@@ -13,7 +15,15 @@ import { serviceLabel } from '@/content/appointments';
 import type { FormState } from '@/lib/form-state';
 import { saveStaffAction } from './actions';
 
-export function StaffForm({ id, initial }: { id: string | null; initial: Record<string, string> }) {
+export function StaffForm({
+  id,
+  initial,
+  photoUrl,
+}: {
+  id: string | null;
+  initial: Record<string, string>;
+  photoUrl: string | null;
+}) {
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveStaffAction.bind(null, id), initialState);
   const field = (name: string) => fieldState(state, name);
@@ -37,6 +47,13 @@ export function StaffForm({ id, initial }: { id: string | null; initial: Record<
         <TextField label="نام و نام خانوادگی" required {...field('fullName')} />
         <TextField label="سمت یا تخصص" hint="مثلاً «مشاور بازاریابی»" {...field('title')} />
         <TextField
+          label="شماره همراه"
+          type="tel"
+          required
+          hint="تاریخ و ساعت هر نوبتی که رزرو یا لغو شود به این شماره پیامک می‌شود."
+          {...field('mobile')}
+        />
+        <TextField
           label="ایمیل برای اطلاع از رزروها"
           type="email"
           hint="اختیاری؛ با هر رزرو جدید ایمیل می‌گیرد."
@@ -49,6 +66,33 @@ export function StaffForm({ id, initial }: { id: string | null; initial: Record<
           {...field('sortOrder')}
         />
       </div>
+      <fieldset className="space-y-3 rounded-card border border-line p-4">
+        <legend className="px-1 text-sm font-medium text-ink">عکس</legend>
+        {photoUrl ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative size-24 overflow-hidden rounded-full bg-surface-2">
+              <Image src={photoUrl} alt="" fill unoptimized sizes="6rem" className="object-cover" />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                name="removePhoto"
+                defaultChecked={state.status === 'error' && state.values.removePhoto === 'on'}
+                className="size-4 accent-primary"
+              />
+              حذف عکس فعلی
+            </label>
+          </div>
+        ) : null}
+        <Field
+          {...field('photo')}
+          label={photoUrl ? 'عکس جدید' : 'عکس مشاور'}
+          defaultValue={undefined}
+          hint="JPG، PNG یا WebP تا ۱۰ مگابایت؛ بهتر است مربعی و از روبه‌رو باشد. اگر فرم خطا داد، عکس را دوباره انتخاب کنید."
+        >
+          {(control) => <input {...control} type="file" accept="image/jpeg,image/png,image/webp" />}
+        </Field>
+      </fieldset>
       <TextareaField
         label="معرفی"
         rows={6}

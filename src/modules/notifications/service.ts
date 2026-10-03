@@ -1,6 +1,11 @@
-import { bookingNotice, serviceLabel, staffBookingNotice } from '@/content/appointments';
+import {
+  bookingNotice,
+  serviceLabel,
+  staffBookingNotice,
+  staffBookingSms,
+} from '@/content/appointments';
 import { consultingNotice, enrollmentNotice } from '@/content/notifications';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { mobilePhone } from '@/lib/validation';
 import { getBookingContact } from '@/modules/appointments/service';
@@ -90,37 +95,72 @@ export async function notifyConsultingStatus(requestId: string, status: string) 
 
 /**
  * Booking messages: the member hears about a new booking and a cancellation
- * by staff; on a new booking the staff member also gets an email if one is set.
+ * by staff. The staff member gets an SMS with the date and time of a new
+ * booking and of a cancellation by the member (owner's request, 2026-10-03),
+ * and an email about a new booking if one is set.
  */
-export async function notifyBooking(bookingId: string, event: 'booked' | 'cancelledByStaff') {
+export async function notifyBooking(
+  bookingId: string,
+  event: 'booked' | 'cancelledByStaff' | 'cancelledByMember',
+) {
   const booking = await getBookingContact(bookingId);
   if (!booking) return;
   const service = serviceLabel[booking.slot.staff.service];
   const when = formatDateTime(booking.slot.startsAt);
-  await deliver({
-    entity: 'Booking',
-    entityId: bookingId,
-    event: `booking.${event}`,
-    phone: booking.phone,
-    email: booking.email,
-    notice: bookingNotice[event](service, booking.slot.staff.fullName, when, accountLink()),
-  });
-  if (event === 'booked' && booking.slot.staff.email && emailAvailable()) {
-    const sent = await sendEmail({
-      to: booking.slot.staff.email,
-      ...staffBookingNotice(booking.fullName, booking.topic, when),
-    });
-    await prisma.notification.create({
-      data: {
-        entity: 'Booking',
-        entityId: bookingId,
-        event: 'booking.staffAlert',
-        channel: 'EMAIL',
-        recipient: booking.slot.staff.email,
-        status: sent ? 'SENT' : 'FAILED',
-      },
+  if (event !== 'cancelledByMember') {
+    await deliver({
+      entity: 'Booking',
+      entityId: bookingId,
+      event: `booking.${event}`,
+      phone: booking.phone,
+      email: booking.email,
+      notice: bookingNotice[event](service, booking.slot.staff.fullName, when, accountLink()),
     });
   }
+  if (event === 'cancelledByStaff') return;
+
+  const staff = booking.slot.staff;
+  const text =
+    event === 'booked'
+      ? staffBookingSms.booked(
+          booking.fullName,
+          toPersianDigits(booking.phone),
+          booking.topic,
+          when,
+        )
+      : staffBookingSms.cancelledByMember(booking.fullName, when);
+  const mobile = mobilePhone.safeParse(staff.mobile ?? undefined);
+  if (mobile.success) {
+    const sender = smsSender();
+    const sent = sender ? await sender.send(mobile.data, text) : false;
+    await logStaffMessage(bookingId, `booking.staff.${event}`, 'SMS', mobile.data, sent);
+  }
+  if (event === 'booked' && staff.email && emailAvailable()) {
+    const sent = await sendEmail({
+      to: staff.email,
+      ...staffBookingNotice(booking.fullName, booking.topic, when),
+    });
+    await logStaffMessage(bookingId, 'booking.staffAlert', 'EMAIL', staff.email, sent);
+  }
+}
+
+function logStaffMessage(
+  bookingId: string,
+  event: string,
+  channel: 'SMS' | 'EMAIL',
+  recipient: string,
+  sent: boolean,
+) {
+  return prisma.notification.create({
+    data: {
+      entity: 'Booking',
+      entityId: bookingId,
+      event,
+      channel,
+      recipient,
+      status: sent ? 'SENT' : 'FAILED',
+    },
+  });
 }
 
 /** Statuses that send a message when an admin chooses to notify. */

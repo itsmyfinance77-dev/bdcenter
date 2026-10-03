@@ -479,6 +479,12 @@ model StaffProfile {
   bio       String? // Markdown
   /// Optional: receives an email for each new booking.
   email     String?
+  /// Mobile number (09…): gets an SMS with the date and time of each new
+  /// booking and of each cancellation by the member. Required in the form.
+  mobile    String?
+  /// Photo shown on the booking pages: storage key of the large WebP
+  /// (`staff/<uuid>.webp`, see storeImage); a new upload gets a new key.
+  photoKey  String?
   isActive  Boolean            @default(true)
   sortOrder Int                @default(0)
   createdAt DateTime           @default(now())

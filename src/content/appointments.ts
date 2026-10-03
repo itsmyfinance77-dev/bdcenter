@@ -62,3 +62,15 @@ export const staffBookingNotice = (who: string, topic: string, when: string): No
   subject: `نوبت جدید: ${when}`,
   text: `${who} برای ${when} نوبت رزرو کرد.\nموضوع: ${topic}\n${signature}`,
 });
+
+/** SMS to the staff member (consultant) about their own appointments. */
+export const staffBookingSms = {
+  booked: (who: string, phone: string, topic: string, when: string): string =>
+    `نوبت جدید برای شما: ${when}
+${who} (${phone})
+موضوع: ${topic}
+${signature}`,
+  cancelledByMember: (who: string, when: string): string =>
+    `نوبت ${when} با ${who} از طرف مراجعه‌کننده لغو شد.
+${signature}`,
+};

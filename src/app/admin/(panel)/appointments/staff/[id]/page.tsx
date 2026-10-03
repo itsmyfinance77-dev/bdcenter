@@ -3,7 +3,7 @@ import { ConfirmButton } from '@/components/admin/confirm-button';
 import { AdminHeading, dangerButtonClass, EmptyState, Table, Td } from '@/components/admin/ui';
 import { bookingStatusLabel, serviceLabel } from '@/content/appointments';
 import { formatNumber, formatTime, formatWeekdayDate, toPersianDigits } from '@/lib/format';
-import { getStaffForAdmin, listSlotsForAdmin } from '@/modules/appointments/service';
+import { getStaffForAdmin, listSlotsForAdmin, staffPhotoUrl } from '@/modules/appointments/service';
 import {
   cancelSlotAction,
   deleteSlotAction,
@@ -35,6 +35,7 @@ export default async function StaffPage({
     title: staff.title ?? '',
     bio: staff.bio ?? '',
     email: staff.email ?? '',
+    mobile: staff.mobile ?? '',
     isActive: staff.isActive ? 'on' : '',
     sortOrder: String(staff.sortOrder),
   };
@@ -65,7 +66,16 @@ export default async function StaffPage({
           این پروفایل نوبت ثبت‌شده دارد و حذف نمی‌شود؛ به‌جای حذف، آن را غیرفعال کنید.
         </p>
       ) : null}
-      <StaffForm key={staff.updatedAt.toISOString()} id={staff.id} initial={initial} />
+      <StaffForm
+        key={staff.updatedAt.toISOString()}
+        id={staff.id}
+        initial={initial}
+        photoUrl={
+          staff.photoKey
+            ? `/admin/appointments/staff/${staff.id}/photo/sm?v=${staffPhotoUrl(staff.photoKey)?.split('/')[2]}`
+            : null
+        }
+      />
 
       <section aria-labelledby="add-slot" className="mt-8 grid gap-6 xl:grid-cols-2">
         <div className="rounded-panel border border-line bg-white p-6">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import {
@@ -13,6 +14,7 @@ import {
   updateProfile,
 } from '@/modules/members/service';
 import { cancelBookingByMember } from '@/modules/appointments/service';
+import { notifyBooking } from '@/modules/notifications/service';
 import { cancelEnrollment } from '@/modules/training/service';
 
 export async function saveProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -49,7 +51,9 @@ export async function memberLogoutEverywhereAction() {
 
 export async function cancelBookingAction(bookingId: string) {
   const member = await requireMember();
-  await cancelBookingByMember(bookingId, member.id);
+  if (await cancelBookingByMember(bookingId, member.id)) {
+    after(() => notifyBooking(bookingId, 'cancelledByMember'));
+  }
   revalidatePath('/account');
   revalidatePath('/appointments', 'layout');
 }
