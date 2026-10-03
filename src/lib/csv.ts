@@ -1,6 +1,9 @@
-/** Neutralizes spreadsheet formulas (CSV injection) and quotes the cell. */
+/**
+ * Neutralizes spreadsheet formulas (CSV injection) and quotes the cell. Some
+ * spreadsheet programs skip leading spaces before a formula, so those count too.
+ */
 export function csvCell(text: string): string {
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  const safe = /^ *[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 

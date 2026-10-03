@@ -27,7 +27,8 @@ export async function saveCourseAction(
   if (!parsed.success) {
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
-  const result = await saveCourse(id, parsed.data, admin.id);
+  const cover = formData.get('coverImage');
+  const result = await saveCourse(id, parsed.data, admin.id, cover instanceof File ? cover : null);
   if (!result.ok) {
     return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
   }

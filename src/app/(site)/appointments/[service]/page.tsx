@@ -1,11 +1,16 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MarkdownBody } from '@/components/markdown';
+import { RichBody } from '@/components/rich-body';
 import { PageHeader } from '@/components/page-header';
 import { appointmentsCopy, serviceLabel } from '@/content/appointments';
 import { formatTime, formatWeekdayDate } from '@/lib/format';
-import { listStaffWithFreeSlots, serviceBySlug } from '@/modules/appointments/service';
+import {
+  listStaffWithFreeSlots,
+  serviceBySlug,
+  staffPhotoUrl,
+} from '@/modules/appointments/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,13 +58,29 @@ export default async function AppointmentsPage({ params }: { params: Promise<Par
               className="grid gap-6 rounded-panel border border-line bg-white p-6 lg:grid-cols-[280px_1fr]"
             >
               <div>
-                <h2 id={`staff-${person.id}`} className="text-lg font-bold text-brand-900">
-                  {person.fullName}
-                </h2>
-                {person.title ? <p className="text-sm text-ink-2">{person.title}</p> : null}
-                {person.bio ? (
+                <div className="flex items-center gap-4">
+                  {staffPhotoUrl(person.photoKey) ? (
+                    <div className="relative size-20 flex-none overflow-hidden rounded-full bg-surface-2">
+                      <Image
+                        src={staffPhotoUrl(person.photoKey)!}
+                        alt={person.fullName}
+                        fill
+                        unoptimized
+                        sizes="5rem"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : null}
+                  <div>
+                    <h2 id={`staff-${person.id}`} className="text-lg font-bold text-brand-900">
+                      {person.fullName}
+                    </h2>
+                    {person.title ? <p className="text-sm text-ink-2">{person.title}</p> : null}
+                  </div>
+                </div>
+                {person.bio || person.bioHtml ? (
                   <div className="mt-3 text-sm [&_*]:text-sm [&_*]:leading-7">
-                    <MarkdownBody source={person.bio} />
+                    <RichBody html={person.bioHtml} markdown={person.bio} />
                   </div>
                 ) : null}
               </div>

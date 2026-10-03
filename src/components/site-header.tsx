@@ -6,14 +6,15 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { SearchForm } from '@/components/search-form';
 import { Icon, type IconName } from '@/components/site/icons';
-import { accountLink, mainNav, searchCopy, servicesMenu, siteInfo } from '@/content/site';
+import { accountLink, searchCopy, siteInfo } from '@/content/site';
+import type { SiteMenu } from '@/modules/settings/service';
 
 /**
  * Sticky navy header (BDC Yazd design). On the home page it starts
  * translucent over the hero and turns solid once the page scrolls. Below the
  * `nav` breakpoint the links move into a slide-in drawer.
  */
-export function SiteHeader() {
+export function SiteHeader({ menu }: { menu: SiteMenu }) {
   const pathname = usePathname();
   const overlay = pathname === '/';
   const [scrolled, setScrolled] = useState(false);
@@ -65,7 +66,7 @@ export function SiteHeader() {
 
   const solid = !overlay || scrolled;
   const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const servicesActive = servicesMenu.some((item) => isCurrent(item.href));
+  const servicesActive = menu.services.some((item) => isCurrent(item.href));
   const navItemClass =
     'flex h-11 items-center rounded-[10px] px-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-white/8 hover:text-white';
 
@@ -140,8 +141,8 @@ export function SiteHeader() {
                   }`}
                 >
                   <ul className="flex flex-col gap-0.5 rounded-2xl bg-white p-2 shadow-[0_24px_60px_-16px_rgba(8,26,68,.45),0_0_0_1px_rgba(14,26,51,.06)]">
-                    {servicesMenu.map((item) => (
-                      <li key={item.href}>
+                    {menu.services.map((item, index) => (
+                      <li key={`${index}-${item.href}`}>
                         <Link
                           href={item.href}
                           aria-current={isCurrent(item.href) ? 'page' : undefined}
@@ -158,8 +159,8 @@ export function SiteHeader() {
                   </ul>
                 </div>
               </li>
-              {mainNav.map((item) => (
-                <li key={item.href}>
+              {menu.main.map((item, index) => (
+                <li key={`${index}-${item.href}`}>
                   <Link
                     href={item.href}
                     aria-current={isCurrent(item.href) ? 'page' : undefined}
@@ -263,8 +264,8 @@ export function SiteHeader() {
                     id="mobile-services"
                     className="ms-3.5 flex flex-col gap-0.5 border-s border-white/14 py-1.5 pe-2"
                   >
-                    {servicesMenu.map((item) => (
-                      <li key={item.href}>
+                    {menu.services.map((item, index) => (
+                      <li key={`${index}-${item.href}`}>
                         <Link
                           href={item.href}
                           aria-current={isCurrent(item.href) ? 'page' : undefined}
@@ -279,8 +280,8 @@ export function SiteHeader() {
                   </ul>
                 ) : null}
               </li>
-              {[...mainNav, accountLink].map((item) => (
-                <li key={item.href}>
+              {[...menu.main, accountLink].map((item, index) => (
+                <li key={`${index}-${item.href}`}>
                   <Link
                     href={item.href}
                     aria-current={isCurrent(item.href) ? 'page' : undefined}

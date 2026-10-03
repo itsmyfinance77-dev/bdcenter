@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { memberCopy } from '@/content/members';
 import { appointmentsCopy, serviceLabel } from '@/content/appointments';
 import { formatDateTime, formatTime } from '@/lib/format';
-import { getSlotForBooking, slugByService } from '@/modules/appointments/service';
+import { getSlotForBooking, slugByService, staffPhotoUrl } from '@/modules/appointments/service';
 import { getCurrentMember } from '@/modules/members/service';
 import { BookingForm } from './booking-form';
 
@@ -45,9 +47,23 @@ export default async function BookSlotPage({ params }: { params: Promise<{ slotI
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-ink-2">با</dt>
-              <dd className="text-end text-ink">
-                {slot.staff.fullName}
-                {slot.staff.title ? ` — ${slot.staff.title}` : null}
+              <dd className="flex items-center gap-3 text-end text-ink">
+                {staffPhotoUrl(slot.staff.photoKey) ? (
+                  <span className="relative size-10 flex-none overflow-hidden rounded-full bg-surface-2">
+                    <Image
+                      src={staffPhotoUrl(slot.staff.photoKey)!}
+                      alt=""
+                      fill
+                      unoptimized
+                      sizes="2.5rem"
+                      className="object-cover"
+                    />
+                  </span>
+                ) : null}
+                <span>
+                  {slot.staff.fullName}
+                  {slot.staff.title ? ` — ${slot.staff.title}` : null}
+                </span>
               </dd>
             </div>
             <div className="flex justify-between gap-4">
@@ -78,9 +94,11 @@ export default async function BookSlotPage({ params }: { params: Promise<{ slotI
             >
               {appointmentsCopy.loginToBook}
             </Link>
-          ) : !member.fullName ? (
+          ) : member.access !== 'ok' ? (
             <Link href={`/account?next=${encodeURIComponent(path)}`} className={primaryButton}>
-              {appointmentsCopy.profileNeeded}
+              {member.access === 'incomplete'
+                ? appointmentsCopy.profileNeeded
+                : memberCopy.blocked[member.access]}
             </Link>
           ) : (
             <BookingForm slotId={slot.id} />

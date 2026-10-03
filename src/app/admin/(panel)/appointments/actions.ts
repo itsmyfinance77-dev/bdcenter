@@ -41,9 +41,13 @@ export async function saveStaffAction(
   if (!parsed.success) {
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
-  const staffId = await saveStaff(id, parsed.data, admin.id);
+  const photo = formData.get('photo');
+  const result = await saveStaff(id, parsed.data, photo instanceof File ? photo : null, admin.id);
+  if (!result.ok) {
+    return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
+  }
   refresh();
-  redirect(`/admin/appointments/staff/${staffId}?saved=1`);
+  redirect(`/admin/appointments/staff/${result.id}?saved=1`);
 }
 
 export async function deleteStaffAction(id: string) {

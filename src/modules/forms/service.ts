@@ -121,7 +121,7 @@ function valueSchema(field: PublicFormField): z.ZodTypeAny {
 }
 
 export type SubmitResult =
-  | { ok: true }
+  | { ok: true; formTitle: string }
   | { ok: false; reason: 'not-found' }
   | { ok: false; reason: 'invalid'; errors: Record<string, string> };
 
@@ -176,7 +176,7 @@ export async function submitForm(
       data: data as Prisma.InputJsonObject,
     },
   });
-  return { ok: true };
+  return { ok: true, formTitle: form.title };
 }
 
 // ---------------------------------------------------------------------------

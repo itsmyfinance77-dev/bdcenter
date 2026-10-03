@@ -1,13 +1,22 @@
-import { bookingNotice, serviceLabel, staffBookingNotice } from '@/content/appointments';
+import {
+  bookingNotice,
+  serviceLabel,
+  staffBookingNotice,
+  staffBookingSms,
+} from '@/content/appointments';
+import { memberReviewSms } from '@/content/members';
 import { consultingNotice, enrollmentNotice } from '@/content/notifications';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { mobilePhone } from '@/lib/validation';
 import { getBookingContact } from '@/modules/appointments/service';
 import { getConsultingRequest } from '@/modules/consulting/service';
+import { getMemberContact } from '@/modules/members/service';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSender } from '@/modules/messaging/sms';
 import { getEnrollmentContact } from '@/modules/training/service';
+import { alertKindLabel } from '@/content/admin';
+import { getSetting, type AlertKind } from '@/modules/settings/service';
 
 /**
  * Tells applicants about status changes (OQ-BD-13, requested by the owner on
@@ -19,7 +28,7 @@ import { getEnrollmentContact } from '@/modules/training/service';
 type Notice = { subject: string; text: string };
 
 type Target = {
-  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking';
+  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member' | 'StaffAlert';
   entityId: string;
   event: string;
   phone: string | null;
@@ -90,37 +99,128 @@ export async function notifyConsultingStatus(requestId: string, status: string) 
 
 /**
  * Booking messages: the member hears about a new booking and a cancellation
- * by staff; on a new booking the staff member also gets an email if one is set.
+ * by staff. The staff member gets an SMS with the date and time of a new
+ * booking and of a cancellation by the member (owner's request, 2026-10-03),
+ * and an email about a new booking if one is set.
  */
-export async function notifyBooking(bookingId: string, event: 'booked' | 'cancelledByStaff') {
+export async function notifyBooking(
+  bookingId: string,
+  event: 'booked' | 'cancelledByStaff' | 'cancelledByMember',
+) {
   const booking = await getBookingContact(bookingId);
   if (!booking) return;
   const service = serviceLabel[booking.slot.staff.service];
   const when = formatDateTime(booking.slot.startsAt);
-  await deliver({
-    entity: 'Booking',
-    entityId: bookingId,
-    event: `booking.${event}`,
-    phone: booking.phone,
-    email: booking.email,
-    notice: bookingNotice[event](service, booking.slot.staff.fullName, when, accountLink()),
-  });
-  if (event === 'booked' && booking.slot.staff.email && emailAvailable()) {
-    const sent = await sendEmail({
-      to: booking.slot.staff.email,
-      ...staffBookingNotice(booking.fullName, booking.topic, when),
-    });
-    await prisma.notification.create({
-      data: {
-        entity: 'Booking',
-        entityId: bookingId,
-        event: 'booking.staffAlert',
-        channel: 'EMAIL',
-        recipient: booking.slot.staff.email,
-        status: sent ? 'SENT' : 'FAILED',
-      },
+  if (event !== 'cancelledByMember') {
+    await deliver({
+      entity: 'Booking',
+      entityId: bookingId,
+      event: `booking.${event}`,
+      phone: booking.phone,
+      email: booking.email,
+      notice: bookingNotice[event](service, booking.slot.staff.fullName, when, accountLink()),
     });
   }
+  if (event === 'cancelledByStaff') return;
+
+  const staff = booking.slot.staff;
+  const text =
+    event === 'booked'
+      ? staffBookingSms.booked(
+          booking.fullName,
+          toPersianDigits(booking.phone),
+          booking.topic,
+          when,
+        )
+      : staffBookingSms.cancelledByMember(booking.fullName, when);
+  const mobile = mobilePhone.safeParse(staff.mobile ?? undefined);
+  if (mobile.success) {
+    const sender = smsSender();
+    const sent = sender ? await sender.send(mobile.data, text) : false;
+    await logStaffMessage(bookingId, `booking.staff.${event}`, 'SMS', mobile.data, sent);
+  }
+  if (event === 'booked' && staff.email && emailAvailable()) {
+    const sent = await sendEmail({
+      to: staff.email,
+      ...staffBookingNotice(booking.fullName, booking.topic, when),
+    });
+    await logStaffMessage(bookingId, 'booking.staffAlert', 'EMAIL', staff.email, sent);
+  }
+}
+
+function logStaffMessage(
+  bookingId: string,
+  event: string,
+  channel: 'SMS' | 'EMAIL',
+  recipient: string,
+  sent: boolean,
+) {
+  return prisma.notification.create({
+    data: {
+      entity: 'Booking',
+      entityId: bookingId,
+      event,
+      channel,
+      recipient,
+      status: sent ? 'SENT' : 'FAILED',
+    },
+  });
+}
+
+/** Tells a legal-entity representative the result of an ADMIN's review. */
+export async function notifyMemberReview(memberId: string, decision: 'APPROVED' | 'REJECTED') {
+  const member = await getMemberContact(memberId);
+  if (!member) return;
+  const text = memberReviewSms[decision](member.companyName ?? '', accountLink());
+  await deliver({
+    entity: 'Member',
+    entityId: memberId,
+    event: `member.${decision}`,
+    phone: member.phone,
+    email: member.email,
+    notice: { subject: 'نتیجهٔ بررسی حساب کاربری', text },
+  });
+}
+
+/**
+ * Tells the staff chosen in «تنظیمات سایت» about a new request (owner's
+ * request, 2026-10-03), by SMS and/or email, with a link into the panel.
+ * Runs after the response; every attempt is logged.
+ */
+export async function alertStaff(kind: AlertKind, text: string, panelPath: string) {
+  const recipients = (await getSetting('alerts.recipients'))[kind];
+  if (!recipients) return;
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010';
+  const body = `${text}\n${new URL(panelPath, base).toString()}`;
+  const sender = recipients.phones.length > 0 ? smsSender() : null;
+  for (const phone of recipients.phones) {
+    const sent = sender ? await sender.send(phone, body) : false;
+    await logStaffAlert(kind, 'SMS', phone, sent);
+  }
+  if (emailAvailable()) {
+    for (const to of recipients.emails) {
+      const sent = await sendEmail({ to, subject: alertKindLabel[kind], text: body });
+      await logStaffAlert(kind, 'EMAIL', to, sent);
+    }
+  }
+}
+
+function logStaffAlert(
+  kind: AlertKind,
+  channel: 'SMS' | 'EMAIL',
+  recipient: string,
+  sent: boolean,
+) {
+  return prisma.notification.create({
+    data: {
+      entity: 'StaffAlert',
+      entityId: kind,
+      event: `alert.${kind}`,
+      channel,
+      recipient,
+      status: sent ? 'SENT' : 'FAILED',
+    },
+  });
 }
 
 /** Statuses that send a message when an admin chooses to notify. */

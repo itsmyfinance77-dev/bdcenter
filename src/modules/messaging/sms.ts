@@ -9,6 +9,8 @@
  * "verify" template API when a template is configured.
  */
 
+import { sandboxSms } from './sandbox';
+
 export type SmsSender = {
   /** Sends a sign-in code; uses the provider's OTP template when one is set. */
   sendOtp(phone: string, code: string, fallbackText: string): Promise<boolean>;
@@ -151,6 +153,7 @@ export function consoleSms(env: Env): SmsSender | null {
 
 const providers: Record<string, (env: Env) => SmsSender | null> = {
   console: consoleSms,
+  sandbox: sandboxSms,
   kavenegar,
   smsir: smsIr,
 };

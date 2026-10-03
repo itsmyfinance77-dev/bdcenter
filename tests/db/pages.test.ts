@@ -5,7 +5,10 @@ import {
   getPageForAdmin,
   getPublishedPage,
   getSystemPageContent,
+  getPageRevision,
+  listPageRevisions,
   listPublishedSystemPages,
+  restorePageRevision,
   savePage,
 } from '@/modules/pages/service';
 
@@ -52,7 +55,7 @@ describe('built-in pages', () => {
     await prisma.page.deleteMany({ where: { slug: 'privacy' } });
     const draft = await getPageForAdmin('privacy');
     expect(draft).toMatchObject({ exists: false, isSystem: true, status: 'DRAFT' });
-    expect(draft!.body).toContain('شماره همراه');
+    expect(draft!.html).toContain('شماره همراه');
     expect(await getSystemPageContent('privacy')).toBeNull();
 
     // A slug in the input is ignored for built-in pages.
@@ -105,5 +108,28 @@ describe('custom pages', () => {
     );
     expect(await getPublishedPage(`${PREFIX}renamed`)).toBeNull();
     expect(await deletePage(`${PREFIX}renamed`, actorId)).toBe(true);
+  });
+});
+
+describe('page history', () => {
+  it('keeps the replaced content and puts it back on request', async () => {
+    const slug = `${PREFIX}history`;
+    await savePage(null, input({ slug, title: 'نسخهٔ یک', body: '<p>متن اول</p>' }), actorId);
+    // Saving the same content again adds no version.
+    await savePage(slug, input({ slug, title: 'نسخهٔ یک', body: '<p>متن اول</p>' }), actorId);
+    expect(await listPageRevisions(slug)).toHaveLength(0);
+
+    await savePage(slug, input({ slug, title: 'نسخهٔ دو', body: '<p>متن دوم</p>' }), actorId);
+    const [first] = await listPageRevisions(slug);
+    expect(first?.title).toBe('نسخهٔ یک');
+    expect((await getPageRevision(slug, first!.id))?.html).toContain('متن اول');
+
+    expect(await restorePageRevision(slug, first!.id, actorId)).toBe(true);
+    const page = await getPageForAdmin(slug);
+    expect(page?.title).toBe('نسخهٔ یک');
+    expect(page?.html).toContain('متن اول');
+    // The version the restore replaced is kept too.
+    expect((await listPageRevisions(slug)).map((r) => r.title)).toEqual(['نسخهٔ دو', 'نسخهٔ یک']);
+    expect(await restorePageRevision(`${PREFIX}other`, first!.id, actorId)).toBe(false);
   });
 });

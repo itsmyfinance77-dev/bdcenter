@@ -13,6 +13,8 @@ import { formatDate } from '@/lib/format';
 import { plainText } from '@/lib/text';
 import { listPublishedArticles, type ArticleSummary } from '@/modules/content/service';
 import { getSystemPageContent } from '@/modules/pages/service';
+import { getContactInfo, getHomeStats, type ContactInfo } from '@/modules/settings/service';
+import { AtAGlance } from '@/components/home/at-a-glance';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,14 +32,14 @@ async function latestArticles(): Promise<ArticleSummary[]> {
 async function aboutSummary(): Promise<string> {
   try {
     const page = await getSystemPageContent('about');
-    return page ? plainText(page.body) : aboutText;
+    return page ? plainText(page.text) : aboutText;
   } catch (error) {
     console.error('Home page: could not load the about page', error);
     return aboutText;
   }
 }
 
-function organizationJsonLd() {
+function organizationJsonLd(contact: ContactInfo) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `https://${siteInfo.domain}`;
   return {
     '@context': 'https://schema.org',
@@ -45,10 +47,10 @@ function organizationJsonLd() {
     name: siteInfo.name,
     url: siteUrl,
     logo: new URL('/brand/bdc-logo.png', siteUrl).toString(),
-    telephone: siteInfo.contact.phone,
+    telephone: contact.phone,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: siteInfo.contact.address,
+      streetAddress: contact.address,
       addressLocality: 'یزد',
       addressCountry: 'IR',
     },
@@ -76,7 +78,12 @@ function toCard(article: ArticleSummary): NewsCard {
 const sectionTitle = 'text-[clamp(28px,3.4vw,40px)] leading-[1.35] font-extrabold text-brand-900';
 
 export default async function HomePage() {
-  const [articles, about] = await Promise.all([latestArticles(), aboutSummary()]);
+  const [articles, about, contact, stats] = await Promise.all([
+    latestArticles(),
+    aboutSummary(),
+    getContactInfo(),
+    getHomeStats(),
+  ]);
 
   return (
     <>
@@ -85,7 +92,7 @@ export default async function HomePage() {
         type="application/ld+json"
         // Static, server-built object; `<` is escaped so the payload cannot close the tag.
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd()).replace(/</g, '\\u003c'),
+          __html: JSON.stringify(organizationJsonLd(contact)).replace(/</g, '\\u003c'),
         }}
       />
 
@@ -171,10 +178,12 @@ export default async function HomePage() {
             </p>
           </div>
           <div data-reveal="" data-reveal-delay="100">
-            <AboutReveal text={about} />
+            <AboutReveal text={about} address={contact.address} />
           </div>
         </div>
       </section>
+
+      <AtAGlance stats={stats} />
 
       <section
         id="news"

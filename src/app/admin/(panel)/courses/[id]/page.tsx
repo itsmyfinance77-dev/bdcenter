@@ -7,6 +7,7 @@ import { AdminHeading, EmptyState, secondaryButtonClass, Table, Td } from '@/com
 import { membershipTierLabel } from '@/content/admin';
 import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
 import { formatJalaliInput } from '@/lib/jalali';
+import { editorHtml } from '@/lib/rich-html';
 import { listNotifications } from '@/modules/notifications/service';
 import { getCourseForAdmin, listEnrollments } from '@/modules/training/service';
 import {
@@ -89,7 +90,8 @@ export default async function EditCoursePage({
     enrollmentOpen: course.enrollmentOpen ? 'on' : '',
     title: course.title,
     slug: course.slug,
-    description: course.description ?? '',
+    description: editorHtml(course.descriptionHtml, course.description),
+    coverAlt: course.coverAlt ?? '',
     instructor: course.instructor ?? '',
     location: course.location ?? '',
     startsAt: course.startsAt ? formatJalaliInput(course.startsAt) : '',
@@ -123,7 +125,12 @@ export default async function EditCoursePage({
           ذخیره شد.
         </p>
       ) : null}
-      <CourseForm key={course.updatedAt.toISOString()} id={course.id} initial={initial} />
+      <CourseForm
+        key={course.updatedAt.toISOString()}
+        id={course.id}
+        initial={initial}
+        hasCover={Boolean(course.coverKey)}
+      />
 
       <section aria-labelledby="enrollments-heading" className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

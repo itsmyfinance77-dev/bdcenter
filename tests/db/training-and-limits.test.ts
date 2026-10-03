@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { clear, consume, isExhausted } from '@/modules/ratelimit/service';
 import { enroll } from '@/modules/training/service';
 
+/** A member as the pages pass it in; the profile rule is covered by tests/members-access.test.ts. */
+async function createMember(args: Parameters<typeof prisma.member.create>[0]) {
+  const row = await prisma.member.create(args);
+  return { ...row, access: row.fullName ? ('ok' as const) : ('incomplete' as const) };
+}
+
 /**
  * Integration tests against the dev database (`npm run test:db`). Every row
  * they create uses a `test-` prefix and is removed afterwards.
@@ -51,7 +57,7 @@ describe('enrollment', () => {
     });
     const members = await Promise.all(
       Array.from({ length: 10 }, (_, i) =>
-        prisma.member.create({
+        createMember({
           data: { phone: `099900000${String(i).padStart(2, '0')}`, fullName: `m${i}` },
         }),
       ),
@@ -65,16 +71,16 @@ describe('enrollment', () => {
     await prisma.course.create({
       data: { slug: `${PREFIX}dup`, title: 'dup', status: 'PUBLISHED' },
     });
-    const member = await prisma.member.create({ data: { phone: '09990000100', fullName: 'x' } });
+    const member = await createMember({ data: { phone: '09990000100', fullName: 'x' } });
     expect(await enroll(`${PREFIX}dup`, member)).toEqual({ ok: true });
     expect(await enroll(`${PREFIX}dup`, member)).toEqual({ ok: false, reason: 'duplicate' });
 
-    const nameless = await prisma.member.create({ data: { phone: '09990000101' } });
+    const nameless = await createMember({ data: { phone: '09990000101' } });
     expect(await enroll(`${PREFIX}dup`, nameless)).toEqual({ ok: false, reason: 'profile' });
   });
 
   it('refuses draft, closed and started courses', async () => {
-    const member = await prisma.member.create({ data: { phone: '09990000102', fullName: 'y' } });
+    const member = await createMember({ data: { phone: '09990000102', fullName: 'y' } });
     await prisma.course.createMany({
       data: [
         { slug: `${PREFIX}draft`, title: 'd', status: 'DRAFT' },

@@ -1,7 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/prisma';
 import { jalaliDayStart } from '@/lib/jalali';
-import { calendarFeed, courseIcs, eventIcs, getMonthGrid } from '@/modules/calendar/service';
+import {
+  calendarFeed,
+  courseIcs,
+  eventIcs,
+  getMonthGrid,
+  memberCalendarFeed,
+  memberFeedPath,
+} from '@/modules/calendar/service';
+import { rotateMemberCalendar } from '@/modules/members/service';
 
 /** Calendar grid and .ics exports against real rows (`test-cal-` slugs). */
 
@@ -9,7 +17,9 @@ const PREFIX = 'test-cal-';
 
 async function cleanup() {
   await prisma.article.deleteMany({ where: { slug: { startsWith: PREFIX } } });
+  await prisma.enrollment.deleteMany({ where: { phone: '09920000001' } });
   await prisma.course.deleteMany({ where: { slug: { startsWith: PREFIX } } });
+  await prisma.member.deleteMany({ where: { phone: '09920000001' } });
 }
 
 // 15 Mehr 1405, 18:00 Tehran — and a course on the last day of the month, 23:30 Tehran.
@@ -91,5 +101,25 @@ describe('events calendar', () => {
     expect(feed).toContain('رویداد تقویم');
     expect(feed).toContain('دوره تقویم');
     expect(feed).not.toContain('پیش‌نویس');
+  });
+
+  it("serves a member's own courses at a secret address that can be replaced", async () => {
+    const member = await prisma.member.create({ data: { phone: '09920000001' } });
+    const course = await prisma.course.findUniqueOrThrow({ where: { slug: `${PREFIX}course` } });
+    await prisma.enrollment.create({
+      data: { courseId: course.id, memberId: member.id, fullName: 'x', phone: '09920000001' },
+    });
+    const path = await memberFeedPath(member.id);
+    const token = path!.split('/').pop()!.replace('.ics', '');
+    const now = new Date(courseStart.getTime() - 24 * 3600_000);
+
+    const feed = await memberCalendarFeed(member.id, token, now);
+    expect(feed).toContain('دوره تقویم');
+    expect(feed).not.toContain('رویداد تقویم');
+    expect(await memberCalendarFeed(member.id, `${token.slice(0, -1)}x`, now)).toBeNull();
+
+    await rotateMemberCalendar(member.id);
+    expect(await memberCalendarFeed(member.id, token, now)).toBeNull();
+    expect(await memberFeedPath(member.id)).not.toBe(path);
   });
 });

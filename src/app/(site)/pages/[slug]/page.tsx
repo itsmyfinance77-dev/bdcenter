@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!found) return {};
   return {
     title: found.page.title,
-    description: found.page.seoDesc ?? plainExcerpt(found.page.body),
+    description: found.page.seoDesc ?? plainExcerpt(found.page.text),
     alternates: { canonical: `/pages/${found.slug}` },
   };
 }

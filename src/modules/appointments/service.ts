@@ -1,10 +1,18 @@
 import { z } from 'zod';
 import { buildCalendar } from '@/lib/ical';
 import { parseJalaliDateTime } from '@/lib/jalali';
+import { richInput } from '@/lib/rich-html';
 import { prisma, Prisma } from '@/lib/prisma';
-import { email, optionalText, requiredText, toLatinDigits } from '@/lib/validation';
+import { email, mobilePhone, optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
+import {
+  checkImageUpload,
+  deleteStoredImage,
+  storeImage,
+  type ImageVariant,
+} from '@/modules/files/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
+import type { MemberAccess } from '@/modules/members/access';
 
 /**
  * Appointment booking for consulting and the service desk (ADR-0003). Admins
@@ -35,6 +43,31 @@ export const PUBLIC_WINDOW_DAYS = 30;
 const LIVE: ('BOOKED' | 'DONE' | 'NO_SHOW')[] = ['BOOKED', 'DONE', 'NO_SHOW'];
 
 // ---------------------------------------------------------------------------
+// Staff photos: stored as `staff/<uuid>.webp` (+ `-sm`); the uuid is the URL
+// id, so a replaced photo gets a new address and can be cached for a long time.
+// ---------------------------------------------------------------------------
+
+const PHOTO_AREA = 'staff';
+const photoKeyPattern = /^staff\/([0-9a-f-]{36})\.webp$/;
+
+/** Public address of a staff photo, or null when there is none. */
+export function staffPhotoUrl(photoKey: string | null, variant: ImageVariant = 'sm') {
+  const id = photoKey?.match(photoKeyPattern)?.[1];
+  return id ? `/staff-photo/${id}/${variant}` : null;
+}
+
+/** Storage key behind a public photo address: only photos of active staff are served. */
+export async function getPublicStaffPhotoKey(photoId: string): Promise<string | null> {
+  if (!/^[0-9a-f-]{36}$/.test(photoId)) return null;
+  const photoKey = `${PHOTO_AREA}/${photoId}.webp`;
+  const staff = await prisma.staffProfile.findFirst({
+    where: { photoKey, isActive: true },
+    select: { photoKey: true },
+  });
+  return staff?.photoKey ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Public
 // ---------------------------------------------------------------------------
 
@@ -49,6 +82,8 @@ export async function listStaffWithFreeSlots(service: AppointmentService, now = 
       fullName: true,
       title: true,
       bio: true,
+      bioHtml: true,
+      photoKey: true,
       slots: {
         where: {
           isCancelled: false,
@@ -74,7 +109,9 @@ export async function getSlotForBooking(slotId: string, now = new Date()) {
       endsAt: true,
       location: true,
       isCancelled: true,
-      staff: { select: { fullName: true, title: true, service: true, isActive: true } },
+      staff: {
+        select: { fullName: true, title: true, service: true, isActive: true, photoKey: true },
+      },
       bookings: { where: { activeSlotId: { not: null } }, select: { id: true } },
     },
   });
@@ -101,13 +138,24 @@ export type Booker = {
   nationalId: string | null;
   companyName: string | null;
   email: string | null;
+  /** From the members domain: may this member book now? */
+  access: MemberAccess;
 };
 
 export type BookResult =
   | { ok: true; bookingId: string }
   | {
       ok: false;
-      reason: 'not-found' | 'profile' | 'taken' | 'past' | 'cancelled' | 'limit' | 'overlap';
+      reason:
+        | 'not-found'
+        | 'profile'
+        | 'pending'
+        | 'rejected'
+        | 'taken'
+        | 'past'
+        | 'cancelled'
+        | 'limit'
+        | 'overlap';
     };
 
 /**
@@ -120,7 +168,9 @@ export async function bookSlot(
   input: z.infer<typeof bookingInputSchema>,
   now = new Date(),
 ): Promise<BookResult> {
-  if (!member.fullName) return { ok: false, reason: 'profile' };
+  if (member.access !== 'ok') {
+    return { ok: false, reason: member.access === 'incomplete' ? 'profile' : member.access };
+  }
   try {
     return await prisma.$transaction(async (tx) => {
       const [locked] = await tx.$queryRaw<{ id: string }[]>`
@@ -253,7 +303,7 @@ export async function getBookingContact(bookingId: string) {
         select: {
           startsAt: true,
           location: true,
-          staff: { select: { fullName: true, email: true, service: true } },
+          staff: { select: { fullName: true, email: true, mobile: true, service: true } },
         },
       },
     },
@@ -282,10 +332,13 @@ export const staffInputSchema = z.object({
   service: z.enum(['CONSULTING', 'SERVICE_DESK']),
   fullName: requiredText('نام', 120),
   title: optionalText('سمت یا تخصص', 200),
-  bio: optionalText('معرفی', 5000),
+  // HTML from the rich editor.
+  bio: optionalText('معرفی', 200_000),
   email: email(false),
+  mobile: mobilePhone,
   isActive: z.preprocess((value) => value === 'on', z.boolean()),
   sortOrder: intField('ترتیب', 0, 0, 10000),
+  removePhoto: z.preprocess((value) => value === 'on', z.boolean()),
 });
 
 export type StaffInput = z.infer<typeof staffInputSchema>;
@@ -306,15 +359,43 @@ export async function getStaffForAdmin(id: string) {
   return prisma.staffProfile.findUnique({ where: { id } });
 }
 
-export async function saveStaff(id: string | null, input: StaffInput, actorId: string) {
+export type SaveStaffResult =
+  { ok: true; id: string } | { ok: false; errors: Record<string, string> };
+
+/**
+ * Creates (no id) or updates a staff profile. `photoFile` (an empty file
+ * input counts as none) replaces the photo; `input.removePhoto` drops it.
+ */
+export async function saveStaff(
+  id: string | null,
+  input: StaffInput,
+  photoFile: File | null,
+  actorId: string,
+): Promise<SaveStaffResult> {
+  const newPhoto = photoFile && photoFile.size > 0 ? photoFile : null;
+  let photoKey: string | null | undefined = input.removePhoto ? null : undefined;
+  if (newPhoto) {
+    const problem = checkImageUpload(newPhoto);
+    if (problem) return { ok: false, errors: { photo: problem } };
+    const stored = await storeImage(PHOTO_AREA, newPhoto);
+    if (!stored) return { ok: false, errors: { photo: 'فایل تصویر معتبر نیست.' } };
+    photoKey = stored.storageKey;
+  }
+  const oldPhotoKey = id
+    ? (await prisma.staffProfile.findUnique({ where: { id }, select: { photoKey: true } }))
+        ?.photoKey
+    : null;
   const data = {
     service: input.service,
     fullName: input.fullName,
     title: input.title ?? null,
-    bio: input.bio ?? null,
+    bio: richInput(input.bio).text,
+    bioHtml: richInput(input.bio).html,
     email: input.email ?? null,
+    mobile: input.mobile,
     isActive: input.isActive,
     sortOrder: input.sortOrder,
+    ...(photoKey !== undefined ? { photoKey } : {}),
   };
   const staff = id
     ? await prisma.staffProfile.update({ where: { id }, data })
@@ -326,7 +407,10 @@ export async function saveStaff(id: string | null, input: StaffInput, actorId: s
     entityId: staff.id,
     metadata: { fullName: staff.fullName, service: staff.service },
   });
-  return staff.id;
+  if (oldPhotoKey && photoKey !== undefined && oldPhotoKey !== photoKey) {
+    await deleteStoredImage(oldPhotoKey);
+  }
+  return { ok: true, id: staff.id };
 }
 
 /** Deletes a profile that never had slots; otherwise it must be deactivated. */
@@ -334,6 +418,7 @@ export async function deleteStaff(id: string, actorId: string): Promise<boolean>
   const slots = await prisma.appointmentSlot.count({ where: { staffId: id } });
   if (slots > 0) return false;
   const staff = await prisma.staffProfile.delete({ where: { id } });
+  if (staff.photoKey) await deleteStoredImage(staff.photoKey);
   await recordAudit({
     actorId,
     action: 'staff.delete',

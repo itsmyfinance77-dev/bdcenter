@@ -10,7 +10,15 @@ import { optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
+import { richInput } from '@/lib/rich-html';
 import { certificateAvailable, syncCertificate } from './certificates';
+import type { MemberAccess } from '@/modules/members/access';
+import {
+  checkImageUpload,
+  deleteStoredImage,
+  storeImage,
+  type ImageVariant,
+} from '@/modules/files/service';
 
 /**
  * Training courses and on-site enrollment (ADR-0002). Enrolling needs a
@@ -37,6 +45,7 @@ export async function listPublishedCourses() {
       instructor: true,
       location: true,
       startsAt: true,
+      coverKey: true,
       capacity: true,
       enrollmentOpen: true,
       _count: { select: { enrollments: { where: seatHolding } } },
@@ -127,19 +136,31 @@ export type Enrollee = {
   fullName: string | null;
   nationalId: string | null;
   companyName: string | null;
+  /** A legal entity's شناسه ملی: the membership roster is looked up by it first. */
+  legalNationalId: string | null;
   email: string | null;
+  /** From the members domain: may this member enroll now? */
+  access: MemberAccess;
 };
 
 export type EnrollResult =
-  { ok: true } | { ok: false; reason: 'not-found' | 'profile' | 'duplicate' | CourseAvailability };
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'not-found' | 'profile' | 'pending' | 'rejected' | 'duplicate' | CourseAvailability;
+    };
 
 /**
  * Enrolls a member. The course row is locked for the check-and-insert, so two
  * people cannot both take the last seat.
  */
 export async function enroll(courseSlug: string, member: Enrollee): Promise<EnrollResult> {
-  if (!member.fullName) return { ok: false, reason: 'profile' };
-  const membershipTier = await getMembershipTier(member.nationalId ?? undefined);
+  if (member.access !== 'ok') {
+    return { ok: false, reason: member.access === 'incomplete' ? 'profile' : member.access };
+  }
+  const membershipTier = await getMembershipTier(
+    member.legalNationalId ?? member.nationalId ?? undefined,
+  );
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -195,7 +216,15 @@ export async function listMemberEnrollments(memberId: string) {
       status: true,
       createdAt: true,
       course: {
-        select: { slug: true, title: true, startsAt: true, status: true, certificateEnabled: true },
+        select: {
+          slug: true,
+          title: true,
+          startsAt: true,
+          endsAt: true,
+          location: true,
+          status: true,
+          certificateEnabled: true,
+        },
       },
       certificate: { select: { revokedAt: true } },
     },
@@ -236,7 +265,8 @@ export const courseInputSchema = z
   .object({
     title: requiredText('عنوان', 200),
     slug: optionalText('نامک', 120),
-    description: optionalText('توضیحات', 20000),
+    // HTML from the rich editor.
+    description: optionalText('توضیحات', 500_000),
     instructor: optionalText('مدرس', 200),
     location: optionalText('مکان', 200),
     startsAt: jalaliDateTime('زمان شروع'),
@@ -247,6 +277,8 @@ export const courseInputSchema = z
     certificateEnabled: z.preprocess((value) => value === 'on', z.boolean()),
     certificateSignatory: optionalText('نام امضاکننده', 120),
     certificateSignatoryTitle: optionalText('سمت امضاکننده', 160),
+    coverAlt: optionalText('توضیح عکس', 200),
+    removeCover: z.preprocess((value) => value === 'on', z.boolean()),
   })
   .transform((value) => ({
     ...value,
@@ -275,25 +307,100 @@ export async function listCoursesForAdmin() {
   return courses.map(({ _count, ...course }) => ({ ...course, taken: _count.enrollments }));
 }
 
+/** Courses with how many people a group SMS would reach (accepted / all live enrollments). */
+export async function listCourseAudiences() {
+  const courses = await prisma.course.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+    select: {
+      id: true,
+      title: true,
+      enrollments: { where: { status: { not: 'REJECTED' } }, select: { status: true } },
+    },
+  });
+  return courses.map((course) => ({
+    id: course.id,
+    title: course.title,
+    all: course.enrollments.length,
+    accepted: course.enrollments.filter((e) => e.status === 'ACCEPTED' || e.status === 'DONE')
+      .length,
+  }));
+}
+
+/** Phones of a course's enrollees, for a group SMS: accepted (and done) only, or everyone not rejected. */
+export async function listCourseEnrollmentPhones(courseId: string, scope: 'accepted' | 'all') {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      title: true,
+      enrollments: {
+        where:
+          scope === 'accepted'
+            ? { status: { in: ['ACCEPTED', 'DONE'] } }
+            : { status: { not: 'REJECTED' } },
+        select: { phone: true },
+      },
+    },
+  });
+  if (!course) return null;
+  return { title: course.title, phones: course.enrollments.map((e) => e.phone) };
+}
+
 export async function getCourseForAdmin(id: string) {
   return prisma.course.findUnique({ where: { id } });
 }
 
+// ---------------------------------------------------------------------------
+// Course covers: `course-covers/<uuid>.webp` (+ `-sm`); the uuid is the public
+// address, so a replaced cover gets a new one and caches well.
+// ---------------------------------------------------------------------------
+
+const COVER_AREA = 'course-covers';
+const coverKeyPattern = /^course-covers\/([0-9a-f-]{36})\.webp$/;
+
+export function courseCoverUrl(coverKey: string | null, variant: ImageVariant = 'lg') {
+  const id = coverKey?.match(coverKeyPattern)?.[1];
+  return id ? `/course-cover/${id}/${variant}` : null;
+}
+
+/** Storage key behind a public cover address: only covers of published courses. */
+export async function getPublicCourseCoverKey(coverId: string): Promise<string | null> {
+  if (!/^[0-9a-f-]{36}$/.test(coverId)) return null;
+  const coverKey = `${COVER_AREA}/${coverId}.webp`;
+  const course = await prisma.course.findFirst({
+    where: { coverKey, status: 'PUBLISHED' },
+    select: { coverKey: true },
+  });
+  return course?.coverKey ?? null;
+}
+
+/**
+ * Creates (no id) or updates a course. `coverFile` (an empty file input counts
+ * as none) replaces the cover; `input.removeCover` drops it.
+ */
 export async function saveCourse(
   id: string | null,
   input: CourseInput,
   actorId: string,
+  coverFile: File | null = null,
 ): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
+  const newCover = coverFile && coverFile.size > 0 ? coverFile : null;
+  if (newCover) {
+    const problem = checkImageUpload(newCover);
+    if (problem) return { ok: false, errors: { coverImage: problem } };
+  }
   const clash = await prisma.course.findFirst({
     where: { slug: input.slug, NOT: id ? { id } : undefined },
     select: { id: true },
   });
   if (clash) return { ok: false, errors: { slug: SLUG_TAKEN } };
 
+  const description = richInput(input.description);
   const data = {
     title: input.title,
     slug: input.slug,
-    description: input.description ?? null,
+    description: description.text,
+    descriptionHtml: description.html,
     instructor: input.instructor ?? null,
     location: input.location ?? null,
     startsAt: input.startsAt,
@@ -304,13 +411,24 @@ export async function saveCourse(
     certificateEnabled: input.certificateEnabled,
     certificateSignatory: input.certificateSignatory ?? null,
     certificateSignatoryTitle: input.certificateSignatoryTitle ?? null,
+    coverAlt: input.coverAlt ?? null,
   };
-  if (id && !(await prisma.course.findUnique({ where: { id }, select: { id: true } }))) {
-    return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
+  const existing = id
+    ? await prisma.course.findUnique({ where: { id }, select: { coverKey: true } })
+    : null;
+  if (id && !existing) return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
+
+  const oldCover = existing?.coverKey ?? null;
+  let coverKey = input.removeCover ? null : oldCover;
+  if (newCover) {
+    const stored = await storeImage(COVER_AREA, newCover);
+    if (!stored) return { ok: false, errors: { coverImage: 'فایل تصویر معتبر نیست.' } };
+    coverKey = stored.storageKey;
   }
   const course = id
-    ? await prisma.course.update({ where: { id }, data })
-    : await prisma.course.create({ data });
+    ? await prisma.course.update({ where: { id }, data: { ...data, coverKey } })
+    : await prisma.course.create({ data: { ...data, coverKey } });
+  if (oldCover && oldCover !== coverKey) await deleteStoredImage(oldCover);
 
   await recordAudit({
     actorId,
@@ -324,7 +442,11 @@ export async function saveCourse(
 
 /** Deletes a course together with its enrollments. */
 export async function deleteCourse(id: string, actorId: string) {
-  const course = await prisma.course.delete({ where: { id }, select: { title: true } });
+  const course = await prisma.course.delete({
+    where: { id },
+    select: { title: true, coverKey: true },
+  });
+  if (course.coverKey) await deleteStoredImage(course.coverKey);
   await recordAudit({
     actorId,
     action: 'course.delete',

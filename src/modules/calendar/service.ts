@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { calendarCopy } from '@/content/site';
 import { buildCalendar, type CalendarEvent } from '@/lib/ical';
 import {
@@ -9,8 +10,14 @@ import {
   type JalaliMonth,
 } from '@/lib/jalali';
 import { plainExcerpt } from '@/lib/text';
+import { listMemberBookings } from '@/modules/appointments/service';
 import { getPublishedArticle, listPublishedEventsBetween } from '@/modules/content/service';
-import { getPublishedCourse, listPublishedCoursesBetween } from '@/modules/training/service';
+import { getMemberCalendarVersion } from '@/modules/members/service';
+import {
+  getPublishedCourse,
+  listMemberEnrollments,
+  listPublishedCoursesBetween,
+} from '@/modules/training/service';
 
 /**
  * The events calendar: published events (news/events domain) and courses
@@ -163,4 +170,80 @@ export async function courseIcs(slug: string): Promise<{ id: string; body: strin
     updatedAt: course.updatedAt,
   };
   return { id: course.id, body: buildCalendar([toCalendarEvent(item)], { name: course.title }) };
+}
+
+// ---------------------------------------------------------------------------
+// A member's personal calendar: their live bookings and the courses they are
+// enrolled in, at a secret address calendar apps can subscribe to (they send
+// no cookies). The address carries an HMAC of the member id and a version, so
+// nothing secret is stored and "new address" just bumps the version.
+// ---------------------------------------------------------------------------
+
+function feedSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) throw new Error('SESSION_SECRET must be set.');
+  return secret;
+}
+
+function memberFeedToken(memberId: string, version: number): string {
+  return createHmac('sha256', feedSecret())
+    .update(`member-calendar:${memberId}:${version}`)
+    .digest('base64url')
+    .slice(0, 32);
+}
+
+/** Path of the member's personal feed. */
+export async function memberFeedPath(memberId: string): Promise<string | null> {
+  const version = await getMemberCalendarVersion(memberId);
+  if (version === null) return null;
+  return `/calendar/member/${memberId}/${memberFeedToken(memberId, version)}.ics`;
+}
+
+const ENROLLED_STATUSES = ['NEW', 'IN_REVIEW', 'ACCEPTED', 'DONE'];
+
+/** The personal feed, or null when the address is wrong, revoked or the member inactive. */
+export async function memberCalendarFeed(
+  memberId: string,
+  token: string,
+  now = new Date(),
+): Promise<string | null> {
+  const version = await getMemberCalendarVersion(memberId);
+  if (version === null) return null;
+  const expected = Buffer.from(memberFeedToken(memberId, version));
+  const given = Buffer.from(token);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+
+  const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const [bookings, enrollments] = await Promise.all([
+    listMemberBookings(memberId),
+    listMemberEnrollments(memberId),
+  ]);
+  const events: CalendarEvent[] = [
+    ...bookings
+      .filter((booking) => booking.status === 'BOOKED' && booking.slot.startsAt > since)
+      .map((booking) => ({
+        uid: `booking-${booking.id}@${uidDomain}`,
+        title: `${calendarCopy.bookingPrefix} ${booking.slot.staff.fullName} — ${booking.topic}`,
+        startsAt: booking.slot.startsAt,
+        endsAt: booking.slot.endsAt,
+        location: booking.slot.location,
+        url: siteUrl('/account'),
+      })),
+    ...enrollments
+      .filter(
+        (enrollment) =>
+          ENROLLED_STATUSES.includes(enrollment.status) &&
+          enrollment.course.startsAt !== null &&
+          enrollment.course.startsAt > since,
+      )
+      .map((enrollment) => ({
+        uid: `enrollment-${enrollment.id}@${uidDomain}`,
+        title: `${calendarCopy.coursePrefix} ${enrollment.course.title}`,
+        startsAt: enrollment.course.startsAt!,
+        endsAt: enrollment.course.endsAt,
+        location: enrollment.course.location,
+        url: siteUrl(`/courses/${encodeURIComponent(enrollment.course.slug)}`),
+      })),
+  ];
+  return buildCalendar(events, { name: calendarCopy.personalFeedName, now });
 }

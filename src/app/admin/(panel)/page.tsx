@@ -6,7 +6,7 @@ import { countNewConsultingRequests } from '@/modules/consulting/service';
 import { countRecentContactMessages } from '@/modules/contact/service';
 import { countArticlesByStatus } from '@/modules/content/service';
 import { countNewSubmissions } from '@/modules/forms/service';
-import { countMembers } from '@/modules/members/service';
+import { countMembers, countPendingMembers } from '@/modules/members/service';
 import { countNewEnrollments } from '@/modules/training/service';
 
 // A layout's title template applies to child segments only, not to its own page.
@@ -18,7 +18,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ denied?: string }>;
 }) {
   const { denied } = await searchParams;
-  const [consulting, messages, submissions, articles, enrollments, members, bookings] =
+  const [consulting, messages, submissions, articles, enrollments, members, bookings, pending] =
     await Promise.all([
       countNewConsultingRequests(),
       countRecentContactMessages(),
@@ -27,6 +27,7 @@ export default async function DashboardPage({
       countNewEnrollments(),
       countMembers(),
       countUpcomingBookings(),
+      countPendingMembers(),
     ]);
 
   const tiles = [
@@ -38,6 +39,11 @@ export default async function DashboardPage({
     { title: 'مطالب منتشر شده', value: articles.PUBLISHED ?? 0, href: '/admin/articles' },
     { title: 'پیش‌نویس‌ها', value: articles.DRAFT ?? 0, href: '/admin/articles' },
     { title: 'اعضای سایت', value: members, href: '/admin/members' },
+    {
+      title: 'اعضای در انتظار تأیید (شخص حقوقی)',
+      value: pending,
+      href: '/admin/members?filter=pending',
+    },
   ];
 
   return (

@@ -94,7 +94,7 @@ export default async function SearchPage({
                       <Link href={page.path} className="block px-5 py-4 hover:bg-surface-2">
                         <span className="font-semibold text-ink">{page.title}</span>
                         <span className="mt-1 line-clamp-2 block text-sm text-ink-2">
-                          {plainExcerpt(page.body)}
+                          {plainExcerpt(page.text)}
                         </span>
                       </Link>
                     </li>

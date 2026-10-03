@@ -5,6 +5,9 @@ import { formValues, GENERIC_ERROR, isSpam, RATE_LIMITED, type FormState } from 
 import { fieldErrors } from '@/lib/validation';
 import { contactMessageSchema, createContactMessage } from '@/modules/contact/service';
 import { consume, LIMITS } from '@/modules/ratelimit/service';
+import { after } from 'next/server';
+import { staffAlertText } from '@/content/admin';
+import { alertStaff } from '@/modules/notifications/service';
 
 const SENT = 'پیام شما ارسال شد. سپاس از تماس شما.';
 
@@ -21,5 +24,8 @@ export async function sendContactMessage(_prev: FormState, formData: FormData): 
   }
 
   await createContactMessage(parsed.data);
+  after(() =>
+    alertStaff('contact', staffAlertText.contact(parsed.data.fullName), '/admin/messages'),
+  );
   return { status: 'success', message: SENT };
 }

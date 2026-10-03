@@ -4,6 +4,7 @@ import { ConfirmButton } from '@/components/admin/confirm-button';
 import { AdminHeading, secondaryButtonClass } from '@/components/admin/ui';
 import { articleBasePath } from '@/components/article-list';
 import { formatJalaliInput } from '@/lib/jalali';
+import { editorHtml } from '@/lib/rich-html';
 import { getArticleForAdmin } from '@/modules/content/service';
 import { deleteArticleAction } from '../actions';
 import { ArticleForm } from '../article-form';
@@ -27,7 +28,7 @@ export default async function EditArticlePage({
     title: article.title,
     slug: article.slug,
     excerpt: article.excerpt ?? '',
-    bodyMarkdown: article.bodyMarkdown,
+    bodyMarkdown: editorHtml(article.bodyHtml, article.bodyMarkdown),
     eventStartsAt: article.eventStartsAt ? formatJalaliInput(article.eventStartsAt) : '',
     eventEndsAt: article.eventEndsAt ? formatJalaliInput(article.eventEndsAt) : '',
     eventLocation: article.eventLocation ?? '',
@@ -46,6 +47,13 @@ export default async function EditArticlePage({
             مشاهده در سایت
           </Link>
         ) : null}
+        <Link
+          href={`/admin/preview/articles/${article.id}`}
+          target="_blank"
+          className={secondaryButtonClass}
+        >
+          پیش‌نمایش
+        </Link>
         <ConfirmButton
           action={deleteArticleAction.bind(null, article.id)}
           message={`«${article.title}» برای همیشه حذف شود؟`}

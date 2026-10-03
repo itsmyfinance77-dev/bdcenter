@@ -7,7 +7,11 @@ export default function NewStaffPage() {
   return (
     <>
       <AdminHeading title="پروفایل جدید مشاور / کارشناس" />
-      <StaffForm id={null} initial={{ service: 'CONSULTING', isActive: 'on', sortOrder: '0' }} />
+      <StaffForm
+        id={null}
+        initial={{ service: 'CONSULTING', isActive: 'on', sortOrder: '0' }}
+        photoUrl={null}
+      />
     </>
   );
 }

@@ -2,10 +2,13 @@ node_modules/
 .next/
 .next-preview/
 .next-e2e/
+.next-verify/
 .tmp-build/
 out/
 dist/
 storage/
+# Test accounts and their passwords (npm run sandbox:users)
+sandbox/
 .env
 .env.production
 .env.*.local

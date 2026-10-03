@@ -141,3 +141,95 @@
 .bg-placeholder-stripes {
   background: repeating-linear-gradient(135deg, #e6ebf3 0 12px, #eef2f8 12px 24px);
 }
+
+/*
+ * Rich page bodies from the admin editor (ADR-0005), on the site and inside
+ * the editor itself, so both look the same.
+ */
+.rich-content {
+  line-height: 2.1;
+  color: var(--color-ink);
+
+  & > * + * {
+    margin-top: 1rem;
+  }
+  & h2 {
+    margin-top: 2rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--color-brand-900);
+  }
+  & h3 {
+    margin-top: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-brand-900);
+  }
+  & h4 {
+    margin-top: 1.25rem;
+    font-weight: 700;
+  }
+  & ul {
+    list-style: disc;
+    padding-inline-start: 1.5rem;
+  }
+  & ol {
+    list-style: persian;
+    padding-inline-start: 1.5rem;
+  }
+  & li > p {
+    margin: 0;
+  }
+  & blockquote {
+    border-inline-start: 4px solid var(--color-line-hover);
+    padding-inline-start: 1rem;
+    color: var(--color-ink-2);
+  }
+  & a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  & hr {
+    border-color: var(--color-line);
+  }
+  & img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-card);
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+    display: block;
+    overflow-x: auto;
+  }
+  & th,
+  & td {
+    border: 1px solid var(--color-line-strong);
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    min-width: 4rem;
+  }
+  & th {
+    background: var(--color-surface-2);
+    font-weight: 700;
+  }
+  & th > p,
+  & td > p {
+    margin: 0;
+  }
+  & code {
+    border-radius: var(--radius-chip);
+    background: var(--color-surface-2);
+    padding: 0 0.25rem;
+  }
+  & pre {
+    direction: ltr;
+    overflow-x: auto;
+    border-radius: var(--radius-card);
+    background: var(--color-surface-2);
+    padding: 1rem;
+  }
+}

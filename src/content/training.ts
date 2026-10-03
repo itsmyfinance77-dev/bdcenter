@@ -11,7 +11,7 @@ export const trainingCopy = {
   enroll: 'ثبت‌نام در این دوره',
   enrolled: 'ثبت‌نام شما انجام شد. نتیجه بررسی در «حساب کاربری» نمایش داده می‌شود.',
   alreadyEnrolled: 'شما در این دوره ثبت‌نام کرده‌اید.',
-  profileNeeded: 'برای ثبت‌نام، ابتدا نام خود را در حساب کاربری ثبت کنید.',
+  profileNeeded: 'برای ثبت‌نام، ابتدا اطلاعات حساب کاربری خود را کامل کنید.',
 } as const;
 
 export const availabilityLabel = {
@@ -24,6 +24,8 @@ export const availabilityLabel = {
 export const enrollErrorMessage = {
   'not-found': 'این دوره دیگر در دسترس نیست.',
   profile: trainingCopy.profileNeeded,
+  pending: 'حساب شما در انتظار تأیید مدیر سایت است؛ پس از تأیید می‌توانید ثبت‌نام کنید.',
+  rejected: 'اطلاعات شخص حقوقی شما تأیید نشده است؛ آن را در حساب کاربری اصلاح کنید.',
   duplicate: trainingCopy.alreadyEnrolled,
   full: 'ظرفیت این دوره تکمیل شده است.',
   closed: 'ثبت‌نام این دوره بسته شده است.',

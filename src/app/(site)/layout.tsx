@@ -2,9 +2,11 @@ import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { PageViewBeacon } from '@/components/site/page-view-beacon';
 import { RevealOnScroll } from '@/components/site/reveal';
+import { getSiteMenu } from '@/modules/settings/service';
 
 /** Public site chrome. The admin panel gets its own layout outside this group. */
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
+export default async function SiteLayout({ children }: { children: React.ReactNode }) {
+  const menu = await getSiteMenu();
   return (
     <>
       <span id="top" />
@@ -14,7 +16,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       >
         پرش به محتوای اصلی
       </a>
-      <SiteHeader />
+      <SiteHeader menu={menu} />
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
       </main>

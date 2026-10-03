@@ -99,6 +99,12 @@ export function storedFilePath(storageKey: string): string | null {
   return target.startsWith(root + path.sep) ? target : null;
 }
 
+/** Removes a stored upload. Missing files are ignored. */
+export async function deleteStoredFile(storageKey: string) {
+  const target = storedFilePath(storageKey);
+  if (target) await rm(target, { force: true });
+}
+
 export const storedFileSchema = z.object({
   storageKey: z.string(),
   originalName: z.string(),

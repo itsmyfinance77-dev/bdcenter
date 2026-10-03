@@ -3,6 +3,7 @@ import { jalaliDateTime } from '@/lib/jalali';
 import { prisma, type ArticleKind } from '@/lib/prisma';
 import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
+import { hasRichContent, richInput } from '@/lib/rich-html';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { checkImageUpload, deleteStoredImage, storeImage } from '@/modules/files/service';
@@ -127,7 +128,8 @@ export const articleInputSchema = z
     title: requiredText('عنوان', 200),
     slug: optionalText('نامک', 120),
     excerpt: optionalText('خلاصه', 500),
-    bodyMarkdown: requiredText('متن', 50000),
+    // HTML from the rich editor (the field keeps its older name).
+    bodyMarkdown: requiredText('متن', 500_000).refine(hasRichContent, 'متن را وارد کنید.'),
     eventStartsAt: jalaliDateTime('زمان شروع'),
     eventEndsAt: jalaliDateTime('زمان پایان'),
     eventLocation: optionalText('مکان', 200),
@@ -191,12 +193,14 @@ export async function saveArticle(
           eventLocation: input.eventLocation ?? null,
         }
       : { eventStartsAt: null, eventEndsAt: null, eventLocation: null };
+  const body = richInput(input.bodyMarkdown);
   const data = {
     kind: input.kind,
     title: input.title,
     slug: input.slug,
     excerpt: input.excerpt ?? null,
-    bodyMarkdown: input.bodyMarkdown,
+    bodyMarkdown: body.text ?? '',
+    bodyHtml: body.html,
     status: input.status,
     ...event,
   };
@@ -292,4 +296,35 @@ export async function countArticlesByStatus() {
   return Object.fromEntries(rows.map((row) => [row.status, row._count])) as Partial<
     Record<'DRAFT' | 'PUBLISHED' | 'ARCHIVED', number>
   >;
+}
+
+// ---------------------------------------------------------------------------
+// Images placed in rich page bodies (ADR-0005). Re-encoded like covers and
+// public as soon as they are uploaded: the editor inserts them right away.
+// ---------------------------------------------------------------------------
+
+export type PageImageResult = { ok: true; id: string; url: string } | { ok: false; error: string };
+
+export async function storePageImage(file: File, actorId: string): Promise<PageImageResult> {
+  const problem = checkImageUpload(file);
+  if (problem) return { ok: false, error: problem };
+  const stored = await storeImage('page-images', file);
+  if (!stored) return { ok: false, error: 'فایل تصویر معتبر نیست.' };
+  const asset = await prisma.mediaAsset.create({ data: { ...stored, purpose: 'page' } });
+  await recordAudit({
+    actorId,
+    action: 'page.image.upload',
+    entity: 'MediaAsset',
+    entityId: asset.id,
+    metadata: { name: stored.originalName },
+  });
+  return { ok: true, id: asset.id, url: `/page-images/${asset.id}/lg` };
+}
+
+export async function getPageImageKey(assetId: string): Promise<string | null> {
+  const asset = await prisma.mediaAsset.findFirst({
+    where: { id: assetId, purpose: 'page' },
+    select: { storageKey: true },
+  });
+  return asset?.storageKey ?? null;
 }

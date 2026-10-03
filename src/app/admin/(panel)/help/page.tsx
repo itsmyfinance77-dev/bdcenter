@@ -3,13 +3,18 @@ import { MarkdownBody } from '@/components/markdown';
 import { adminGuide, adminGuideIntro } from '@/content/admin-guide';
 import { formatNumber } from '@/lib/format';
 import { requireAdmin } from '@/modules/auth/service';
+import { smsSandboxEnabled } from '@/modules/messaging/sandbox';
 
 export const metadata = { title: 'راهنمای پنل' };
 
 /** The staff guide (src/content/admin-guide.ts); ADMIN-only sections only for ADMINs. */
 export default async function HelpPage() {
   const admin = await requireAdmin();
-  const sections = adminGuide.filter((section) => !section.adminOnly || admin.role === 'ADMIN');
+  const sandbox = smsSandboxEnabled();
+  const sections = adminGuide.filter(
+    (section) =>
+      (!section.adminOnly || admin.role === 'ADMIN') && (!section.sandboxOnly || sandbox),
+  );
 
   return (
     <>
