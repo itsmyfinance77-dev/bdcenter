@@ -71,6 +71,7 @@ describe('csv', () => {
   it('neutralizes spreadsheet formulas and quotes cells', () => {
     expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
     expect(csvCell('+98')).toBe(`"'+98"`);
+    expect(csvCell('  =1+1')).toBe(`"'  =1+1"`);
     expect(csvCell('سلام')).toBe('"سلام"');
   });
 

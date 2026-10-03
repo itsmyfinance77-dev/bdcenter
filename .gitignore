@@ -2,6 +2,7 @@ node_modules/
 .next/
 .next-preview/
 .next-e2e/
+.next-verify/
 .tmp-build/
 out/
 dist/

@@ -55,7 +55,7 @@ export const adminNav = [
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
   { href: '/admin/settings', title: 'تنظیمات سایت', adminOnly: true },
-  { href: '/admin/sms-sandbox', title: 'صندوق پیامک آزمایشی', adminOnly: false, sandboxOnly: true },
+  { href: '/admin/sms-sandbox', title: 'صندوق پیامک آزمایشی', adminOnly: true, sandboxOnly: true },
   { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
   { href: '/admin/help', title: 'راهنما', adminOnly: false },
 ] as const;

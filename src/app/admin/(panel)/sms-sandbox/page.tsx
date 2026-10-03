@@ -16,7 +16,7 @@ export default async function SmsSandboxPage({
 }: {
   searchParams: Promise<{ phone?: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin('ADMIN');
   if (!smsSandboxEnabled()) notFound();
   const raw = (await searchParams).phone;
   const parsed = mobilePhone.safeParse(typeof raw === 'string' ? raw.slice(0, 20) : undefined);
