@@ -299,6 +299,10 @@ model Course {
   description String?
   /// Description from the rich editor, sanitized (ADR-0005).
   descriptionHtml String?
+  /// Cover image (`course-covers/<uuid>.webp` + `-sm`, see storeImage); public
+  /// only while the course is published. A new upload gets a new key.
+  coverKey    String?
+  coverAlt    String?
   instructor  String?
   location    String?
   startsAt    DateTime?

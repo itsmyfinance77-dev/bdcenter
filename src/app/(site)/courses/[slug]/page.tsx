@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToCalendar } from '@/components/add-to-calendar';
@@ -10,7 +11,11 @@ import { availabilityLabel, enrollErrorMessage, trainingCopy } from '@/content/t
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { decodeParam } from '@/lib/params';
 import { getCurrentMember } from '@/modules/members/service';
-import { getMemberEnrollment, getPublishedCourse } from '@/modules/training/service';
+import {
+  courseCoverUrl,
+  getMemberEnrollment,
+  getPublishedCourse,
+} from '@/modules/training/service';
 import { enrollAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +74,18 @@ export default async function CoursePage({
       />
       <div className="mx-auto grid max-w-(--container-page) gap-6 px-4 py-12 lg:grid-cols-[1fr_320px]">
         <article className="rounded-panel border border-line bg-white p-6">
+          {courseCoverUrl(course.coverKey) ? (
+            <div className="relative mb-6 aspect-[16/9] overflow-hidden rounded-card bg-surface-2">
+              <Image
+                src={courseCoverUrl(course.coverKey)!}
+                alt={course.coverAlt ?? ''}
+                fill
+                unoptimized
+                sizes="(min-width: 1024px) 800px, 100vw"
+                className="object-cover"
+              />
+            </div>
+          ) : null}
           {course.description || course.descriptionHtml ? (
             <RichBody html={course.descriptionHtml} markdown={course.description} />
           ) : (

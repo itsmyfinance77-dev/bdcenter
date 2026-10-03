@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import {
+  Field,
   fieldState,
   FormMessage,
   SelectField,
@@ -16,9 +17,11 @@ import { saveCourseAction } from './actions';
 export function CourseForm({
   id,
   initial,
+  hasCover = false,
 }: {
   id: string | null;
   initial: Record<string, string>;
+  hasCover?: boolean;
 }) {
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveCourseAction.bind(null, id), initialState);
@@ -52,6 +55,24 @@ export function CourseForm({
         hint="خالی بگذارید تا از روی عنوان ساخته شود."
         {...field('slug')}
       />
+      <fieldset className="space-y-3 rounded-card border border-line p-4">
+        <legend className="px-1 text-sm font-medium text-ink">عکس دوره</legend>
+        {hasCover ? (
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" name="removeCover" className="size-4 accent-primary" />
+            عکس فعلی ثبت شده است؛ برای حذف آن تیک بزنید.
+          </label>
+        ) : null}
+        <Field
+          {...field('coverImage')}
+          label={hasCover ? 'عکس جدید' : 'عکس'}
+          defaultValue={undefined}
+          hint="JPG، PNG یا WebP تا ۱۰ مگابایت؛ در فهرست دوره‌ها و بالای صفحهٔ دوره نمایش داده می‌شود. اگر فرم خطا داد، عکس را دوباره انتخاب کنید."
+        >
+          {(control) => <input {...control} type="file" accept="image/jpeg,image/png,image/webp" />}
+        </Field>
+        <TextField label="توضیح عکس (برای نابینایان)" {...field('coverAlt')} />
+      </fieldset>
       <RichEditor
         key={state.status === 'error' ? state.values.description : 'initial'}
         name="description"

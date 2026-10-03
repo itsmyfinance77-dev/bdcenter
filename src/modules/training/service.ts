@@ -13,6 +13,12 @@ import { countCreatedPerDay } from '@/lib/daily-counts';
 import { richInput } from '@/lib/rich-html';
 import { certificateAvailable, syncCertificate } from './certificates';
 import type { MemberAccess } from '@/modules/members/access';
+import {
+  checkImageUpload,
+  deleteStoredImage,
+  storeImage,
+  type ImageVariant,
+} from '@/modules/files/service';
 
 /**
  * Training courses and on-site enrollment (ADR-0002). Enrolling needs a
@@ -270,6 +276,8 @@ export const courseInputSchema = z
     certificateEnabled: z.preprocess((value) => value === 'on', z.boolean()),
     certificateSignatory: optionalText('نام امضاکننده', 120),
     certificateSignatoryTitle: optionalText('سمت امضاکننده', 160),
+    coverAlt: optionalText('توضیح عکس', 200),
+    removeCover: z.preprocess((value) => value === 'on', z.boolean()),
   })
   .transform((value) => ({
     ...value,
@@ -302,11 +310,45 @@ export async function getCourseForAdmin(id: string) {
   return prisma.course.findUnique({ where: { id } });
 }
 
+// ---------------------------------------------------------------------------
+// Course covers: `course-covers/<uuid>.webp` (+ `-sm`); the uuid is the public
+// address, so a replaced cover gets a new one and caches well.
+// ---------------------------------------------------------------------------
+
+const COVER_AREA = 'course-covers';
+const coverKeyPattern = /^course-covers\/([0-9a-f-]{36})\.webp$/;
+
+export function courseCoverUrl(coverKey: string | null, variant: ImageVariant = 'lg') {
+  const id = coverKey?.match(coverKeyPattern)?.[1];
+  return id ? `/course-cover/${id}/${variant}` : null;
+}
+
+/** Storage key behind a public cover address: only covers of published courses. */
+export async function getPublicCourseCoverKey(coverId: string): Promise<string | null> {
+  if (!/^[0-9a-f-]{36}$/.test(coverId)) return null;
+  const coverKey = `${COVER_AREA}/${coverId}.webp`;
+  const course = await prisma.course.findFirst({
+    where: { coverKey, status: 'PUBLISHED' },
+    select: { coverKey: true },
+  });
+  return course?.coverKey ?? null;
+}
+
+/**
+ * Creates (no id) or updates a course. `coverFile` (an empty file input counts
+ * as none) replaces the cover; `input.removeCover` drops it.
+ */
 export async function saveCourse(
   id: string | null,
   input: CourseInput,
   actorId: string,
+  coverFile: File | null = null,
 ): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
+  const newCover = coverFile && coverFile.size > 0 ? coverFile : null;
+  if (newCover) {
+    const problem = checkImageUpload(newCover);
+    if (problem) return { ok: false, errors: { coverImage: problem } };
+  }
   const clash = await prisma.course.findFirst({
     where: { slug: input.slug, NOT: id ? { id } : undefined },
     select: { id: true },
@@ -329,13 +371,24 @@ export async function saveCourse(
     certificateEnabled: input.certificateEnabled,
     certificateSignatory: input.certificateSignatory ?? null,
     certificateSignatoryTitle: input.certificateSignatoryTitle ?? null,
+    coverAlt: input.coverAlt ?? null,
   };
-  if (id && !(await prisma.course.findUnique({ where: { id }, select: { id: true } }))) {
-    return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
+  const existing = id
+    ? await prisma.course.findUnique({ where: { id }, select: { coverKey: true } })
+    : null;
+  if (id && !existing) return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
+
+  const oldCover = existing?.coverKey ?? null;
+  let coverKey = input.removeCover ? null : oldCover;
+  if (newCover) {
+    const stored = await storeImage(COVER_AREA, newCover);
+    if (!stored) return { ok: false, errors: { coverImage: 'فایل تصویر معتبر نیست.' } };
+    coverKey = stored.storageKey;
   }
   const course = id
-    ? await prisma.course.update({ where: { id }, data })
-    : await prisma.course.create({ data });
+    ? await prisma.course.update({ where: { id }, data: { ...data, coverKey } })
+    : await prisma.course.create({ data: { ...data, coverKey } });
+  if (oldCover && oldCover !== coverKey) await deleteStoredImage(oldCover);
 
   await recordAudit({
     actorId,
@@ -349,7 +402,11 @@ export async function saveCourse(
 
 /** Deletes a course together with its enrollments. */
 export async function deleteCourse(id: string, actorId: string) {
-  const course = await prisma.course.delete({ where: { id }, select: { title: true } });
+  const course = await prisma.course.delete({
+    where: { id },
+    select: { title: true, coverKey: true },
+  });
+  if (course.coverKey) await deleteStoredImage(course.coverKey);
   await recordAudit({
     actorId,
     action: 'course.delete',

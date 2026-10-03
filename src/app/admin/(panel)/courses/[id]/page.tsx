@@ -91,6 +91,7 @@ export default async function EditCoursePage({
     title: course.title,
     slug: course.slug,
     description: editorHtml(course.descriptionHtml, course.description),
+    coverAlt: course.coverAlt ?? '',
     instructor: course.instructor ?? '',
     location: course.location ?? '',
     startsAt: course.startsAt ? formatJalaliInput(course.startsAt) : '',
@@ -124,7 +125,12 @@ export default async function EditCoursePage({
           ذخیره شد.
         </p>
       ) : null}
-      <CourseForm key={course.updatedAt.toISOString()} id={course.id} initial={initial} />
+      <CourseForm
+        key={course.updatedAt.toISOString()}
+        id={course.id}
+        initial={initial}
+        hasCover={Boolean(course.coverKey)}
+      />
 
       <section aria-labelledby="enrollments-heading" className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
