@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Icon } from '@/components/site/icons';
 import { ANNOUNCEMENT_COOKIE } from '@/lib/announcement-cookie';
+import { isExternalHref } from '@/lib/safe-href';
 import type { ActiveAnnouncement } from '@/modules/settings/announcement';
 
 /**
@@ -23,7 +24,7 @@ export function AnnouncementBar({
   if (closed) return null;
 
   const { text, link, linkLabel, tone, key } = announcement;
-  const external = link !== null && /^https?:\/\//.test(link);
+  const external = link !== null && isExternalHref(link);
 
   function close() {
     const secure = window.location.protocol === 'https:' ? '; secure' : '';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeHref } from '@/lib/safe-href';
+import { isExternalHref, isSafeHref } from '@/lib/safe-href';
 import { parseSiteMenu } from '@/modules/settings/service';
 
 describe('links typed by staff', () => {
@@ -23,6 +23,15 @@ describe('links typed by staff', () => {
       '',
     ]) {
       expect(isSafeHref(href), href).toBe(false);
+    }
+  });
+
+  it('tells other sites from this one, whatever the letter case', () => {
+    for (const href of ['https://a.b', 'HTTPS://a.b', 'Http://a.b']) {
+      expect(isExternalHref(href), href).toBe(true);
+    }
+    for (const href of ['/news', '/https://a.b']) {
+      expect(isExternalHref(href), href).toBe(false);
     }
   });
 
