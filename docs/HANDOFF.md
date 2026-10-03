@@ -113,20 +113,21 @@ Order: 0 (optional, helps every later PR), then 1–5, then 6–7, then 8 (audit
      Excel export per filter, simple charts for choice fields.
      Keep stored submissions readable when a form changes (versioned field
      definitions or a snapshot of labels in each submission).
-7. **Backlog with epics and stories** (owner 2026-10-04: «سیستم backlog و
-   epic و story»). **Ask the owner first which one is meant:**
-   (a) a product backlog for this project's development — e.g.
-   `docs/product/backlog.md` (or one file per epic under
-   `docs/product/backlog/`) with IDs `EP-BD-*` / `ST-BD-*`, each story with
-   user-story text («به‌عنوان … می‌خواهم … تا …»), acceptance criteria,
-   priority, status, links to PRs and open questions (`OQ-BD-*`), filled with
-   everything built so far plus the tasks above; or optionally GitHub
-   Issues/Projects with epic/story labels and milestones;
-   (b) a task-tracking module inside the admin panel for the center's own
-   staff (epics → stories/tasks, assignee, status board).
-   Most likely (a) — this is how the other project of the owner works
-   (`OQ-BD-*` ids already follow it). Product/backlog docs may be in Persian
-   (see `CLAUDE.md`).
+7. **Backlog with epics and stories** (`docs/backlog`; owner 2026-10-04:
+   «سیستم backlog و epic و story» — **answered: it means the development
+   backlog of this site, i.e. project planning**, not a panel feature).
+   Build it as Markdown in the repo: `docs/product/backlog/README.md` (how it
+   works: IDs, statuses, priority scale, definition of done that includes the
+   PR/review gate and the staff-guide rule) plus one file per epic
+   (`EP-BD-01-….md`, …) holding its stories `ST-BD-*`. Each story: user-story
+   text in Persian («به‌عنوان … می‌خواهم … تا …»), acceptance criteria,
+   priority, status (برنامه‌ریزی‌شده / در حال انجام / بازبینی / انجام‌شده /
+   منتظر مرکز), links to its PR(s), commits and open questions (`OQ-BD-*`).
+   Fill it with everything already built (sessions 1–5, as done stories with
+   their commits) and everything planned here (tasks 0–9) and waiting on the
+   center (`open-questions.md`). Optionally mirror epics/stories as GitHub
+   Issues with labels and milestones later. From then on every new PR names
+   its story id. Product/backlog docs may be in Persian (`CLAUDE.md`).
 8. **Full audit, QA and security hardening** (owner 2026-10-04: «audit و QA
    سراسری، رفع باگ‌ها، تست امنیت و بالا بردن امنیت سایت در مقابل انواع حملات
    سایبری»). Start from `docs/security-review-2026-10.md` (2026-10-03, commit
