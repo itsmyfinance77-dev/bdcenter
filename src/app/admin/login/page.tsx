@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { siteInfo } from '@/content/site';
 import { getCurrentAdmin } from '@/modules/auth/service';
@@ -27,6 +28,11 @@ export default async function LoginPage({
           </p>
         ) : null}
         <LoginForm next={next} />
+        <p className="mt-4 text-center text-sm">
+          <Link href="/admin/login/forgot" className="text-primary hover:underline">
+            رمز را فراموش کرده‌ام
+          </Link>
+        </p>
       </div>
     </main>
   );

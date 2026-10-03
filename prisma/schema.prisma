@@ -53,6 +53,20 @@ model AdminUser {
   @@map("admin_users")
 }
 
+/// «رمز را فراموش کرده‌ام» links sent by email (owner's request, 2026-10-03).
+/// Only a SHA-256 of the token is stored; a link works once, for 30 minutes.
+model AdminPasswordReset {
+  id        String    @id @default(cuid())
+  adminId   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("admin_password_resets")
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String?

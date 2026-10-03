@@ -14,6 +14,8 @@ export const LIMITS = {
   publicForm: { max: 20, windowSeconds: 60 * 60 },
   // Admin login failures, per email and per client address.
   adminLogin: { max: 5, windowSeconds: 15 * 60 },
+  // «رمز را فراموش کرده‌ام» emails, per email and per client address.
+  adminPasswordReset: { max: 3, windowSeconds: 60 * 60 },
   // SMS codes cost money and can be used to harass a number.
   otpSendPerPhone: { max: 3, windowSeconds: 15 * 60 },
   otpSendPerIp: { max: 10, windowSeconds: 60 * 60 },
