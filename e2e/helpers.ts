@@ -10,6 +10,8 @@ type State = {
   databaseUrl: string;
   smsOutbox: string;
   admin: { email: string; password: string };
+  /** CRON_SECRET of the site under test. */
+  cronSecret: string;
 };
 
 export function state(): State {

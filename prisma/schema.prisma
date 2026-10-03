@@ -576,6 +576,44 @@ model Notification {
 }
 
 // ---------------------------------------------------------------------------
+// Reminders (owner's request, 2026-10-04): an SMS before a booking or a course
+// starts, sent by the scheduler through /api/cron/reminders (modules/reminders)
+// ---------------------------------------------------------------------------
+
+enum ReminderKind {
+  BOOKING
+  COURSE
+}
+
+/// One row per reminder, inserted (claimed) before the message is sent, so two
+/// scheduler runs never remind the same start twice. A moved start time is a
+/// new occurrence and gets its own reminder.
+model Reminder {
+  id           String       @id @default(cuid())
+  kind         ReminderKind
+  /// Booking id (BOOKING) or enrollment id (COURSE): a plain id, not a relation.
+  targetId     String
+  /// The start time this reminder was for.
+  occurrenceAt DateTime
+  /// Null while sending; false when there was no valid mobile or the provider refused.
+  smsSent      Boolean?
+  createdAt    DateTime     @default(now())
+
+  @@unique([kind, targetId, occurrenceAt])
+  @@index([createdAt])
+  @@map("reminders")
+}
+
+/// Last run of each scheduled job (called by the scheduler), shown in the panel.
+model JobRun {
+  name      String   @id
+  lastRunAt DateTime
+  result    Json
+
+  @@map("job_runs")
+}
+
+// ---------------------------------------------------------------------------
 // Appointments (ADR-0003): staff profiles, bookable slots, member bookings
 // ---------------------------------------------------------------------------
 

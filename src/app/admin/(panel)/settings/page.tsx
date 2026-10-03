@@ -1,5 +1,7 @@
 import { AdminHeading } from '@/components/admin/ui';
+import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
 import { requireAdmin } from '@/modules/auth/service';
+import { getJobRun } from '@/modules/jobs/service';
 import {
   ALERT_KINDS,
   getSetting,
@@ -10,6 +12,7 @@ import {
   AlertSettingsForm,
   ContactSettingsForm,
   MenuSettingsForm,
+  ReminderSettingsForm,
   StatsSettingsForm,
 } from './settings-forms';
 
@@ -33,13 +36,33 @@ function Section({
   );
 }
 
+/** Whether the scheduler that sends reminders is running (it calls every 15 minutes). */
+function ReminderRunNote({ run }: { run: Awaited<ReturnType<typeof getJobRun>> }) {
+  const result = run?.result as { sent?: number; failed?: number } | undefined;
+  const stale = !run || Date.now() - run.lastRunAt.getTime() > 60 * 60 * 1000;
+  return (
+    <p
+      className={`mb-4 rounded-control border px-4 py-3 text-sm leading-7 ${stale ? 'border-warning/40 bg-warning/10 text-ink' : 'border-line bg-surface-2 text-ink-2'}`}
+    >
+      {run
+        ? `آخرین اجرای زمان‌بند: ${formatDateTime(run.lastRunAt)} — ${formatNumber(result?.sent ?? 0)} یادآوری فرستاده شد${result?.failed ? `، ${formatNumber(result.failed)} ناموفق` : ''}.`
+        : 'زمان‌بند هنوز اجرا نشده است.'}
+      {stale
+        ? ' تا وقتی زمان‌بند روی سرور (هر ۱۵ دقیقه) اجرا نشود، یادآوری فرستاده نمی‌شود؛ به پشتیبان فنی خبر دهید.'
+        : null}
+    </p>
+  );
+}
+
 export default async function SettingsPage() {
   await requireAdmin('ADMIN');
-  const [contact, alerts, stats, menu] = await Promise.all([
+  const [contact, alerts, stats, menu, reminders, reminderRun] = await Promise.all([
     getSetting('site.contact'),
     getSetting('alerts.recipients'),
     getSetting('home.stats'),
     getSetting('site.menu'),
+    getSetting('reminders'),
+    getJobRun('reminders'),
   ]);
   const menuValues: Record<string, string> = {};
   menu.services.forEach((item, i) => {
@@ -97,6 +120,22 @@ export default async function SettingsPage() {
           lead="تا چهار عدد واقعی از کارنامهٔ مرکز (مثلاً شرکت‌های آموزش‌دیده یا جلسات مشاوره) که در صفحهٔ اصلی نمایش داده می‌شود. تا وقتی همه خالی باشند، این بخش در سایت دیده نمی‌شود."
         >
           <StatsSettingsForm initial={statValues} />
+        </Section>
+        <Section
+          title="یادآوری پیامکی"
+          lead="پیش از هر نوبت رزروشده و پیش از شروع هر دوره، به عضو پیامک یادآوری فرستاده می‌شود (و اگر ایمیل داده باشد، ایمیل). در ساعت‌های سکوت پیامکی فرستاده نمی‌شود؛ یادآوری‌هایی که در این ساعت‌ها موعدشان برسد، صبح فرستاده می‌شوند."
+        >
+          <ReminderRunNote run={reminderRun} />
+          <ReminderSettingsForm
+            initial={{
+              bookingsEnabled: reminders.bookings.enabled ? 'on' : '',
+              bookingsHours: toPersianDigits(String(reminders.bookings.hoursBefore)),
+              coursesEnabled: reminders.courses.enabled ? 'on' : '',
+              coursesHours: toPersianDigits(String(reminders.courses.hoursBefore)),
+              quietFrom: String(reminders.quietFrom),
+              quietUntil: String(reminders.quietUntil),
+            }}
+          />
         </Section>
         <Section
           title="خبر دادن به کارمندان دربارهٔ درخواست‌های تازه"

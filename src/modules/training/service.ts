@@ -506,6 +506,27 @@ export async function getEnrollmentContact(enrollmentId: string) {
     : null;
 }
 
+/**
+ * Accepted enrollments in published courses that start between `from` and
+ * `to`, for the reminders domain.
+ */
+export async function listAcceptedEnrollmentsStartingBetween(from: Date, to: Date, limit = 3000) {
+  return prisma.enrollment.findMany({
+    where: {
+      status: 'ACCEPTED',
+      course: { status: 'PUBLISHED', startsAt: { gte: from, lte: to } },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      phone: true,
+      email: true,
+      course: { select: { title: true, startsAt: true, location: true } },
+    },
+  });
+}
+
 export async function exportEnrollmentsCsv(courseId: string, actorId: string) {
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return null;

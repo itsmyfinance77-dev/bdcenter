@@ -13,6 +13,11 @@
 		max_size 12MB
 	}
 
+	# Scheduled jobs are called by the scheduler container over the internal
+	# network only; they are not reachable from the internet.
+	@cron path /api/cron /api/cron/*
+	respond @cron 404
+
 	reverse_proxy app:3000 {
 		# The app reads the visitor address from this header (CLIENT_IP_HEADER),
 		# which Caddy always overwrites, so visitors cannot fake it.

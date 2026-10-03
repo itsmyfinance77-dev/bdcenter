@@ -184,9 +184,23 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
 ### 5. Sixth session progress (2026-10-04 →)
 
 - PR #1 — fifth session (see above).
-- Task 0 — CI: `.github/workflows/ci.yml` + `scripts/ci-env.sh`; prettier
-  now uses `endOfLine: auto` so `npm run format:check` passes on the Windows
-  checkout (CRLF) as well as in CI (LF).
+- Task 0 — CI (PR #2): `.github/workflows/ci.yml` + `scripts/ci-env.sh`;
+  prettier uses `endOfLine: auto` so `npm run format:check` passes on the
+  Windows checkout (CRLF) as well as in CI (LF). DB tests create their own
+  panel user (`tests/db/actor.ts`): CI's database starts empty.
+- Task 1 — SMS reminders (`feat/sms-reminders`): `src/modules/reminders`
+  (`runReminders`, timing rules in `schedule.ts`), table `reminders` (claimed
+  before sending: unique kind + target + start time) and `job_runs` (last run,
+  shown in «تنظیمات سایت» → «یادآوری پیامکی»). Setting `reminders`: on/off and
+  hours before, separately for bookings and courses (default 24 h), quiet
+  hours (default 22–08 Tehran). Called by `POST /api/cron/reminders` with
+  `Authorization: Bearer $CRON_SECRET` (`src/lib/cron-auth.ts`); production:
+  the `scheduler` container (`deploy/scheduler/run.sh`, every 15 min), Caddy
+  answers 404 for `/api/cron` from outside; dev/preview:
+  `npm run reminders:run` (`-- --url http://127.0.0.1:3020 --every 15` for
+  the preview). The owner's `.env` got a `CRON_SECRET`. Task 4 (sessions)
+  should feed one COURSE reminder per session start (the unique key already
+  allows it: `occurrenceAt` is the start time).
 
 ## Where things live
 
