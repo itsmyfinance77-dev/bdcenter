@@ -3,6 +3,12 @@ import { menuIconLabel } from '@/content/admin';
 import { mainNav, servicesMenu, siteInfo } from '@/content/site';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/modules/audit/service';
+import {
+  activeAnnouncement,
+  announcementSchema,
+  noAnnouncement,
+  type ActiveAnnouncement,
+} from './announcement';
 
 /**
  * Small switches and texts an ADMIN can change from the panel, stored as one
@@ -55,6 +61,8 @@ const definitions = {
    * center enters; the band stays hidden while the list is empty.
    */
   'home.stats': { schema: statsSchema, fallback: [] as HomeStat[] },
+  /** Notice above the header of every public page (owner's request, 2026-10-04). */
+  'site.announcement': { schema: announcementSchema, fallback: noAnnouncement },
   /** The header: the «خدمات» dropdown and the top-level links (owner's request, 2026-10-03). */
   'site.menu': { schema: menuSchema, fallback: defaultMenu },
   /** Who hears (SMS / email) about each kind of new request. */
@@ -244,4 +252,14 @@ export function parseSiteMenu(values: Record<string, string>) {
   const services = read('s', MAX_SERVICE_ITEMS);
   const main = read('m', MAX_MAIN_ITEMS).map(({ title, href }) => ({ title, href }));
   return { menu: { services, main }, errors };
+}
+
+/** The site notice to show now, or null; nothing when the database is unreachable. */
+export async function getActiveAnnouncement(now = new Date()): Promise<ActiveAnnouncement | null> {
+  try {
+    return activeAnnouncement(await getSetting('site.announcement'), now);
+  } catch (error) {
+    console.error('getActiveAnnouncement: showing no notice', error);
+    return null;
+  }
 }
