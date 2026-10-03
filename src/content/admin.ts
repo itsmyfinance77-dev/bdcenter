@@ -43,6 +43,7 @@ export const adminNav = [
   { href: '/admin/articles', title: 'اخبار و رویدادها', adminOnly: false },
   { href: '/admin/courses', title: 'دوره‌های آموزشی', adminOnly: false },
   { href: '/admin/pages', title: 'صفحه‌ها', adminOnly: false },
+  { href: '/admin/services', title: 'خدمات مرکز', adminOnly: false },
   { href: '/admin/links', title: 'پیوندها', adminOnly: false },
   { href: '/admin/appointments', title: 'نوبت‌دهی', adminOnly: false },
   { href: '/admin/consulting', title: 'درخواست‌های مشاوره', adminOnly: false },

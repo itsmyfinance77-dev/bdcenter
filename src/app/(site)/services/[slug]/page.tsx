@@ -5,36 +5,33 @@ import { PageHeader } from '@/components/page-header';
 import { Icon } from '@/components/site/icons';
 import { FormCard, PageBody } from '@/components/site/page-body';
 import { consultingCopy } from '@/content/members';
-import { homeCopy, servicePageCopy, serviceTiles, tileHref } from '@/content/site';
+import { RichHtml } from '@/components/rich-html';
+import { homeCopy, servicePageCopy } from '@/content/site';
 import { getCurrentMember } from '@/modules/members/service';
+import { getServiceTile, listServiceTiles } from '@/modules/services/service';
 import { ConsultingForm } from './consulting-form';
 
 type Params = { slug: string };
 
-function findTile(slug: string) {
-  return serviceTiles.find((tile) => tile.slug === slug);
-}
+// Staff edit the tiles in the panel, so the page always reads the latest.
+export const dynamic = 'force-dynamic';
 
-export function generateStaticParams(): Params[] {
-  return serviceTiles.map((tile) => ({ slug: tile.slug }));
-}
-
-export const dynamicParams = false;
+const findTile = getServiceTile;
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const tile = findTile((await params).slug);
+  const tile = await findTile((await params).slug);
   if (!tile) return {};
   return {
     title: tile.title,
-    description: 'summary' in tile ? tile.summary : undefined,
+    description: tile.summary ?? undefined,
     alternates: { canonical: `/services/${tile.slug}` },
   };
 }
 
 export default async function ServicePage({ params }: { params: Promise<Params> }) {
-  const tile = findTile((await params).slug);
+  const tile = await findTile((await params).slug);
   if (!tile) notFound();
-  if ('href' in tile) redirect(tile.href);
+  if (tile.href !== `/services/${tile.slug}`) redirect(tile.href);
 
   const crumbs = [{ title: 'خدمات', href: '/#services' }, { title: tile.title }];
 
@@ -53,6 +50,11 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       <>
         <PageHeader title={tile.title} lead={servicePageCopy.consulting} crumbs={crumbs} />
         <PageBody narrow>
+          {tile.bodyHtml ? (
+            <div className="mb-6 rounded-3xl border border-line bg-white p-[clamp(20px,3vw,32px)]">
+              <RichHtml html={tile.bodyHtml} />
+            </div>
+          ) : null}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-primary/25 bg-primary-tint/60 p-4 text-[15px] font-semibold text-ink">
             {servicePageCopy.bookingPrompt}
             <Link
@@ -88,31 +90,50 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
     );
   }
 
-  // OQ-BD-06: content for the remaining tiles has not arrived yet.
-  const others = serviceTiles.filter((other) => other.slug !== tile.slug);
+  // OQ-BD-06: a tile stays «به‌زودی» until staff add its content and switch it live.
+  const others = (await listServiceTiles()).filter((other) => other.slug !== tile.slug);
   return (
     <>
       <PageHeader title={tile.title} crumbs={crumbs} />
       <PageBody>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-start gap-[clamp(24px,4vw,40px)]">
-          <div className="flex flex-col items-start gap-4 rounded-3xl border-[1.5px] border-dashed border-line-strong bg-surface-2 p-[clamp(28px,4vw,44px)]">
-            <div className="flex items-center gap-3">
-              <span className="grid size-[52px] place-items-center rounded-[14px] bg-surface-3 text-ink-3">
-                <Icon name={tile.icon} size={24} strokeWidth={1.7} />
-              </span>
-              <span className="rounded-full border border-[#d3dae6] bg-white px-3 py-1 text-[13px] font-bold text-ink-2">
-                {homeCopy.soon}
-              </span>
+          {tile.isPlaceholder ? (
+            <div className="flex flex-col items-start gap-4 rounded-3xl border-[1.5px] border-dashed border-line-strong bg-surface-2 p-[clamp(28px,4vw,44px)]">
+              <div className="flex items-center gap-3">
+                <span className="grid size-[52px] place-items-center rounded-[14px] bg-surface-3 text-ink-3">
+                  <Icon name={tile.icon} size={24} strokeWidth={1.7} />
+                </span>
+                <span className="rounded-full border border-[#d3dae6] bg-white px-3 py-1 text-[13px] font-bold text-ink-2">
+                  {homeCopy.soon}
+                </span>
+              </div>
+              <p className="text-[17px] leading-loose text-ink-soon">
+                {servicePageCopy.placeholder}
+              </p>
+              <Link
+                href="/contact"
+                className="inline-flex min-h-11 items-center gap-2 text-[14.5px] font-bold text-primary"
+              >
+                پرسش درباره این خدمت
+                <Icon name="arrowStart" size={16} strokeWidth={2} />
+              </Link>
             </div>
-            <p className="text-[17px] leading-loose text-ink-soon">{servicePageCopy.placeholder}</p>
-            <Link
-              href="/contact"
-              className="inline-flex min-h-11 items-center gap-2 text-[14.5px] font-bold text-primary"
-            >
-              پرسش درباره این خدمت
-              <Icon name="arrowStart" size={16} strokeWidth={2} />
-            </Link>
-          </div>
+          ) : (
+            <div className="flex flex-col items-start gap-5 rounded-3xl border border-line bg-white p-[clamp(24px,3.5vw,40px)]">
+              {tile.bodyHtml ? (
+                <RichHtml html={tile.bodyHtml} />
+              ) : tile.summary ? (
+                <p className="text-[17px] leading-loose text-ink">{tile.summary}</p>
+              ) : null}
+              <Link
+                href="/contact"
+                className="inline-flex min-h-11 items-center gap-2 text-[14.5px] font-bold text-primary"
+              >
+                پرسش درباره این خدمت
+                <Icon name="arrowStart" size={16} strokeWidth={2} />
+              </Link>
+            </div>
+          )}
           <nav aria-labelledby="other-services" className="flex flex-col gap-3.5">
             <h2 id="other-services" className="text-[17px] font-extrabold text-brand-900">
               سایر خدمات مرکز
@@ -123,7 +144,7 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
                 return (
                   <li key={other.slug}>
                     <Link
-                      href={tileHref(other)}
+                      href={other.href}
                       className="flex min-h-14 items-center gap-3 rounded-[14px] border border-line bg-white px-3.5 py-2 text-ink transition-[border-color,transform] duration-250 ease-(--ease-out-soft) hover:-translate-y-0.5 hover:border-line-hover hover:text-brand-900"
                     >
                       <span

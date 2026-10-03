@@ -219,7 +219,9 @@ model MediaAsset {
   @@map("media_assets")
 }
 
-/// The 7 "خدمات مرکز" tiles. Most start with `isPlaceholder = true`
+/// The 7 "خدمات مرکز" tiles: their slugs, icons and links are fixed in
+/// src/content/site.ts; a row here holds what staff edited (src/modules/services).
+/// Most start with `isPlaceholder = true`
 /// ("اطلاعات این صفحه بعدا اضافه می‌شود") and get real content later —
 /// the tile still renders, just without a detail page.
 model Service {
@@ -229,6 +231,9 @@ model Service {
   summary       String?
   externalUrl   String? // e.g. link to yazdccima.com/services/edu for training
   isPlaceholder Boolean  @default(false)
+  /// Content of /services/<slug> from the rich editor (ADR-0005), and its text.
+  bodyHtml      String?
+  bodyText      String?
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
