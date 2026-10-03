@@ -3,7 +3,8 @@
 # Nothing here is ever used outside the throwaway CI database.
 set -eu
 
-secret() { openssl rand -base64 "$1" | tr -d '\n/+='; }
+# Hex: no characters that sed or the .env parser could trip over.
+secret() { openssl rand -hex "$1"; }
 
 sed \
   -e "s|^SESSION_SECRET=.*|SESSION_SECRET=\"$(secret 48)\"|" \
