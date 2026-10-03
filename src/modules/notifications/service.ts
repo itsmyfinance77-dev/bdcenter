@@ -41,7 +41,8 @@ function accountLink(): string {
   return new URL('/account', base).toString();
 }
 
-async function deliver(target: Target) {
+/** Sends and logs the notice; true when the SMS went out. */
+async function deliver(target: Target): Promise<boolean> {
   const log = (channel: 'SMS' | 'EMAIL', recipient: string, sent: boolean) =>
     prisma.notification.create({
       data: {
@@ -54,17 +55,33 @@ async function deliver(target: Target) {
       },
     });
 
+  let smsSent = false;
   const mobile = mobilePhone.safeParse(target.phone ?? undefined);
   if (mobile.success) {
     const sender = smsSender();
-    const sent = sender ? await sender.send(mobile.data, target.notice.text) : false;
-    await log('SMS', mobile.data, sent);
+    smsSent = sender ? await sender.send(mobile.data, target.notice.text) : false;
+    await log('SMS', mobile.data, smsSent);
   }
   // Email is optional: without an SMTP server in production it is skipped, not failed.
   if (target.email && emailAvailable()) {
     const sent = await sendEmail({ to: target.email, ...target.notice });
     await log('EMAIL', target.email, sent);
   }
+  return smsSent;
+}
+
+/**
+ * A reminder before a booking or a course starts (reminders domain), with the
+ * same logging as every other notice; true when the SMS went out.
+ */
+export function sendReminder(reminder: {
+  entity: 'Booking' | 'Enrollment';
+  entityId: string;
+  phone: string | null;
+  email: string | null;
+  notice: Notice;
+}): Promise<boolean> {
+  return deliver({ ...reminder, event: `reminder.${reminder.entity}` });
 }
 
 export async function notifyEnrollmentStatus(enrollmentId: string, status: string) {

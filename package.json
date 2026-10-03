@@ -25,7 +25,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
     "admin:create": "tsx scripts/create-admin.ts",
-    "sandbox:users": "tsx --env-file=.env scripts/sandbox-users.ts"
+    "sandbox:users": "tsx --env-file=.env scripts/sandbox-users.ts",
+    "reminders:run": "node --env-file=.env scripts/run-reminders.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0",

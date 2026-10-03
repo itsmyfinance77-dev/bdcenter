@@ -6,6 +6,7 @@
 #   migrate  applies Prisma migrations, then exits; app waits for it
 #   db       PostgreSQL 16, reachable only inside this stack
 #   backup   daily database + files backup into the backups volume
+#   scheduler  calls the app's scheduled jobs every 15 minutes (reminder SMS)
 #
 # Every secret comes from .env.production (template: deploy/env.production.example).
 
@@ -101,6 +102,18 @@ services:
         condition: service_healthy
       # The app mounts the storage volume first, so it is created owned by the
       # app's user (an empty volume takes the owner of the image's folder).
+      app:
+        condition: service_started
+
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    entrypoint: ['sh', '/scheduler/run.sh']
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET}
+    volumes:
+      - ./deploy/scheduler:/scheduler:ro
+    depends_on:
       app:
         condition: service_started
 

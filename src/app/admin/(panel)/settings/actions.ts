@@ -11,6 +11,7 @@ import {
   parseHomeStats,
   parseRecipients,
   parseSiteMenu,
+  reminderInputSchema,
   saveContactInfo,
   setSetting,
   type AlertKind,
@@ -70,6 +71,21 @@ export async function saveAnnouncementAction(
       ? 'اطلاعیه ذخیره شد و در زمان تعیین‌شده بالای همهٔ صفحه‌های سایت نمایش داده می‌شود.'
       : 'اطلاعیه خاموش است و در سایت نمایش داده نمی‌شود.',
   };
+}
+
+export async function saveRemindersAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const parsed = reminderInputSchema.safeParse(values);
+  if (!parsed.success) {
+    return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
+  }
+  await setSetting('reminders', parsed.data, admin.id);
+  revalidatePath('/admin/settings');
+  return { status: 'success', message: 'تنظیمات یادآوری ذخیره شد.' };
 }
 
 export async function saveStatsAction(_prev: FormState, formData: FormData): Promise<FormState> {

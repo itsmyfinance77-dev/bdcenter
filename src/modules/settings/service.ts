@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { menuIconLabel } from '@/content/admin';
 import { mainNav, servicesMenu, siteInfo } from '@/content/site';
+import { formatNumber } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
+import { toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import {
   activeAnnouncement,
@@ -39,6 +41,19 @@ const alertsSchema = z.record(z.enum(ALERT_KINDS), recipientsSchema);
 const statsSchema = z.array(z.object({ label: z.string(), value: z.string() })).max(4);
 export type HomeStat = z.infer<typeof statsSchema>[number];
 
+const reminderKindSchema = z.object({
+  enabled: z.boolean(),
+  hoursBefore: z.number().int().min(1).max(72),
+});
+const remindersSchema = z.object({
+  bookings: reminderKindSchema,
+  courses: reminderKindSchema,
+  /** No SMS from `quietFrom` to `quietUntil` (Tehran hours; equal = no quiet time). */
+  quietFrom: z.number().int().min(0).max(23),
+  quietUntil: z.number().int().min(0).max(23),
+});
+export type ReminderSettings = z.infer<typeof remindersSchema>;
+
 const menuItemSchema = z.object({ title: z.string(), href: z.string() });
 const menuSchema = z.object({
   services: z.array(menuItemSchema.extend({ icon: z.string() })).max(MAX_SERVICE_ITEMS),
@@ -65,6 +80,20 @@ const definitions = {
   'site.announcement': { schema: announcementSchema, fallback: noAnnouncement },
   /** The header: the «خدمات» dropdown and the top-level links (owner's request, 2026-10-03). */
   'site.menu': { schema: menuSchema, fallback: defaultMenu },
+  /**
+   * Reminder SMS before a booked appointment and before an accepted course
+   * starts (owner's request, 2026-10-04: "the day before"). On by default,
+   * 24 hours ahead, never between 22:00 and 08:00.
+   */
+  reminders: {
+    schema: remindersSchema,
+    fallback: {
+      bookings: { enabled: true, hoursBefore: 24 },
+      courses: { enabled: true, hoursBefore: 24 },
+      quietFrom: 22,
+      quietUntil: 8,
+    } as ReminderSettings,
+  },
   /** Who hears (SMS / email) about each kind of new request. */
   'alerts.recipients': {
     schema: alertsSchema,
@@ -263,3 +292,30 @@ export async function getActiveAnnouncement(now = new Date()): Promise<ActiveAnn
     return null;
   }
 }
+
+const hourField = (label: string, min: number, max: number) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' ? Number(toLatinDigits(value).trim() || NaN) : value),
+    z
+      .number({ invalid_type_error: `${label} را به عدد بنویسید.` })
+      .int(`${label} باید عدد صحیح باشد.`)
+      .min(min, `${label} نباید کمتر از ${formatNumber(min)} باشد.`)
+      .max(max, `${label} نباید بیشتر از ${formatNumber(max)} باشد.`),
+  );
+
+/** The «یادآوری پیامکی» form: checkboxes arrive as "on" or not at all. */
+export const reminderInputSchema = z
+  .object({
+    bookingsEnabled: z.literal('on').optional(),
+    bookingsHours: hourField('ساعت پیش از نوبت', 1, 72),
+    coursesEnabled: z.literal('on').optional(),
+    coursesHours: hourField('ساعت پیش از شروع دوره', 1, 72),
+    quietFrom: hourField('ساعت شروع سکوت', 0, 23),
+    quietUntil: hourField('ساعت پایان سکوت', 0, 23),
+  })
+  .transform((input): ReminderSettings => ({
+    bookings: { enabled: input.bookingsEnabled === 'on', hoursBefore: input.bookingsHours },
+    courses: { enabled: input.coursesEnabled === 'on', hoursBefore: input.coursesHours },
+    quietFrom: input.quietFrom,
+    quietUntil: input.quietUntil,
+  }));

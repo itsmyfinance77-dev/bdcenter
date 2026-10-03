@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatNumber } from '@/lib/format';
 import { buildCalendar } from '@/lib/ical';
 import { parseJalaliDateTime } from '@/lib/jalali';
 import { richInput } from '@/lib/rich-html';
@@ -310,6 +311,31 @@ export async function getBookingContact(bookingId: string) {
   });
 }
 
+/**
+ * Live bookings whose slot starts between `from` and `to`, soonest first,
+ * for the reminders domain.
+ */
+export async function listBookingsStartingBetween(from: Date, to: Date, limit = 1000) {
+  return prisma.booking.findMany({
+    where: { status: 'BOOKED', slot: { isCancelled: false, startsAt: { gte: from, lte: to } } },
+    orderBy: { slot: { startsAt: 'asc' } },
+    take: limit,
+    select: {
+      id: true,
+      phone: true,
+      email: true,
+      createdAt: true,
+      slot: {
+        select: {
+          startsAt: true,
+          location: true,
+          staff: { select: { fullName: true, service: true } },
+        },
+      },
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Admin: staff profiles
 // ---------------------------------------------------------------------------
@@ -324,8 +350,8 @@ const intField = (label: string, fallback: number, min: number, max: number) =>
     z
       .number({ invalid_type_error: `${label} باید عدد باشد.` })
       .int(`${label} باید عدد صحیح باشد.`)
-      .min(min, `${label} نباید کمتر از ${min} باشد.`)
-      .max(max, `${label} نباید بیشتر از ${max} باشد.`),
+      .min(min, `${label} نباید کمتر از ${formatNumber(min)} باشد.`)
+      .max(max, `${label} نباید بیشتر از ${formatNumber(max)} باشد.`),
   );
 
 export const staffInputSchema = z.object({

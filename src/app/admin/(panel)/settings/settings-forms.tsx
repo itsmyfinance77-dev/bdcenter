@@ -18,6 +18,7 @@ import {
   saveAnnouncementAction,
   saveContactAction,
   saveMenuAction,
+  saveRemindersAction,
   saveStatsAction,
 } from './actions';
 
@@ -234,6 +235,58 @@ export function AnnouncementSettingsForm({ initial }: { initial: Record<string, 
         </div>
       ) : null}
       <SubmitButton>ذخیرهٔ اطلاعیه</SubmitButton>
+    </form>
+  );
+}
+
+const hourOptions = Object.fromEntries(
+  Array.from({ length: 24 }, (_, hour) => [
+    String(hour),
+    new Intl.NumberFormat('fa-IR', { minimumIntegerDigits: 2 }).format(hour) + ':۰۰',
+  ]),
+);
+
+export function ReminderSettingsForm({ initial }: { initial: Record<string, string> }) {
+  const { state, formAction, field } = useForm(saveRemindersAction, initial);
+  const values = state.status === 'error' ? state.values : initial;
+  // React resets the form after an action: remount the checkboxes with the right state.
+  const key = actionResultKey(state);
+  const toggle = (name: string, label: string) => (
+    <label className="flex items-center gap-2 text-sm text-ink">
+      <input
+        key={key}
+        type="checkbox"
+        name={name}
+        defaultChecked={values[name] === 'on'}
+        className="size-4 accent-primary"
+      />
+      {label}
+    </label>
+  );
+  return (
+    <form action={formAction} className="space-y-5">
+      <Message state={state} />
+      <fieldset className="space-y-3">
+        {toggle('bookingsEnabled', 'یادآوری نوبت‌های مشاوره و میز خدمت')}
+        <TextField
+          label="چند ساعت پیش از نوبت"
+          hint="بین ۱ تا ۷۲ ساعت؛ ۲۴ یعنی یک روز پیش از نوبت."
+          {...field('bookingsHours')}
+        />
+      </fieldset>
+      <fieldset className="space-y-3">
+        {toggle('coursesEnabled', 'یادآوری شروع دوره به ثبت‌نام‌های پذیرفته‌شده')}
+        <TextField
+          label="چند ساعت پیش از شروع دوره"
+          hint="بین ۱ تا ۷۲ ساعت."
+          {...field('coursesHours')}
+        />
+      </fieldset>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <SelectField label="پیامک نفرست از ساعت" options={hourOptions} {...field('quietFrom')} />
+        <SelectField label="تا ساعت" options={hourOptions} {...field('quietUntil')} />
+      </div>
+      <SubmitButton>ذخیرهٔ تنظیمات یادآوری</SubmitButton>
     </form>
   );
 }
