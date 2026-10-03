@@ -476,6 +476,27 @@ model RateLimitBucket {
   @@map("rate_limit_buckets")
 }
 
+/// Group SMS sent by an ADMIN (owner's request, 2026-10-03): to all members,
+/// a kind of member, or the people enrolled in one course.
+model SmsBroadcast {
+  id            String    @id @default(cuid())
+  /// "members" | "individuals" | "legal" | "course"
+  audience      String
+  courseId      String?
+  /// Who it went to, in words, as it was at sending time (history list).
+  audienceLabel String
+  text          String
+  recipients    Int
+  sent          Int       @default(0)
+  failed        Int       @default(0)
+  finishedAt    DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([createdAt])
+  @@map("sms_broadcasts")
+}
+
 /// SMS_PROVIDER="sandbox" (development and the plain-HTTP preview only): the
 /// messages that would have gone out, shown in the admin panel instead of
 /// reaching a phone. Only the newest few hundred are kept.

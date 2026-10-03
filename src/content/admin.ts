@@ -50,6 +50,7 @@ export const adminNav = [
   { href: '/admin/messages', title: 'پیام‌های تماس', adminOnly: false },
   { href: '/admin/forms', title: 'فرم‌ها و درخواست‌ها', adminOnly: false },
   { href: '/admin/members', title: 'اعضای سایت', adminOnly: true },
+  { href: '/admin/broadcasts', title: 'پیامک گروهی', adminOnly: true },
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
@@ -90,4 +91,12 @@ export const staffAlertText = {
   enrollments: (name: string, course: string) => `ثبت‌نام تازه در دورهٔ «${course}»: ${name}`,
   members: (name: string, company: string) =>
     `${name} از طرف «${company}» ثبت‌نام کرده و منتظر تأیید است.`,
+} as const;
+
+/** Who a group SMS goes to (src/modules/broadcasts). */
+export const broadcastAudienceLabel = {
+  members: 'همهٔ اعضای فعال سایت',
+  individuals: 'اعضای شخص حقیقی',
+  legal: 'نمایندگان تأییدشدهٔ اشخاص حقوقی',
+  course: 'ثبت‌نام‌کنندگان یک دوره',
 } as const;

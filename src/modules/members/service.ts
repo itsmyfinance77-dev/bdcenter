@@ -430,6 +430,23 @@ export async function rotateMemberCalendar(id: string) {
   await prisma.member.update({ where: { id }, data: { calendarVersion: { increment: 1 } } });
 }
 
+export type MemberAudience = 'members' | 'individuals' | 'legal';
+
+/** Mobile numbers of active members for a group SMS (broadcasts domain). */
+export async function listMemberPhones(audience: MemberAudience): Promise<string[]> {
+  const where =
+    audience === 'individuals'
+      ? { personType: 'INDIVIDUAL' as const }
+      : audience === 'legal'
+        ? { personType: 'LEGAL' as const, approval: 'APPROVED' as const }
+        : {};
+  const rows = await prisma.member.findMany({
+    where: { isActive: true, ...where },
+    select: { phone: true },
+  });
+  return rows.map((row) => row.phone);
+}
+
 /** Contact details for the notifications domain. */
 export async function getMemberContact(id: string) {
   return prisma.member.findUnique({

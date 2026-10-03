@@ -307,6 +307,45 @@ export async function listCoursesForAdmin() {
   return courses.map(({ _count, ...course }) => ({ ...course, taken: _count.enrollments }));
 }
 
+/** Courses with how many people a group SMS would reach (accepted / all live enrollments). */
+export async function listCourseAudiences() {
+  const courses = await prisma.course.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+    select: {
+      id: true,
+      title: true,
+      enrollments: { where: { status: { not: 'REJECTED' } }, select: { status: true } },
+    },
+  });
+  return courses.map((course) => ({
+    id: course.id,
+    title: course.title,
+    all: course.enrollments.length,
+    accepted: course.enrollments.filter((e) => e.status === 'ACCEPTED' || e.status === 'DONE')
+      .length,
+  }));
+}
+
+/** Phones of a course's enrollees, for a group SMS: accepted (and done) only, or everyone not rejected. */
+export async function listCourseEnrollmentPhones(courseId: string, scope: 'accepted' | 'all') {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      title: true,
+      enrollments: {
+        where:
+          scope === 'accepted'
+            ? { status: { in: ['ACCEPTED', 'DONE'] } }
+            : { status: { not: 'REJECTED' } },
+        select: { phone: true },
+      },
+    },
+  });
+  if (!course) return null;
+  return { title: course.title, phones: course.enrollments.map((e) => e.phone) };
+}
+
 export async function getCourseForAdmin(id: string) {
   return prisma.course.findUnique({ where: { id } });
 }
