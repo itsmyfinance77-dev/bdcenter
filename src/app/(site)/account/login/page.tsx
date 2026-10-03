@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { memberCopy } from '@/content/members';
+import { smsSandboxEnabled } from '@/modules/messaging/sandbox';
 import { getCurrentMember, OTP_TTL_SECONDS } from '@/modules/members/service';
 import { MemberLoginForm } from './login-form';
 
@@ -27,6 +28,14 @@ export default async function MemberLoginPage({
         crumbs={[{ title: memberCopy.loginTitle }]}
       />
       <div className="mx-auto max-w-md px-4 py-12">
+        {smsSandboxEnabled() ? (
+          <p
+            role="note"
+            className="mb-4 rounded-control border border-warning/40 bg-warning/10 px-4 py-3 text-sm leading-7 text-ink"
+          >
+            {memberCopy.sandboxHint}
+          </p>
+        ) : null}
         <div className="rounded-panel border border-line bg-white p-6">
           <MemberLoginForm next={next} codeTtlSeconds={OTP_TTL_SECONDS} />
         </div>

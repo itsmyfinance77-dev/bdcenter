@@ -6,6 +6,8 @@ node_modules/
 out/
 dist/
 storage/
+# Test accounts and their passwords (npm run sandbox:users)
+sandbox/
 .env
 .env.production
 .env.*.local

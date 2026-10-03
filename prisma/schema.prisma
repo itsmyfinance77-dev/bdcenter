@@ -410,6 +410,21 @@ model RateLimitBucket {
   @@map("rate_limit_buckets")
 }
 
+/// SMS_PROVIDER="sandbox" (development and the plain-HTTP preview only): the
+/// messages that would have gone out, shown in the admin panel instead of
+/// reaching a phone. Only the newest few hundred are kept.
+model SandboxSms {
+  id        String   @id @default(cuid())
+  phone     String
+  text      String
+  /// The sign-in code of an OTP message, shown large for testers.
+  code      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("sandbox_sms")
+}
+
 // ---------------------------------------------------------------------------
 // Notifications — SMS/email sent to applicants when staff change a status
 // ---------------------------------------------------------------------------

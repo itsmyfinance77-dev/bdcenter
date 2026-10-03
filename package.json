@@ -24,7 +24,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "admin:create": "tsx scripts/create-admin.ts"
+    "admin:create": "tsx scripts/create-admin.ts",
+    "sandbox:users": "tsx --env-file=.env scripts/sandbox-users.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0",

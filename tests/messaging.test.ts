@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
+import { smsSandboxEnabled } from '@/modules/messaging/sandbox';
 import { kavenegar, smsIr, smsSender } from '@/modules/messaging/sms';
 
 type Call = { url: string; init: RequestInit };
@@ -33,6 +34,21 @@ describe('provider selection', () => {
   it('refuses the console provider in production', () => {
     expect(smsSender({ SMS_PROVIDER: 'console', NODE_ENV: 'production' })).toBeNull();
     expect(smsSender({ NODE_ENV: 'development' })).not.toBeNull();
+  });
+
+  it('allows the sandbox only in development and the plain-HTTP preview', () => {
+    expect(smsSandboxEnabled({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'development' })).toBe(true);
+    expect(
+      smsSandboxEnabled({
+        SMS_PROVIDER: 'sandbox',
+        NODE_ENV: 'production',
+        INSECURE_HTTP_PREVIEW: '1',
+      }),
+    ).toBe(true);
+    expect(smsSandboxEnabled({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'production' })).toBe(false);
+    expect(smsSandboxEnabled({ SMS_PROVIDER: 'console', NODE_ENV: 'development' })).toBe(false);
+    expect(smsSender({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'production' })).toBeNull();
+    expect(smsSender({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'development' })).not.toBeNull();
   });
 });
 

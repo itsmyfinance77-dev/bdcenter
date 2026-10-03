@@ -52,6 +52,21 @@ export const adminNav = [
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
+  { href: '/admin/sms-sandbox', title: 'صندوق پیامک آزمایشی', adminOnly: false, sandboxOnly: true },
   { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
   { href: '/admin/help', title: 'راهنما', adminOnly: false },
 ] as const;
+
+/** The SMS sandbox inbox (SMS_PROVIDER="sandbox", test environments only). */
+export const smsSandboxCopy = {
+  title: 'صندوق پیامک آزمایشی',
+  lead: 'این سایت در حالت آزمایشی است و هیچ پیامکی واقعاً فرستاده نمی‌شود. هر پیامکی که سایت می‌خواست بفرستد (کد ورود اعضا، اطلاع‌رسانی وضعیت درخواست‌ها) اینجا نمایش داده می‌شود. این فهرست هر چند ثانیه خودش به‌روز می‌شود.',
+  filterLabel: 'فقط پیامک‌های این شماره',
+  filter: 'نمایش',
+  showAll: 'همهٔ شماره‌ها',
+  clear: 'پاک کردن همهٔ پیامک‌ها',
+  clearConfirm: 'همهٔ پیامک‌های صندوق آزمایشی پاک شوند؟',
+  empty:
+    'هنوز پیامکی نیامده است. در سایت با یک شمارهٔ همراه «ورود / ثبت‌نام» را بزنید؛ کد ورود اینجا دیده می‌شود.',
+  codeLabel: 'کد ورود',
+} as const;

@@ -4,6 +4,7 @@ import { AdminNav } from '@/components/admin/admin-nav';
 import { adminNav, adminRoleLabel } from '@/content/admin';
 import { siteInfo } from '@/content/site';
 import { requireAdmin } from '@/modules/auth/service';
+import { smsSandboxEnabled } from '@/modules/messaging/sandbox';
 import { logoutAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,10 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
-  const items = adminNav.filter((item) => !item.adminOnly || admin.role === 'ADMIN');
+  const sandbox = smsSandboxEnabled();
+  const items = adminNav.filter(
+    (item) => (!item.adminOnly || admin.role === 'ADMIN') && (!('sandboxOnly' in item) || sandbox),
+  );
 
   return (
     <div className="min-h-dvh">

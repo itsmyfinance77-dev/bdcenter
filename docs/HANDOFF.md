@@ -1,6 +1,6 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-03 (end of the fourth session). Read this first in a new session,
+Last updated: 2026-10-03 (fifth session: SMS sandbox and test accounts). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -31,7 +31,20 @@ npm run test:e2e              # browser tests (Playwright + the installed Chrome
 ```
 
 Member sign-in in development: enter any `09…` number on `/account/login`; the
-6-digit code is printed in the dev server log as `[sms:console] …`.
+6-digit code is printed in the dev server log as `[sms:console] …`, or, with
+`SMS_PROVIDER="sandbox"` (set in the owner's `.env` since 2026-10-03), listed in
+the admin panel under «صندوق پیامک آزمایشی» (`/admin/sms-sandbox`).
+
+**Manual testing (SMS sandbox + test accounts):** `npm run sandbox:users`
+creates/resets one test account per kind of user (ADMIN, EDITOR, EDITOR with a
+temporary password, inactive EDITOR; members `09990000001`–`3`: complete,
+nameless, inactive) on the local DB only, with new random passwords, and writes
+`sandbox/test-users.html` (git-ignored, Persian): user types and their access,
+passwords, URLs, how to read codes, test scenarios. `-- --limits-only` lifts the
+sign-in rate limits without changing passwords. The sandbox provider
+(`src/modules/messaging/sandbox.ts`, table `sandbox_sms`, newest 300 kept) works
+in development and the `INSECURE_HTTP_PREVIEW` build only — never on the real
+deployment. Admin login is not by SMS (email + password + optional TOTP).
 
 ## Done so far
 
@@ -146,6 +159,9 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
 18. `2dae70c` `npm run preview:build` restores `next-env.d.ts`/`tsconfig.json`.
 
 Test counts at the end of the session: 97 unit, 41 DB, 25 browser — all pass.
+
+Fifth session (2026-10-03): **SMS sandbox and test accounts** for the owner's
+manual testing (see "Run it"); 98 unit tests.
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
