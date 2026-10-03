@@ -49,7 +49,7 @@ merged** — following the owner's merge policy at
 
 ### 3. Tasks the owner asked for (2026-10-04), each its own branch + PR
 
-Order: 0 (optional, helps every later PR), then 1–5, then 6–7, and 8 (the research) last.
+Order: 0 (optional, helps every later PR), then 1–5, then 6–7, then 8 (audit/QA/security — run it after the features so it covers them), and 9 (the research) last.
 
 0. **CI workflow** (`ci/github-actions`): GitHub Actions on PRs and `main`:
    pnpm install, `prisma migrate deploy` against a PostgreSQL 16 service,
@@ -127,7 +127,39 @@ Order: 0 (optional, helps every later PR), then 1–5, then 6–7, and 8 (the re
    Most likely (a) — this is how the other project of the owner works
    (`OQ-BD-*` ids already follow it). Product/backlog docs may be in Persian
    (see `CLAUDE.md`).
-8. **Research report** (no code, last): a thorough research of features not yet
+8. **Full audit, QA and security hardening** (owner 2026-10-04: «audit و QA
+   سراسری، رفع باگ‌ها، تست امنیت و بالا بردن امنیت سایت در مقابل انواع حملات
+   سایبری»). Start from `docs/security-review-2026-10.md` (2026-10-03, commit
+   `c7adae0`); everything since then is unreviewed: member identity uploads
+   and approval, rich HTML (sanitizer), page images, staff photos, course
+   covers, settings, group SMS, exports, preview routes, password reset by
+   email, page history, calendar feeds, SMS sandbox. Plan (findings and fixes
+   as separate PRs, reviewed like any other):
+   - **QA**: every flow per role (visitor, member individual/legal, editor,
+     ADMIN) with `npm run sandbox:users`, on desktop and phone sizes; forms
+     with wrong/empty/huge/Persian-digit input; double submits; back button;
+     accessibility (axe/Lighthouse); fix every bug found and add a test for it.
+   - **Security review** (OWASP Top 10 / ASVS level 2 as checklist): access
+     control on every new action/route (list them all again with their
+     guard), IDOR on member files, certificates, calendar feed tokens,
+     preview and revision ids; XSS through rich HTML, SVG/polyglot uploads,
+     CSV injection; CSRF/origin checks for server actions and the image
+     upload route; SSRF (none expected); open redirects; enumeration (login,
+     password reset, OTP); brute force and SMS pumping limits; token entropy
+     and expiry; session fixation/revocation; secrets in logs; error pages
+     leaking details; dependency audit (`pnpm audit`), licence check.
+   - **Hardening ideas** to evaluate: nonce-based CSP without
+     `'unsafe-inline'` scripts, mandatory 2FA for ADMIN, account lockout
+     notices by email, stricter rate limits on uploads, size/count limits on
+     JSON settings, database role with least privilege, encrypted off-site
+     backups, Docker image scan, Caddy security headers, fail2ban-like limits
+     at the proxy, security.txt.
+   - **Automated scanning only against our own local/preview instance**
+     (never a third-party site): OWASP ZAP baseline/active scan, a SAST pass
+     (e.g. Semgrep rules for TS/React), `npm audit`, header check.
+   - Deliver `docs/security-review-<date>.md` (updated) and a QA report in
+     Persian for the owner, then fixes in PRs.
+9. **Research report** (no code, last): a thorough research of features not yet
    built **and not yet proposed to the owner** that would help visitors,
    members or staff (look at comparable Iranian chamber/incubator/accelerator
    sites and good CMS/booking practice). Already proposed earlier, so leave
