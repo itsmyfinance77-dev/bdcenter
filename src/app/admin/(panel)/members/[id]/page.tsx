@@ -148,7 +148,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
 
             <div>
               <h3 className="mb-3 text-sm font-semibold text-ink">بررسی</h3>
-              <ReviewForm key={member.updatedAt.toISOString()} memberId={member.id} />
+              <ReviewForm key={member.id} memberId={member.id} />
             </div>
           </section>
         ) : null}

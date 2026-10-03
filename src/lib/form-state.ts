@@ -32,3 +32,16 @@ export function isSpam(formData: FormData): boolean {
   const trap = formData.get(HONEYPOT_FIELD);
   return typeof trap === 'string' && trap.trim() !== '';
 }
+
+const results = new WeakMap<object, number>();
+let resultCount = 0;
+
+/**
+ * A number that changes with every action result. React resets a form after
+ * each action, which clears radio buttons; keying them with this remounts
+ * them with their `defaultChecked`, so a choice survives a failed save.
+ */
+export function actionResultKey(state: object): number {
+  if (!results.has(state)) results.set(state, ++resultCount);
+  return results.get(state)!;
+}

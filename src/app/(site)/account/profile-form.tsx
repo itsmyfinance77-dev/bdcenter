@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@/components/form-controls';
 import { personTypeLabel } from '@/content/members';
-import type { FormState } from '@/lib/form-state';
+import { actionResultKey, type FormState } from '@/lib/form-state';
 import { saveProfileAction } from './actions';
 
 type PersonType = keyof typeof personTypeLabel;
@@ -64,7 +64,10 @@ export function ProfileForm({
                 type="radio"
                 name="personType"
                 value={type}
-                checked={personType === type}
+                // Uncontrolled and remounted per result: React resets the form
+                // after each action, which would otherwise clear the choice.
+                key={`${type}-${actionResultKey(state)}`}
+                defaultChecked={personType === type}
                 onChange={() => setPersonType(type)}
                 className="size-4 accent-primary"
               />

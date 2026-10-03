@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { FormMessage, SubmitButton, TextareaField, fieldState } from '@/components/form-controls';
-import type { FormState } from '@/lib/form-state';
+import { actionResultKey, type FormState } from '@/lib/form-state';
 import { reviewMemberAction } from '../actions';
 
 /** Approve or reject a legal-entity representative; a rejection needs a reason. */
@@ -33,7 +33,8 @@ export function ReviewForm({ memberId }: { memberId: string }) {
               type="radio"
               name="decision"
               value={value}
-              checked={decision === value}
+              key={`${value}-${actionResultKey(state)}`}
+              defaultChecked={decision === value}
               onChange={() => setDecision(value)}
               className="size-4 accent-primary"
             />
