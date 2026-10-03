@@ -1,6 +1,6 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-03 (fifth session: SMS sandbox and test accounts). Read this first in a new session,
+Last updated: 2026-10-03 (fifth session: SMS sandbox, member identity, rich editor, calendar links). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -160,8 +160,43 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
 
 Test counts at the end of the session: 97 unit, 41 DB, 25 browser — all pass.
 
-Fifth session (2026-10-03): **SMS sandbox and test accounts** for the owner's
-manual testing (see "Run it"); 98 unit tests.
+Fifth session (2026-10-03), all on `main`:
+
+1. `3cc26c9` **SMS sandbox and test accounts** for the owner's manual testing
+   (see "Run it").
+2. `20e9348` **Consultant mobile, photo, booking SMS** — `StaffProfile.mobile`
+   (required in the form) gets an SMS with date/time for each new booking and
+   each cancellation by the member; optional photo (`photoKey`, WebP, public
+   at `/staff-photo/<uuid>/<lg|sm>` for active staff only).
+3. `f1a8406` **Member identity** — profile needs person type
+   (`INDIVIDUAL`/`LEGAL`), name, checked کد ملی, postal code; representatives
+   of a legal entity add company name, checked شناسه ملی and an introduction
+   letter, and wait for ADMIN approval (`Member.approval`, several people per
+   company). National card image optional unless an ADMIN switches it on
+   (`site_settings`, `src/modules/settings`). The rule lives in
+   `src/modules/members/access.ts`; enroll/book refuse with
+   `profile`/`pending`/`rejected`. Admin: `/admin/members` (pending tab, card
+   switch), `/admin/members/<id>` (files, colleagues, approve/reject → SMS).
+   Open: OQ-BD-20/21/22.
+4. `b7c914b` **Rich page editor** (ADR-0005) — TipTap in the page form; HTML
+   sanitized on save and render (`src/lib/rich-html.ts`); page images via
+   `POST /admin/pages/images` → `/page-images/<id>/<lg|sm>`. Old Markdown
+   pages still render and open converted.
+5. `3793320` **Calendar links** — Google Calendar link next to every .ics
+   download; the events calendar offers live subscriptions (Google, Apple
+   webcal, Outlook); each member has a personal feed of bookings and courses at
+   `/calendar/member/<id>/<hmac>.ics` (rotatable, `Member.calendarVersion`).
+6. `51b7006` **Browser tests** for the new flows, and two form fixes found by
+   them (radios cleared by React's form reset → `actionResultKey`).
+
+Test counts: 112 unit, 49 DB, 27 browser — all pass.
+
+**Hosting (2026-10-03):** the owner bought «هاست لینوکس» at 130.185.76.122.
+It is a shared cPanel host (LiteSpeed, cPanel on 2082/2083, FTP, server name
+`s372.roodaki.com`, SSH closed). It cannot run this app (Node.js process,
+PostgreSQL, sharp/argon2 native modules, Docker per ADR-0004). Recommended to
+the owner: a Linux VPS (Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40+ GB disk) with root
+SSH by key, and DNS for `bdcenter.yazdccima.com` pointing at it. Not deployed.
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
@@ -260,6 +295,15 @@ bdcenter-postgres`, then the window again (rebuild only if the code changed).
   needed: every e2e run uses its own names (`runId`) and its own rate-limit
   key (`x-e2e-client` header via `CLIENT_IP_HEADER`). Drop `bdcenter_e2e`
   by hand if it ever grows too big; the next run recreates it.
+- **DB tests delete members by phone prefix** (0993–0999, see `tests/db/*`);
+  the sandbox test members use **0990** so `npm run test:db` leaves them alone.
+- While the «BDC site» preview (or a dev server) runs, `prisma migrate dev`
+  applies the migration but fails at the end renaming the query-engine DLL
+  (EPERM). The generated JS/types are already written, so the code works;
+  restart the dev server afterwards, and rebuild the preview.
+- React 19 resets a form after its action; radio buttons then lose their
+  choice. Key them with `actionResultKey(state)` from `src/lib/form-state.ts`
+  and use `defaultChecked` (see the profile and review forms).
 - Playwright loads test files before `webServer` starts, so anything read
   from `.tmp-build/e2e-state.json` must be read lazily (in hooks/tests).
 
