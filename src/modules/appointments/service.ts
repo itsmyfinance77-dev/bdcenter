@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { buildCalendar } from '@/lib/ical';
 import { parseJalaliDateTime } from '@/lib/jalali';
+import { richInput } from '@/lib/rich-html';
 import { prisma, Prisma } from '@/lib/prisma';
 import { email, mobilePhone, optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
@@ -81,6 +82,7 @@ export async function listStaffWithFreeSlots(service: AppointmentService, now = 
       fullName: true,
       title: true,
       bio: true,
+      bioHtml: true,
       photoKey: true,
       slots: {
         where: {
@@ -330,7 +332,8 @@ export const staffInputSchema = z.object({
   service: z.enum(['CONSULTING', 'SERVICE_DESK']),
   fullName: requiredText('نام', 120),
   title: optionalText('سمت یا تخصص', 200),
-  bio: optionalText('معرفی', 5000),
+  // HTML from the rich editor.
+  bio: optionalText('معرفی', 200_000),
   email: email(false),
   mobile: mobilePhone,
   isActive: z.preprocess((value) => value === 'on', z.boolean()),
@@ -386,7 +389,8 @@ export async function saveStaff(
     service: input.service,
     fullName: input.fullName,
     title: input.title ?? null,
-    bio: input.bio ?? null,
+    bio: richInput(input.bio).text,
+    bioHtml: richInput(input.bio).html,
     email: input.email ?? null,
     mobile: input.mobile,
     isActive: input.isActive,

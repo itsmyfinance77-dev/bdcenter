@@ -6,9 +6,9 @@ import {
   FormMessage,
   SelectField,
   SubmitButton,
-  TextareaField,
   TextField,
 } from '@/components/form-controls';
+import { RichEditor } from '@/components/admin/rich-editor';
 import { contentStatusLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
 import { saveCourseAction } from './actions';
@@ -52,11 +52,13 @@ export function CourseForm({
         hint="خالی بگذارید تا از روی عنوان ساخته شود."
         {...field('slug')}
       />
-      <TextareaField
+      <RichEditor
+        key={state.status === 'error' ? state.values.description : 'initial'}
+        name="description"
         label="توضیحات"
-        rows={10}
-        hint="قالب‌بندی مثل متن اخبار: «## » تیتر، «- » فهرست، **پررنگ**، [متن پیوند](https://...)"
-        {...field('description')}
+        required={false}
+        initialHtml={(state.status === 'error' ? state.values.description : '') ?? ''}
+        error={state.status === 'error' ? state.errors.description : undefined}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="مدرس" {...field('instructor')} />

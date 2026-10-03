@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToCalendar } from '@/components/add-to-calendar';
-import { MarkdownBody } from '@/components/markdown';
+import { RichBody } from '@/components/rich-body';
 import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
 import { memberCopy } from '@/content/members';
@@ -69,8 +69,8 @@ export default async function CoursePage({
       />
       <div className="mx-auto grid max-w-(--container-page) gap-6 px-4 py-12 lg:grid-cols-[1fr_320px]">
         <article className="rounded-panel border border-line bg-white p-6">
-          {course.description ? (
-            <MarkdownBody source={course.description} />
+          {course.description || course.descriptionHtml ? (
+            <RichBody html={course.descriptionHtml} markdown={course.description} />
           ) : (
             <p className="text-sm text-ink-2">توضیحات این دوره به‌زودی اضافه می‌شود.</p>
           )}

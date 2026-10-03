@@ -8,9 +8,9 @@ import {
   FormMessage,
   SelectField,
   SubmitButton,
-  TextareaField,
   TextField,
 } from '@/components/form-controls';
+import { RichEditor } from '@/components/admin/rich-editor';
 import { serviceLabel } from '@/content/appointments';
 import type { FormState } from '@/lib/form-state';
 import { saveStaffAction } from './actions';
@@ -93,11 +93,13 @@ export function StaffForm({
           {(control) => <input {...control} type="file" accept="image/jpeg,image/png,image/webp" />}
         </Field>
       </fieldset>
-      <TextareaField
+      <RichEditor
+        key={state.status === 'error' ? state.values.bio : 'initial'}
+        name="bio"
         label="معرفی"
-        rows={6}
-        hint="قالب‌بندی مثل متن اخبار: «- » فهرست، **پررنگ**"
-        {...field('bio')}
+        required={false}
+        initialHtml={(state.status === 'error' ? state.values.bio : '') ?? ''}
+        error={state.status === 'error' ? state.errors.bio : undefined}
       />
       <SubmitButton>ذخیره</SubmitButton>
     </form>

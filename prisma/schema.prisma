@@ -183,7 +183,11 @@ model Article {
   slug        String        @unique
   title       String
   excerpt     String?
+  /// Plain text of the body (search, excerpts). Older articles hold Markdown
+  /// here and render it while `bodyHtml` is empty.
   bodyMarkdown String
+  /// Body from the rich editor, sanitized (ADR-0005).
+  bodyHtml    String?
   coverImageId String?
   coverImage  MediaAsset?   @relation(fields: [coverImageId], references: [id])
   eventStartsAt DateTime?
@@ -286,7 +290,10 @@ model Course {
   id          String        @id @default(cuid())
   slug        String        @unique
   title       String
+  /// Plain text (or older Markdown) of the description; see descriptionHtml.
   description String?
+  /// Description from the rich editor, sanitized (ADR-0005).
+  descriptionHtml String?
   instructor  String?
   location    String?
   startsAt    DateTime?
@@ -526,7 +533,9 @@ model StaffProfile {
   service   AppointmentService
   fullName  String
   title     String? // e.g. "مشاور بازاریابی"
-  bio       String? // Markdown
+  bio       String? // plain text, or Markdown for older profiles
+  /// Introduction from the rich editor, sanitized (ADR-0005).
+  bioHtml   String?
   /// Optional: receives an email for each new booking.
   email     String?
   /// Mobile number (09…): gets an SMS with the date and time of each new

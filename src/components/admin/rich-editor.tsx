@@ -306,13 +306,18 @@ export function RichEditor({
   initialHtml,
   label,
   error,
-  uploadUrl,
+  uploadUrl = '/admin/pages/images',
+  required = true,
+  hint,
 }: {
   name: string;
   initialHtml: string;
   label: string;
   error?: string;
-  uploadUrl: string;
+  uploadUrl?: string;
+  required?: boolean;
+  /** Shown above the general editor help. */
+  hint?: string;
 }) {
   const [html, setHtml] = useState(initialHtml);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -374,10 +379,12 @@ export function RichEditor({
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-semibold text-ink">
         {label}
-        <span aria-hidden="true" className="text-danger">
-          {' '}
-          *
-        </span>
+        {required ? (
+          <span aria-hidden="true" className="text-danger">
+            {' '}
+            *
+          </span>
+        ) : null}
       </span>
       <div
         className={`overflow-hidden rounded-control border-[1.5px] bg-white ${
@@ -402,6 +409,7 @@ export function RichEditor({
       {uploading ? <p className="text-[13px] text-ink-2">در حال بارگذاری تصویر…</p> : null}
       {uploadError ? <p className="text-[13px] font-semibold text-danger">{uploadError}</p> : null}
       {error ? <p className="text-[13px] font-semibold text-danger">{error}</p> : null}
+      {hint ? <p className="text-[12.5px] leading-[1.8] text-ink-2">{hint}</p> : null}
       <p className="text-[12.5px] leading-[1.8] text-ink-2">
         متن را مثل یک واژه‌پرداز بنویسید و قالب‌بندی کنید. تصویر: JPG، PNG یا WebP تا ۱۰ مگابایت.
         برای کار با جدول، داخل یکی از خانه‌های آن کلیک کنید تا دکمه‌های جدول ظاهر شوند.

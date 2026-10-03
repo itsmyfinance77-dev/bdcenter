@@ -7,6 +7,7 @@ import { AdminHeading, EmptyState, secondaryButtonClass, Table, Td } from '@/com
 import { membershipTierLabel } from '@/content/admin';
 import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
 import { formatJalaliInput } from '@/lib/jalali';
+import { editorHtml } from '@/lib/rich-html';
 import { listNotifications } from '@/modules/notifications/service';
 import { getCourseForAdmin, listEnrollments } from '@/modules/training/service';
 import {
@@ -89,7 +90,7 @@ export default async function EditCoursePage({
     enrollmentOpen: course.enrollmentOpen ? 'on' : '',
     title: course.title,
     slug: course.slug,
-    description: course.description ?? '',
+    description: editorHtml(course.descriptionHtml, course.description),
     instructor: course.instructor ?? '',
     location: course.location ?? '',
     startsAt: course.startsAt ? formatJalaliInput(course.startsAt) : '',

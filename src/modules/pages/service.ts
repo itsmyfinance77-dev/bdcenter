@@ -1,10 +1,9 @@
-import { marked } from 'marked';
 import { z } from 'zod';
 import { systemPages, type SystemPage } from '@/content/pages';
 import { prisma } from '@/lib/prisma';
 import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
-import { richHtmlToText, sanitizeRichHtml } from '@/lib/rich-html';
+import { markdownToHtml, richHtmlToText, sanitizeRichHtml } from '@/lib/rich-html';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 
@@ -25,6 +24,8 @@ const sectionsSchema = z.array(
   ]),
 );
 
+export { markdownToHtml };
+
 export type PageContent = {
   format: 'markdown' | 'html';
   /** Markdown or sanitized HTML, depending on `format`. */
@@ -44,11 +45,6 @@ function contentOf(sections: unknown): PageContent {
   }
   const markdown = list.map((section) => section.body).join('\n\n');
   return { format: 'markdown', body: markdown, text: markdown };
-}
-
-/** Markdown (older pages, built-in drafts) as editor HTML. */
-export function markdownToHtml(markdown: string): string {
-  return sanitizeRichHtml(marked.parse(markdown, { async: false, gfm: true, breaks: true }));
 }
 
 export function systemPage(slug: string): SystemPage | undefined {

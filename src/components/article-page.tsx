@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToCalendar } from '@/components/add-to-calendar';
 import { ArticleCard, articleBasePath, coverUrl } from '@/components/article-list';
-import { MarkdownBody } from '@/components/markdown';
+import { RichBody } from '@/components/rich-body';
 import { PageHeader } from '@/components/page-header';
 import { Icon, type IconName } from '@/components/site/icons';
 import { PageBody } from '@/components/site/page-body';
@@ -105,8 +105,8 @@ function MetaChip({
 }
 
 /**
- * Shared detail page for /news/[slug] and /events/[slug]. The body is stored
- * as Markdown and rendered by `MarkdownBody`, which never emits raw HTML.
+ * Shared detail page for /news/[slug] and /events/[slug]. The body comes from
+ * the rich editor (sanitized HTML, ADR-0005); older articles render Markdown.
  */
 export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slug: string }) {
   const article = await getPublishedArticle(kind, slug);
@@ -182,7 +182,7 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
               />
             ) : null}
             <div className="text-justify text-[clamp(16px,1.6vw,18px)] [&_p]:leading-[2.2]">
-              <MarkdownBody source={article.bodyMarkdown} />
+              <RichBody html={article.bodyHtml} markdown={article.bodyMarkdown} />
             </div>
             <Link
               href={articleBasePath[kind]}

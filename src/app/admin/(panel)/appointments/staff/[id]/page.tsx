@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { editorHtml } from '@/lib/rich-html';
 import { ConfirmButton } from '@/components/admin/confirm-button';
 import { AdminHeading, dangerButtonClass, EmptyState, Table, Td } from '@/components/admin/ui';
 import { bookingStatusLabel, serviceLabel } from '@/content/appointments';
@@ -33,7 +34,7 @@ export default async function StaffPage({
     service: staff.service,
     fullName: staff.fullName,
     title: staff.title ?? '',
-    bio: staff.bio ?? '',
+    bio: editorHtml(staff.bioHtml, staff.bio),
     email: staff.email ?? '',
     mobile: staff.mobile ?? '',
     isActive: staff.isActive ? 'on' : '',

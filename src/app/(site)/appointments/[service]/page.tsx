@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MarkdownBody } from '@/components/markdown';
+import { RichBody } from '@/components/rich-body';
 import { PageHeader } from '@/components/page-header';
 import { appointmentsCopy, serviceLabel } from '@/content/appointments';
 import { formatTime, formatWeekdayDate } from '@/lib/format';
@@ -78,9 +78,9 @@ export default async function AppointmentsPage({ params }: { params: Promise<Par
                     {person.title ? <p className="text-sm text-ink-2">{person.title}</p> : null}
                   </div>
                 </div>
-                {person.bio ? (
+                {person.bio || person.bioHtml ? (
                   <div className="mt-3 text-sm [&_*]:text-sm [&_*]:leading-7">
-                    <MarkdownBody source={person.bio} />
+                    <RichBody html={person.bioHtml} markdown={person.bio} />
                   </div>
                 ) : null}
               </div>

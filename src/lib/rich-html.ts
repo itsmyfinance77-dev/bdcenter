@@ -1,3 +1,4 @@
+import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import { RICH_FONTS, RICH_FONT_SIZES } from './rich-format';
 
@@ -120,4 +121,29 @@ export function richHtmlToText(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Markdown (older bodies, built-in drafts) as editor HTML. */
+export function markdownToHtml(markdown: string): string {
+  return sanitizeRichHtml(marked.parse(markdown, { async: false, gfm: true, breaks: true }));
+}
+
+/** What the rich editor starts from: the stored HTML, or older Markdown converted. */
+export function editorHtml(html: string | null | undefined, markdown: string | null | undefined) {
+  return html ? sanitizeRichHtml(html) : markdown ? markdownToHtml(markdown) : '';
+}
+
+/** Whether an editor body has any content (words or an image). */
+export function hasRichContent(html: string): boolean {
+  return richHtmlToText(html) !== '' || /<img\s/i.test(html);
+}
+
+/**
+ * An editor body ready to store: sanitized HTML and its plain text (kept in
+ * the older text column for search and excerpts), or nulls when empty.
+ */
+export function richInput(html: string | undefined): { html: string | null; text: string | null } {
+  if (!html || !hasRichContent(html)) return { html: null, text: null };
+  const clean = sanitizeRichHtml(html);
+  return { html: clean, text: richHtmlToText(clean) };
 }

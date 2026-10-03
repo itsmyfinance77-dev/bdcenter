@@ -10,6 +10,7 @@ import { optionalText, requiredText, toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
+import { richInput } from '@/lib/rich-html';
 import { certificateAvailable, syncCertificate } from './certificates';
 import type { MemberAccess } from '@/modules/members/access';
 
@@ -257,7 +258,8 @@ export const courseInputSchema = z
   .object({
     title: requiredText('عنوان', 200),
     slug: optionalText('نامک', 120),
-    description: optionalText('توضیحات', 20000),
+    // HTML from the rich editor.
+    description: optionalText('توضیحات', 500_000),
     instructor: optionalText('مدرس', 200),
     location: optionalText('مکان', 200),
     startsAt: jalaliDateTime('زمان شروع'),
@@ -311,10 +313,12 @@ export async function saveCourse(
   });
   if (clash) return { ok: false, errors: { slug: SLUG_TAKEN } };
 
+  const description = richInput(input.description);
   const data = {
     title: input.title,
     slug: input.slug,
-    description: input.description ?? null,
+    description: description.text,
+    descriptionHtml: description.html,
     instructor: input.instructor ?? null,
     location: input.location ?? null,
     startsAt: input.startsAt,

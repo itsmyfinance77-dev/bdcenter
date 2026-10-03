@@ -11,6 +11,7 @@ import {
   TextareaField,
   TextField,
 } from '@/components/form-controls';
+import { RichEditor } from '@/components/admin/rich-editor';
 import { articleKindLabel, contentStatusLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
 import { saveArticleAction } from './actions';
@@ -48,12 +49,12 @@ export function ArticleForm({
         {...field('slug')}
       />
       <TextareaField label="خلاصه" rows={2} {...field('excerpt')} />
-      <TextareaField
+      <RichEditor
+        key={state.status === 'error' ? state.values.bodyMarkdown : 'initial'}
+        name="bodyMarkdown"
         label="متن"
-        required
-        rows={14}
-        hint="پاراگراف‌ها را با یک خط خالی جدا کنید. قالب‌بندی: «## » تیتر، «- » فهرست، «1. » فهرست شماره‌دار، **پررنگ**، [متن پیوند](https://...)"
-        {...field('bodyMarkdown')}
+        initialHtml={(state.status === 'error' ? state.values.bodyMarkdown : '') ?? ''}
+        error={state.status === 'error' ? state.errors.bodyMarkdown : undefined}
       />
       <fieldset className="space-y-4 rounded-card border border-line p-4">
         <legend className="px-1 text-sm font-medium text-ink">عکس کاور</legend>
