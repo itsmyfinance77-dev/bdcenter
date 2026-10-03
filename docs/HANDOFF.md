@@ -49,7 +49,7 @@ merged** — following the owner's merge policy at
 
 ### 3. Tasks the owner asked for (2026-10-04), each its own branch + PR
 
-Order: 0 (optional, helps every later PR), then 1–5, then 6.
+Order: 0 (optional, helps every later PR), then 1–5, then 6–7, and 8 (the research) last.
 
 0. **CI workflow** (`ci/github-actions`): GitHub Actions on PRs and `main`:
    pnpm install, `prisma migrate deploy` against a PostgreSQL 16 service,
@@ -90,7 +90,44 @@ Order: 0 (optional, helps every later PR), then 1–5, then 6.
    «تنظیمات سایت», with the current `homeCopy` in `src/content/site.ts` as
    the fallback. Keep the design's line lengths in mind (warn on long text).
    Guide section.
-6. **Research report** (no code): a thorough research of features not yet
+6. **Advanced form builder** (`feat/form-builder-v2`, owner 2026-10-04: «فرم‌ساز
+   پیشرفته با قابلیت‌های بیشتر»). Today (`src/modules/forms`, admin
+   «فرم‌ها و درخواست‌ها»): field types TEXT, TEXTAREA, NUMBER, EMAIL, PHONE,
+   DATE (Gregorian browser input), SELECT, FILE, CHECKBOX; required flag;
+   order; one status per submission; CSV export. Candidates, to confirm with
+   the owner before building (split into several PRs):
+   - more field types: radio buttons, multi-select checkboxes, Jalali date
+     picker, time, national code / legal id / postal code / mobile with the
+     same validators as the member profile, rating/scale, section headings
+     and help text, rich description at the top (ADR-0005 editor);
+   - per-field settings: placeholder, hint, min/max length or value, allowed
+     file types and size, default value;
+   - conditional logic (show a field only when another has a value);
+   - multi-step forms (pages) with a progress bar;
+   - form settings: open/close dates, maximum number of submissions,
+     members-only (prefill from the profile), one submission per member,
+     custom thank-you text, SMS/email confirmation to the applicant, staff
+     alert recipients per form (reuse `alertStaff`), duplicate a form;
+   - submissions: notes and assignee per submission, status change with SMS
+     to the applicant (like consulting), filters/search, attachment preview,
+     Excel export per filter, simple charts for choice fields.
+     Keep stored submissions readable when a form changes (versioned field
+     definitions or a snapshot of labels in each submission).
+7. **Backlog with epics and stories** (owner 2026-10-04: «سیستم backlog و
+   epic و story»). **Ask the owner first which one is meant:**
+   (a) a product backlog for this project's development — e.g.
+   `docs/product/backlog.md` (or one file per epic under
+   `docs/product/backlog/`) with IDs `EP-BD-*` / `ST-BD-*`, each story with
+   user-story text («به‌عنوان … می‌خواهم … تا …»), acceptance criteria,
+   priority, status, links to PRs and open questions (`OQ-BD-*`), filled with
+   everything built so far plus the tasks above; or optionally GitHub
+   Issues/Projects with epic/story labels and milestones;
+   (b) a task-tracking module inside the admin panel for the center's own
+   staff (epics → stories/tasks, assignee, status board).
+   Most likely (a) — this is how the other project of the owner works
+   (`OQ-BD-*` ids already follow it). Product/backlog docs may be in Persian
+   (see `CLAUDE.md`).
+8. **Research report** (no code, last): a thorough research of features not yet
    built **and not yet proposed to the owner** that would help visitors,
    members or staff (look at comparable Iranian chamber/incubator/accelerator
    sites and good CMS/booking practice). Already proposed earlier, so leave
