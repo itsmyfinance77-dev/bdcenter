@@ -92,6 +92,59 @@ export const nationalId = z.preprocess(
     .optional(),
 );
 
+const digitsOnly = (value: unknown) => {
+  const text = blankToUndefined(value);
+  return typeof text === 'string' ? toLatinDigits(text).replace(/[\s-]/g, '') : text;
+};
+
+/** کد ملی: 10 digits with the official check digit (all-equal digits are refused). */
+export function isValidNationalCode(code: string): boolean {
+  if (!/^\d{10}$/.test(code) || /^(\d)\1{9}$/.test(code)) return false;
+  const digits = [...code].map(Number);
+  const sum = digits.slice(0, 9).reduce((total, digit, i) => total + digit * (10 - i), 0);
+  const remainder = sum % 11;
+  const check = digits[9]!;
+  return remainder < 2 ? check === remainder : check === 11 - remainder;
+}
+
+/** شناسه ملی of a legal entity: 11 digits with the official check digit. */
+export function isValidLegalNationalId(id: string): boolean {
+  if (!/^\d{11}$/.test(id) || /^(\d)\1{10}$/.test(id)) return false;
+  const digits = [...id].map(Number);
+  const offset = digits[9]! + 2;
+  const weights = [29, 27, 23, 19, 17, 29, 27, 23, 19, 17];
+  const sum = weights.reduce((total, weight, i) => total + (digits[i]! + offset) * weight, 0);
+  const remainder = sum % 11;
+  return (remainder === 10 ? 0 : remainder) === digits[10];
+}
+
+/** A person's کد ملی (required). */
+export const nationalCode = z.preprocess(
+  digitsOnly,
+  z
+    .string({ required_error: 'کد ملی را وارد کنید.' })
+    .regex(/^\d{10}$/, 'کد ملی باید ۱۰ رقم باشد.')
+    .refine(isValidNationalCode, 'کد ملی معتبر نیست.'),
+);
+
+/** A legal entity's شناسه ملی (required). */
+export const legalNationalId = z.preprocess(
+  digitsOnly,
+  z
+    .string({ required_error: 'شناسه ملی شخص حقوقی را وارد کنید.' })
+    .regex(/^\d{11}$/, 'شناسه ملی شخص حقوقی باید ۱۱ رقم باشد.')
+    .refine(isValidLegalNationalId, 'شناسه ملی شخص حقوقی معتبر نیست.'),
+);
+
+/** Iranian postal code: 10 digits (required). */
+export const postalCode = z.preprocess(
+  digitsOnly,
+  z
+    .string({ required_error: 'کد پستی را وارد کنید.' })
+    .regex(/^\d{10}$/, 'کد پستی باید ۱۰ رقم باشد.')
+    .refine((code) => !/^(\d)\1{9}$/.test(code), 'کد پستی معتبر نیست.'),
+);
+
 /** Flattens a ZodError into one Persian message per field, for inline form errors. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const result: Record<string, string> = {};

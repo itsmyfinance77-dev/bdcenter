@@ -5,6 +5,7 @@ import { AddToCalendar } from '@/components/add-to-calendar';
 import { MarkdownBody } from '@/components/markdown';
 import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
+import { memberCopy } from '@/content/members';
 import { availabilityLabel, enrollErrorMessage, trainingCopy } from '@/content/training';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { decodeParam } from '@/lib/params';
@@ -115,12 +116,14 @@ export default async function CoursePage({
             >
               {trainingCopy.loginToEnroll}
             </Link>
-          ) : !member.fullName ? (
+          ) : member.access !== 'ok' ? (
             <Link
               href={`/account?next=${encodeURIComponent(coursePath)}`}
               className={primaryButton}
             >
-              {trainingCopy.profileNeeded}
+              {member.access === 'incomplete'
+                ? trainingCopy.profileNeeded
+                : memberCopy.blocked[member.access]}
             </Link>
           ) : (
             <form action={enrollAction.bind(null, course.slug)}>

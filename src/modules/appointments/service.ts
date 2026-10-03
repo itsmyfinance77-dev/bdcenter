@@ -11,6 +11,7 @@ import {
   type ImageVariant,
 } from '@/modules/files/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
+import type { MemberAccess } from '@/modules/members/access';
 
 /**
  * Appointment booking for consulting and the service desk (ADR-0003). Admins
@@ -135,13 +136,24 @@ export type Booker = {
   nationalId: string | null;
   companyName: string | null;
   email: string | null;
+  /** From the members domain: may this member book now? */
+  access: MemberAccess;
 };
 
 export type BookResult =
   | { ok: true; bookingId: string }
   | {
       ok: false;
-      reason: 'not-found' | 'profile' | 'taken' | 'past' | 'cancelled' | 'limit' | 'overlap';
+      reason:
+        | 'not-found'
+        | 'profile'
+        | 'pending'
+        | 'rejected'
+        | 'taken'
+        | 'past'
+        | 'cancelled'
+        | 'limit'
+        | 'overlap';
     };
 
 /**
@@ -154,7 +166,9 @@ export async function bookSlot(
   input: z.infer<typeof bookingInputSchema>,
   now = new Date(),
 ): Promise<BookResult> {
-  if (!member.fullName) return { ok: false, reason: 'profile' };
+  if (member.access !== 'ok') {
+    return { ok: false, reason: member.access === 'incomplete' ? 'profile' : member.access };
+  }
   try {
     return await prisma.$transaction(async (tx) => {
       const [locked] = await tx.$queryRaw<{ id: string }[]>`

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
+import { memberCopy } from '@/content/members';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import {
@@ -11,7 +12,7 @@ import {
   profileSchema,
   requireMember,
   safeMemberNext,
-  updateProfile,
+  saveProfile,
 } from '@/modules/members/service';
 import { cancelBookingByMember } from '@/modules/appointments/service';
 import { notifyBooking } from '@/modules/notifications/service';
@@ -24,11 +25,22 @@ export async function saveProfileAction(_prev: FormState, formData: FormData): P
   if (!parsed.success) {
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
-  await updateProfile(member.id, parsed.data);
+  const upload = (name: string) => {
+    const value = formData.get(name);
+    return value instanceof File ? value : null;
+  };
+  const result = await saveProfile(member.id, parsed.data, {
+    letter: upload('letter'),
+    nationalCard: upload('nationalCard'),
+  });
+  if (!result.ok) {
+    return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
+  }
+  const pending = result.approval === 'PENDING';
   const next = safeMemberNext(formData.get('next'));
-  if (next !== '/account') redirect(next);
+  if (next !== '/account' && !pending) redirect(next);
   revalidatePath('/account');
-  return { status: 'success', message: 'اطلاعات حساب ذخیره شد.' };
+  return { status: 'success', message: pending ? memberCopy.savedPending : memberCopy.saved };
 }
 
 export async function cancelEnrollmentAction(enrollmentId: string) {

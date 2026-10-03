@@ -39,9 +39,12 @@ export default async function AccountPage({
   const now = new Date();
 
   const initial = {
+    personType: member.personType ?? '',
     fullName: member.fullName ?? '',
     nationalId: member.nationalId ?? '',
+    postalCode: member.postalCode ?? '',
     companyName: member.companyName ?? '',
+    legalNationalId: member.legalNationalId ?? '',
     email: member.email ?? '',
   };
 
@@ -59,14 +62,34 @@ export default async function AccountPage({
           <p className="mt-1 mb-4 text-sm text-ink-2">
             شماره همراه: <span dir="ltr">{toPersianDigits(member.phone)}</span>
           </p>
-          {welcome || !member.fullName ? (
-            <p className="mb-4 rounded-control border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+          {welcome || member.access === 'incomplete' ? (
+            <p className="mb-4 rounded-control border border-primary/30 bg-primary/10 px-4 py-3 text-sm leading-7 text-primary">
               {welcome ? `${memberCopy.accountCreated} ` : null}
               {memberCopy.completeProfile}
             </p>
+          ) : member.access === 'pending' ? (
+            <p
+              role="status"
+              className="mb-4 rounded-control border border-warning/40 bg-warning/10 px-4 py-3 text-sm leading-7 text-ink"
+            >
+              {memberCopy.pendingApproval}
+            </p>
+          ) : member.access === 'rejected' ? (
+            <p
+              role="alert"
+              className="mb-4 rounded-control border border-danger/30 bg-danger/10 px-4 py-3 text-sm leading-7 text-danger"
+            >
+              {memberCopy.rejected(member.approvalNote)}
+            </p>
           ) : null}
           <p className="mb-4 text-xs text-ink-2">{memberCopy.profileLead}</p>
-          <ProfileForm initial={initial} next={next} />
+          <ProfileForm
+            initial={initial}
+            next={next}
+            hasLetter={member.hasLetter}
+            hasNationalCard={member.hasNationalCard}
+            nationalCardRequired={member.nationalCardRequired}
+          />
         </section>
 
         <section aria-labelledby="enrollments-heading" className="space-y-6">

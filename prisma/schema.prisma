@@ -71,12 +71,43 @@ model AuditLog {
 // Members: public visitors who sign up with a phone number (ADR-0002)
 // ---------------------------------------------------------------------------
 
+/// Who a member signs up as (owner's request, 2026-10-03).
+enum PersonType {
+  INDIVIDUAL // شخص حقیقی
+  LEGAL // نمایندهٔ شخص حقوقی
+}
+
+/// Representatives of a legal entity wait for an ADMIN's review; individuals don't.
+enum MemberApproval {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Member {
   id             String    @id @default(cuid())
   phone          String    @unique // normalized 09xxxxxxxxx
   fullName       String?
+  /// The person's own کد ملی (10 digits), for individuals and representatives alike.
   nationalId     String?
+  postalCode     String?
+  personType     PersonType?
+  /// LEGAL only: the company's name and شناسه ملی (11 digits). Not unique:
+  /// several people may sign up for the same company.
   companyName    String?
+  legalNationalId String?
+  /// LEGAL only: introduction letter on the company's letterhead (private
+  /// upload, `StoredFile` JSON, see src/modules/files).
+  letterFile     Json?
+  /// Image of the national card (private upload, `StoredFile` JSON). Optional
+  /// unless an ADMIN makes it required (setting `members.nationalCardRequired`).
+  nationalCardFile Json?
+  approval       MemberApproval @default(NOT_REQUIRED)
+  /// Reason shown to the member when an ADMIN rejects the legal-entity details.
+  approvalNote   String?
+  reviewedAt     DateTime?
+  reviewedById   String?
   email          String?
   isActive       Boolean   @default(true)
   sessionVersion Int       @default(0)
@@ -84,7 +115,18 @@ model Member {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@index([approval])
+  @@index([legalNationalId])
   @@map("members")
+}
+
+/// Small admin-editable switches, one JSON value per key (src/modules/settings).
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
 }
 
 /// One pending SMS code per phone; only its HMAC is stored.

@@ -4,12 +4,14 @@ import {
   staffBookingNotice,
   staffBookingSms,
 } from '@/content/appointments';
+import { memberReviewSms } from '@/content/members';
 import { consultingNotice, enrollmentNotice } from '@/content/notifications';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { mobilePhone } from '@/lib/validation';
 import { getBookingContact } from '@/modules/appointments/service';
 import { getConsultingRequest } from '@/modules/consulting/service';
+import { getMemberContact } from '@/modules/members/service';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSender } from '@/modules/messaging/sms';
 import { getEnrollmentContact } from '@/modules/training/service';
@@ -24,7 +26,7 @@ import { getEnrollmentContact } from '@/modules/training/service';
 type Notice = { subject: string; text: string };
 
 type Target = {
-  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking';
+  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member';
   entityId: string;
   event: string;
   phone: string | null;
@@ -160,6 +162,21 @@ function logStaffMessage(
       recipient,
       status: sent ? 'SENT' : 'FAILED',
     },
+  });
+}
+
+/** Tells a legal-entity representative the result of an ADMIN's review. */
+export async function notifyMemberReview(memberId: string, decision: 'APPROVED' | 'REJECTED') {
+  const member = await getMemberContact(memberId);
+  if (!member) return;
+  const text = memberReviewSms[decision](member.companyName ?? '', accountLink());
+  await deliver({
+    entity: 'Member',
+    entityId: memberId,
+    event: `member.${decision}`,
+    phone: member.phone,
+    email: member.email,
+    notice: { subject: 'نتیجهٔ بررسی حساب کاربری', text },
   });
 }
 

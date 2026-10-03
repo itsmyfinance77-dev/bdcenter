@@ -52,12 +52,14 @@ afterAll(async () => {
 let phoneCounter = 0;
 async function member(named = true): Promise<Booker> {
   phoneCounter += 1;
-  return prisma.member.create({
+  const row = await prisma.member.create({
     data: {
       phone: `0996${String(phoneCounter).padStart(7, '0')}`,
       fullName: named ? `عضو ${phoneCounter}` : null,
     },
   });
+  // The profile rule itself is covered by tests/members-access.test.ts.
+  return { ...row, access: named ? 'ok' : 'incomplete' };
 }
 
 async function staff(service: 'CONSULTING' | 'SERVICE_DESK' = 'CONSULTING') {

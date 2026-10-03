@@ -11,6 +11,7 @@ import { recordAudit } from '@/modules/audit/service';
 import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
 import { certificateAvailable, syncCertificate } from './certificates';
+import type { MemberAccess } from '@/modules/members/access';
 
 /**
  * Training courses and on-site enrollment (ADR-0002). Enrolling needs a
@@ -127,19 +128,31 @@ export type Enrollee = {
   fullName: string | null;
   nationalId: string | null;
   companyName: string | null;
+  /** A legal entity's شناسه ملی: the membership roster is looked up by it first. */
+  legalNationalId: string | null;
   email: string | null;
+  /** From the members domain: may this member enroll now? */
+  access: MemberAccess;
 };
 
 export type EnrollResult =
-  { ok: true } | { ok: false; reason: 'not-found' | 'profile' | 'duplicate' | CourseAvailability };
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'not-found' | 'profile' | 'pending' | 'rejected' | 'duplicate' | CourseAvailability;
+    };
 
 /**
  * Enrolls a member. The course row is locked for the check-and-insert, so two
  * people cannot both take the last seat.
  */
 export async function enroll(courseSlug: string, member: Enrollee): Promise<EnrollResult> {
-  if (!member.fullName) return { ok: false, reason: 'profile' };
-  const membershipTier = await getMembershipTier(member.nationalId ?? undefined);
+  if (member.access !== 'ok') {
+    return { ok: false, reason: member.access === 'incomplete' ? 'profile' : member.access };
+  }
+  const membershipTier = await getMembershipTier(
+    member.legalNationalId ?? member.nationalId ?? undefined,
+  );
 
   try {
     return await prisma.$transaction(async (tx) => {

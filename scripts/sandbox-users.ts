@@ -16,8 +16,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { prisma } from '../src/lib/prisma';
+import sharp from 'sharp';
+import { Prisma, prisma } from '../src/lib/prisma';
 import { hashPassword } from '../src/modules/auth/password';
+import { deleteStoredFile, storedFileSchema, storeUpload } from '../src/modules/files/service';
 
 type TestAdmin = {
   email: string;
@@ -32,11 +34,33 @@ type TestAdmin = {
 type TestMember = {
   phone: string;
   fullName: string | null;
+  personType: 'INDIVIDUAL' | 'LEGAL' | null;
   companyName: string | null;
+  legalNationalId: string | null;
+  approval: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED';
   isActive: boolean;
   label: string;
   purpose: string;
 };
+
+/** A test کد ملی: nine chosen digits plus the matching check digit. */
+function nationalCodeFor(nine: string): string {
+  const sum = [...nine].reduce((total, digit, i) => total + Number(digit) * (10 - i), 0);
+  const remainder = sum % 11;
+  return nine + String(remainder < 2 ? remainder : 11 - remainder);
+}
+
+/** A test شناسه ملی: ten chosen digits plus the matching check digit. */
+function legalIdFor(ten: string): string {
+  const digits = [...ten].map(Number);
+  const offset = digits[9]! + 2;
+  const weights = [29, 27, 23, 19, 17, 29, 27, 23, 19, 17];
+  const remainder = weights.reduce((t, w, i) => t + (digits[i]! + offset) * w, 0) % 11;
+  return ten + String(remainder === 10 ? 0 : remainder);
+}
+
+const TEST_COMPANY_ID = legalIdFor('1099000000');
+const TEST_POSTAL_CODE = '8915713456';
 
 const admins: TestAdmin[] = [
   {
@@ -79,30 +103,65 @@ const admins: TestAdmin[] = [
   },
 ];
 
+// The 0990 prefix: the DB tests remove their own members by other prefixes.
 const members: TestMember[] = [
   {
-    phone: '09990000001',
+    phone: '09900000001',
     fullName: 'عضو آزمایشی یک',
-    companyName: 'شرکت آزمایشی نمونه',
+    personType: 'INDIVIDUAL',
+    companyName: null,
+    legalNationalId: null,
+    approval: 'NOT_REQUIRED',
     isActive: true,
-    label: 'عضو با پروفایل کامل',
+    label: 'شخص حقیقی، پروفایل کامل',
     purpose: 'ثبت‌نام در دوره، گرفتن نوبت، درخواست مشاوره و پیگیری آن‌ها در «حساب کاربری».',
   },
   {
-    phone: '09990000002',
+    phone: '09900000002',
     fullName: null,
+    personType: null,
     companyName: null,
+    legalNationalId: null,
+    approval: 'NOT_REQUIRED',
     isActive: true,
-    label: 'عضو بدون نام',
-    purpose: 'پس از ورود باید از او خواسته شود نامش را کامل کند.',
+    label: 'عضو با پروفایل ناقص',
+    purpose:
+      'پس از ورود باید از او خواسته شود نوع ثبت‌نام، نام، کد ملی و کد پستی را کامل کند؛ تا آن موقع نمی‌تواند در دوره ثبت‌نام کند یا نوبت بگیرد.',
   },
   {
-    phone: '09990000003',
+    phone: '09900000003',
     fullName: 'عضو غیرفعال',
+    personType: 'INDIVIDUAL',
     companyName: null,
+    legalNationalId: null,
+    approval: 'NOT_REQUIRED',
     isActive: false,
     label: 'عضو غیرفعال',
     purpose: 'کد می‌گیرد، اما پس از وارد کردن کد پیام «این حساب غیرفعال شده است» را می‌بیند.',
+  },
+  {
+    phone: '09900000004',
+    fullName: 'نمایندهٔ آزمایشی یک',
+    personType: 'LEGAL',
+    companyName: 'شرکت آزمایشی نمونه',
+    legalNationalId: TEST_COMPANY_ID,
+    approval: 'PENDING',
+    isActive: true,
+    label: 'از طرف شخص حقوقی، در انتظار تأیید',
+    purpose:
+      'پیام «در انتظار تأیید» را می‌بیند و نمی‌تواند ثبت‌نام کند یا نوبت بگیرد. مدیر کل او را در «اعضای سایت» تأیید یا رد می‌کند؛ نتیجه پیامک می‌شود.',
+  },
+  {
+    phone: '09900000005',
+    fullName: 'نمایندهٔ آزمایشی دو',
+    personType: 'LEGAL',
+    companyName: 'شرکت آزمایشی نمونه',
+    legalNationalId: TEST_COMPANY_ID,
+    approval: 'APPROVED',
+    isActive: true,
+    label: 'از طرف همان شخص حقوقی، تأییدشده',
+    purpose:
+      'نفر دوم همان شرکت (چند نفر می‌توانند از طرف یک شخص حقوقی ثبت‌نام کنند). تأیید شده است و همهٔ خدمات را دارد.',
   },
 ];
 
@@ -173,7 +232,7 @@ function renderHtml(passwords: Map<string, string>, generatedAt: Date) {
   const memberRows = members
     .map(
       (m) => `<tr><td><b>${m.label}</b></td><td dir="ltr" class="mono">${fa(m.phone)}</td>
-<td>${m.fullName ?? '—'}</td><td>${m.purpose}</td></tr>`,
+<td>${m.fullName ?? '—'}${m.companyName ? `<br><span class="muted">${m.companyName}</span>` : ''}</td><td>${m.purpose}</td></tr>`,
     )
     .join('\n');
 
@@ -219,7 +278,8 @@ ${sites.map(([where, url]) => `<tr><td>${where}</td><td>${link(url)}</td><td>${l
 <table>
 <tr><th>نوع کاربر</th><th>چطور وارد می‌شود</th><th>به چه چیزهایی دسترسی دارد</th></tr>
 <tr><td><b>بازدیدکننده</b></td><td>بدون ورود</td><td>همهٔ صفحه‌های عمومی: خانه، درباره ما، خدمات، اخبار و رویدادها، تقویم، دوره‌ها، جستجو، تماس با ما، فرم‌ها (مثل میز خدمت)، درخواست مشاوره و استعلام گواهی‌نامه.</td></tr>
-<tr><td><b>عضو سایت</b></td><td>شمارهٔ همراه + کد پیامکی (بدون رمز) در <span class="mono" dir="ltr">/account/login</span></td><td>همهٔ کارهای بازدیدکننده، به‌علاوه: «حساب کاربری» و پروفایل، ثبت‌نام در دوره‌ها و انصراف، گرفتن نوبت مشاوره و میز خدمت، پیگیری درخواست‌های مشاوره، دریافت گواهی‌نامهٔ دوره.</td></tr>
+<tr><td><b>عضو سایت — شخص حقیقی</b></td><td>شمارهٔ همراه + کد پیامکی (بدون رمز) در <span class="mono" dir="ltr">/account/login</span></td><td>همهٔ کارهای بازدیدکننده، به‌علاوه: «حساب کاربری» و پروفایل، ثبت‌نام در دوره‌ها و انصراف، گرفتن نوبت مشاوره و میز خدمت، پیگیری درخواست‌های مشاوره، دریافت گواهی‌نامهٔ دوره. پیش از آن باید نام، کد ملی و کد پستی را کامل کند (تصویر کارت ملی اختیاری است، مگر مدیر کل آن را اجباری کند).</td></tr>
+<tr><td><b>عضو سایت — از طرف شخص حقوقی</b></td><td>مثل شخص حقیقی</td><td>همان دسترسی‌ها، ولی علاوه بر کد ملی خودش، نام و شناسه ملی شخص حقوقی و تصویر معرفی‌نامه با سربرگ شرکت را بارگذاری می‌کند و تا <b>تأیید مدیر کل</b> نمی‌تواند در دوره ثبت‌نام کند یا نوبت بگیرد. چند نفر می‌توانند از طرف یک شخص حقوقی ثبت‌نام کنند.</td></tr>
 <tr><td><b>ویراستار</b> (کارمند)</td><td>ایمیل + رمز عبور در <span class="mono" dir="ltr">/admin</span> (و در صورت فعال بودن، کد برنامهٔ احراز هویت)</td><td>داشبورد، آمار، اخبار و رویدادها، دوره‌ها و ثبت‌نام‌ها، صفحه‌ها، پیوندها، نوبت‌دهی، درخواست‌های مشاوره، پیام‌های تماس، درخواست‌های فرم‌ها، حساب من، راهنما، صندوق پیامک آزمایشی.</td></tr>
 <tr><td><b>مدیر کل</b></td><td>مثل ویراستار</td><td>همهٔ کارهای ویراستار، به‌علاوه: ساخت و ویرایش فرم‌ها، اعضای سایت، کاربران پنل (افزودن، غیرفعال کردن، تعیین رمز تازه، بازنشانی ورود دومرحله‌ای)، گزارش فعالیت، وضعیت سامانه.</td></tr>
 </table>
@@ -239,7 +299,7 @@ ${adminRows}
 <section>
 <h2>اعضای سایت (ورود با کد پیامکی)</h2>
 <div class="table-wrap"><table>
-<tr><th>نوع</th><th>شمارهٔ همراه</th><th>نام</th><th>برای آزمایش چه چیزی</th></tr>
+<tr><th>نوع</th><th>شمارهٔ همراه</th><th>نام / شخص حقوقی</th><th>برای آزمایش چه چیزی</th></tr>
 ${memberRows}
 <tr><td><b>عضو تازه</b></td><td>هر شمارهٔ دیگری که با ۰۹ شروع شود</td><td>—</td><td>ثبت‌نام: با اولین ورود، حساب ساخته می‌شود.</td></tr>
 </table></div>
@@ -260,15 +320,18 @@ ${memberRows}
 <ul>
 <li>«اخبار و رویدادها»: یک خبر و یک رویداد بسازید، تصویر جلد بگذارید، منتشر کنید و در سایت ببینید.</li>
 <li>«دوره‌های آموزشی»: یک دوره با ظرفیت ۲ نفر بسازید و منتشر کنید (گواهی‌نامه را هم روشن کنید).</li>
-<li>«نوبت‌دهی»: یک مشاور بسازید و برای چند روز آینده چند نوبت تعریف کنید.</li>
+<li>«نوبت‌دهی»: یک مشاور بسازید (با شمارهٔ همراه و عکس) و برای چند روز آینده چند نوبت تعریف کنید. وقتی عضوی نوبت بگیرد یا لغو کند، پیامک تاریخ و ساعت به شمارهٔ مشاور هم می‌آید (در صندوق آزمایشی ببینید).</li>
+<li>«صفحه‌ها»: یک صفحهٔ تازه با ویرایشگر کامل بسازید (فونت، اندازه، فهرست، جدول، تصویر و پیوند) و در سایت ببینید.</li>
 <li>«صفحه‌ها» و «پیوندها»: متن یک صفحه یا یک پیوند را عوض کنید و نتیجه را در سایت ببینید.</li>
 </ul>
 <h3>۲. عضو سایت</h3>
 <ul>
-<li>با <span class="mono" dir="ltr">${fa('09990000001')}</span> وارد شوید، در دوره ثبت‌نام کنید و یک نوبت مشاوره بگیرید.</li>
+<li>با <span class="mono" dir="ltr">${fa('09900000001')}</span> وارد شوید، در دوره ثبت‌نام کنید و یک نوبت مشاوره بگیرید.</li>
 <li>دوباره همان نوبت را با عضو دیگری بگیرید: نباید بشود (هر نوبت فقط برای یک نفر است).</li>
 <li>یک درخواست مشاوره بفرستید و در «حساب کاربری» وضعیتش را ببینید.</li>
-<li>با <span class="mono" dir="ltr">${fa('09990000002')}</span> و <span class="mono" dir="ltr">${fa('09990000003')}</span> و یک شمارهٔ تازه هم ورود را امتحان کنید. کد اشتباه هم وارد کنید.</li>
+<li>با <span class="mono" dir="ltr">${fa('09900000002')}</span> و <span class="mono" dir="ltr">${fa('09900000003')}</span> و یک شمارهٔ تازه هم ورود را امتحان کنید. کد اشتباه هم وارد کنید.</li>
+<li>با یک شمارهٔ تازه «از طرف شخص حقوقی» ثبت‌نام کنید: شناسه ملی <span class="mono" dir="ltr">${fa(TEST_COMPANY_ID)}</span> (شرکت آزمایشی)، کد ملی آزمایشی <span class="mono" dir="ltr">${fa(nationalCodeFor('009900000'))}</span>، کد پستی <span class="mono" dir="ltr">${fa(TEST_POSTAL_CODE)}</span> و یک عکس به‌جای معرفی‌نامه. کد ملی یا شناسهٔ اشتباه را هم امتحان کنید.</li>
+<li>با <span class="mono" dir="ltr">${fa('09900000004')}</span> وارد شوید: پیام «در انتظار تأیید» را می‌بیند.</li>
 </ul>
 <h3>۳. ویراستار</h3>
 <ul>
@@ -279,6 +342,8 @@ ${memberRows}
 <h3>۴. مدیر کل: کاربران و امنیت</h3>
 <ul>
 <li>«اعضای سایت»: عضو یک را غیرفعال کنید؛ باید فوراً از سایت خارج شود. دوباره فعالش کنید.</li>
+<li>«اعضای سایت» ← «در انتظار تأیید»: نمایندهٔ آزمایشی یک را باز کنید، معرفی‌نامه را ببینید و او را تأیید یا با نوشتن دلیل رد کنید. پیامک نتیجه در صندوق آزمایشی می‌آید.</li>
+<li>بالای «اعضای سایت» تصویر کارت ملی را «اجباری» کنید و ببینید عضو یک دیگر نمی‌تواند ثبت‌نام کند تا تصویر را بارگذاری کند. بعد دوباره «اختیاری» کنید.</li>
 <li>«کاربران پنل»: برای ویراستار «تعیین رمز تازه» بزنید و با رمز تازه وارد شوید.</li>
 <li>«گزارش فعالیت»: کارهای بالا باید ثبت شده باشند. «وضعیت سامانه» و «آمار» را هم ببینید.</li>
 </ul>
@@ -290,6 +355,15 @@ ${memberRows}
 </section>
 </main></body></html>
 `;
+}
+
+/** A plain image standing in for an introduction letter on company letterhead. */
+async function sampleLetter(): Promise<File> {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1100">
+<rect width="100%" height="100%" fill="#ffffff"/><rect x="40" y="40" width="720" height="90" fill="#1450c8"/>
+<text x="400" y="560" font-size="48" text-anchor="middle" fill="#3a4660">SAMPLE LETTER</text></svg>`;
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  return new File([new Uint8Array(png)], 'sample-letter.png', { type: 'image/png' });
 }
 
 async function main() {
@@ -325,10 +399,28 @@ async function main() {
     });
   }
 
-  for (const member of members) {
+  // Each run stores a fresh sample letter; the previous run's copy is removed.
+  const previous = await prisma.member.findMany({
+    where: { phone: { in: members.map((m) => m.phone) } },
+    select: { letterFile: true },
+  });
+  for (const row of previous) {
+    const old = storedFileSchema.safeParse(row.letterFile);
+    if (old.success) await deleteStoredFile(old.data.storageKey);
+  }
+  const letter = await storeUpload('members/letters', await sampleLetter());
+  for (const [index, member] of members.entries()) {
+    const complete = member.personType !== null;
     const data = {
       fullName: member.fullName,
+      personType: member.personType,
+      nationalId: complete ? nationalCodeFor(`00990000${index}`) : null,
+      postalCode: complete ? TEST_POSTAL_CODE : null,
       companyName: member.companyName,
+      legalNationalId: member.legalNationalId,
+      letterFile: member.personType === 'LEGAL' ? letter : Prisma.DbNull,
+      approval: member.approval,
+      approvalNote: null,
       isActive: member.isActive,
     };
     await prisma.member.upsert({

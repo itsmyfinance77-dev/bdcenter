@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { memberCopy } from '@/content/members';
 import { appointmentsCopy, serviceLabel } from '@/content/appointments';
 import { formatDateTime, formatTime } from '@/lib/format';
 import { getSlotForBooking, slugByService, staffPhotoUrl } from '@/modules/appointments/service';
@@ -93,9 +94,11 @@ export default async function BookSlotPage({ params }: { params: Promise<{ slotI
             >
               {appointmentsCopy.loginToBook}
             </Link>
-          ) : !member.fullName ? (
+          ) : member.access !== 'ok' ? (
             <Link href={`/account?next=${encodeURIComponent(path)}`} className={primaryButton}>
-              {appointmentsCopy.profileNeeded}
+              {member.access === 'incomplete'
+                ? appointmentsCopy.profileNeeded
+                : memberCopy.blocked[member.access]}
             </Link>
           ) : (
             <BookingForm slotId={slot.id} />
