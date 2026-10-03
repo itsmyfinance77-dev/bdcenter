@@ -1,6 +1,6 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-02 (third session). Read this first in a new session,
+Last updated: 2026-10-03 (end of the fourth session). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -130,6 +130,22 @@ Third session (2026-09-30 → 2026-10-01), all on `main`:
     `scripts/e2e-server.mjs` prepares the separate `bdcenter_e2e` database,
     a per-run admin and secrets, builds into `.next-e2e` and serves on 3030.
     `E2E_REUSE_BUILD=1` skips the build when the code has not changed.
+15. `b43689c` **Mobile and speed audit** — phone-size checks of every public
+    page and Lighthouse (mobile): about-card overlap, touch hint, tap
+    targets, 12px minimum text, Vazirmatn subset (111 → 81 KB), empty meta
+    description. Lighthouse after: home 85, about 89, courses 89, contact 91;
+    accessibility and SEO 100. Remaining speed levers need the owner: Anjoman
+    TTF → WOFF2 (license) and the ~3.5 s home intro (design).
+16. `c7adae0` **Password reset by an ADMIN** — «تعیین رمز تازه» on
+    `/admin/users` (typed or generated one-time password, signs the user out,
+    lifts the login lockout, audited); `AdminUser.mustChangePassword` shows a
+    notice in the panel until the user picks their own.
+17. `7738f4f` **Final security review** — `docs/security-review-2026-10.md`:
+    nothing exploitable; page views only for real sections; production
+    compose forces `INSECURE_HTTP_PREVIEW` off; encrypt off-site backups.
+18. `2dae70c` `npm run preview:build` restores `next-env.d.ts`/`tsconfig.json`.
+
+Test counts at the end of the session: 97 unit, 41 DB, 25 browser — all pass.
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
@@ -149,18 +165,71 @@ and the dev server now runs on port **3010** (3000 belongs to another project).
   so it must be served over HTTPS; plain-HTTP access by IP will not keep sessions.
 - Public form DATE fields use the browser's Gregorian date input.
 
-## Remaining work (owner asked for all of it on 2026-10-01)
+## Remaining work
 
-1. Blocked on the employer: online payment (OQ-BD-15), roster import (OQ-BD-01).
-2. Hosting and DNS (OQ-BD-08), then the first real deploy per
-   `docs/operations/deploy.md`; off-site backup copies (OQ-BD-19).
-3. Certificate wording, signatory and which courses issue them (OQ-BD-16),
-   then turn certificates on per course.
+Every item of the owner's list that does not need the center is done. Waiting
+on the center (see `docs/product/open-questions.md`):
 
-On 2026-10-02 the owner dropped the plain-HTTP public-IP preview; do not spend
-more time on it (the `npm run preview` scripts stay for LAN viewing).
+1. Hosting and DNS (OQ-BD-08), then the first real deploy per
+   `docs/operations/deploy.md` and the go-live list in
+   `docs/security-review-2026-10.md`.
+2. SMS provider and keys (OQ-BD-11) — without them nobody can sign up on a
+   production build. SMTP account for notices and error alerts.
+3. Certificate wording and signatory (OQ-BD-16); certificates stay off.
+4. Content: the four «به‌زودی» service tiles (OQ-BD-06), postal code / email /
+   extension (OQ-BD-02/03), service-desk form fields (OQ-BD-09), «در یک نگاه»
+   figures (OQ-BD-18), final privacy/terms text (OQ-BD-12).
+5. Payment gateway and prices (OQ-BD-15, OQ-BD-01); roster import (OQ-BD-01).
+6. Off-site backup location (OQ-BD-19); the Anjoman license document (OQ-BD-17).
+
+Decisions for the owner: convert Anjoman to WOFF2 (needs license OK); keep,
+shorten or skip-on-mobile the home intro.
+
+Proposed next (no center needed; the owner had not answered yet):
+
+- A Persian letter to the center listing the open questions above.
+- Cleanup: dev-DB test data (one course, article, member, staff profile and
+  two test admins), and mark OQ-BD-10/12/13 as built (links and privacy page
+  are admin-editable; status notifications exist).
+- A plain-language go-live checklist for the owner.
+
+## Public-IP preview (running on the owner's PC)
+
+On 2026-10-03 the owner asked again to see the site on the LAN and their static
+public IP. It runs from `.next-preview` (`npm run preview:build`, then
+`npm run preview`, plain HTTP on `0.0.0.0:3020`) in its **own minimized window
+titled «BDC site»**, started with PowerShell
+`Start-Process cmd.exe -ArgumentList '/k','title BDC site (close this window to stop) && npm run preview' -WorkingDirectory 'F:\SITE SEARCH' -WindowStyle Minimized`
+so it survives the Claude app being closed. LAN: `http://192.168.100.100:3020`.
+Outside: `http://<static IP>:3020` once the owner's MikroTik forwards it
+(`/ip firewall nat add chain=dstnat dst-address=<static IP> protocol=tcp dst-port=3020 action=dst-nat to-addresses=192.168.100.100 to-ports=3020`);
+not verified from outside yet. The Windows firewall already allows Node.js.
+Outbound requests show changing ISP addresses (31.171.100.x), so the static IP
+cannot be read from here — ask the owner. Limits told to the owner: no HTTPS
+(passwords travel in clear — demo only), member sign-up does not work (no SMS
+provider), it shows the dev database, and it stops when the window closes or
+the PC restarts. After a reboot: start Docker Desktop, `docker start
+bdcenter-postgres`, then the window again (rebuild only if the code changed).
 
 ## Gotchas learned in this repo
+
+- **Windows memory (commit limit) runs out on this PC**, not disk: many apps
+  stay open for days (Claude, Codex, php ×63, SQL Server, MySQL, Chrome, the
+  Docker VM) and the page file on C grows until C is full. Builds and Docker
+  builds then fail with `VirtualAlloc failed` / "Zone Allocation failed", and
+  a crashing Docker VM stops `bdcenter-postgres` (no restart policy:
+  `docker start bdcenter-postgres`). Check headroom with
+  `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory`; run lint, tsc
+  and tests one at a time when it is low. The owner rebooted on 2026-10-03
+  (41 GB free afterwards); the page file is still system-managed on C (moving
+  it to F was recommended). C: and F: are partitions of the same NVMe SSD.
+- **Escapes get rewritten by the editing tools.** `\u` escapes written with
+  Write/Edit become literal (often invisible) characters, and backslashes in
+  Python heredocs run through Bash get altered. Build such characters from
+  code points (`String.fromCharCode`, see `src/lib/rtl-text.ts`), put scripts
+  in files with the Write tool, and use `chr(92)`/`chr(96)` in Python for
+  backslashes/backticks. Backticks inside template-literal content
+  (`src/content/admin-guide.ts`) must be escaped.
 
 - **Middleware redirects show `http://localhost:<port>` locally.** Next.js
   relativizes same-origin middleware redirects against the address it listens
