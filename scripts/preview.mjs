@@ -11,6 +11,7 @@
  * deployment, which runs behind HTTPS (Docker setup).
  */
 import { spawn } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -40,5 +41,15 @@ if (command === 'start') {
   console.log("From outside: forward a router port to this computer's LAN address and port.");
 }
 
+// A build into .next-preview rewrites next-env.d.ts and tsconfig.json to point
+// there; put both back so the checkout stays unchanged.
+const kept =
+  command === 'build'
+    ? ['next-env.d.ts', 'tsconfig.json'].map((file) => [file, readFileSync(file, 'utf8')])
+    : [];
+
 const child = spawn(process.execPath, [nextBin, ...args], { env, stdio: 'inherit' });
-child.on('exit', (code) => process.exit(code ?? 1));
+child.on('exit', (code) => {
+  for (const [file, content] of kept) writeFileSync(file, content);
+  process.exit(code ?? 1);
+});
