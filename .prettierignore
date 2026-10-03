@@ -4,3 +4,8 @@ next-env.d.ts
 prisma/generated/
 .next/
 storage/
+.next-preview/
+.next-e2e/
+.next-verify/
+.tmp-build/
+sandbox/

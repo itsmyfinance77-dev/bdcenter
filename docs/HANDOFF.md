@@ -26,24 +26,21 @@ merged** — following the owner's merge policy at
   `/code-review`). Findings as
   `severity · confidence · file:line · trigger → wrong outcome · fix`;
   fix every Critical/High, one push per round, the reviewer checks the delta.
-- **Checks**: the repo has **no GitHub Actions CI** yet. Until there is one,
-  the gate is the local run on the PR head — `npm run verify` (lint, types,
-  unit, build), `npm run test:db`, `npm run test:e2e` — with the results
-  written in the PR. Adding a CI workflow (PostgreSQL service) is a good
-  first task, see the list below.
+- **Checks**: GitHub Actions (`.github/workflows/ci.yml`, task 0) runs two
+  jobs on every PR and on `main`: «Lint, types, tests, build» (migrations on
+  an empty PostgreSQL 16, lint, format, types, unit, DB tests, build) and
+  «Browser tests» (e2e). Both must be green on the reviewed head; check with
+  `gh pr checks N`. Locally the same commands still work.
 - Merge **squash, head-pinned**: `gh pr merge N --squash --match-head-commit <sha>`,
   one PR at a time; afterwards check `main` again.
 - The staff-guide rule still applies to every PR (see `CLAUDE.md`).
 
 ### 2. State of git right now
 
-- Local `main` = `origin/main` = `e6a32f7` (end of the fourth session).
-- **All fifth-session work (22 commits, `3cc26c9`…the handoff commit) is on
-  branch `session5/panel-and-member-features`, not pushed yet.** First job:
-  push it, open one PR for it ("Fifth session: SMS sandbox, member identity,
-  rich editor, calendar links, 12-item panel list"), get it reviewed under
-  the policy above, fix findings, squash-merge. It was fully tested locally
-  (119 unit, 56 DB, 27 browser tests, all green on 2026-10-04).
+- The fifth session's branch went in as PR #1 (squash `ed5358b`, 2026-10-04)
+  after an independent review (two Low findings fixed: the SMS sandbox inbox
+  is ADMIN-only, CSV formulas after leading spaces are neutralized).
+- Each later task is listed in «Sixth session progress» below with its PR.
 - The «BDC site» preview (port 3020, `http://10.20.30.6:3020` for the owner)
   runs a build of this branch.
 
@@ -183,6 +180,13 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
 - React 19 resets forms after an action; radios need `actionResultKey()`.
 - DB tests delete members by phone prefix (0993–0999 etc.); sandbox test
   members use 0990.
+
+### 5. Sixth session progress (2026-10-04 →)
+
+- PR #1 — fifth session (see above).
+- Task 0 — CI: `.github/workflows/ci.yml` + `scripts/ci-env.sh`; prettier
+  now uses `endOfLine: auto` so `npm run format:check` passes on the Windows
+  checkout (CRLF) as well as in CI (LF).
 
 ## Where things live
 
