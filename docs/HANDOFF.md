@@ -1,6 +1,6 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-03 (fifth session: SMS sandbox, member identity, rich editor, calendar links). Read this first in a new session,
+Last updated: 2026-10-04 (fifth session, continued: the owner's 12-item panel list). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -189,7 +189,32 @@ Fifth session (2026-10-03), all on `main`:
 6. `51b7006` **Browser tests** for the new flows, and two form fixes found by
    them (radios cleared by React's form reset → `actionResultKey`).
 
-Test counts: 112 unit, 49 DB, 27 browser — all pass.
+Then the owner's 12-item list (asked "what essential panel features are
+missing?"), in three stages, all on `main`:
+
+- `4316592` rich editor also for news/events, course descriptions and staff
+  bios (`*Html` columns; plain text kept in the old column for search).
+- `b8610fd` «تنظیمات سایت» (ADMIN): editable contact details (setting
+  `site.contact`, footer/contact/about/JSON-LD) and staff alerts per kind of
+  new request (`alerts.recipients`; `alertStaff` in notifications).
+- `82c7393` «خدمات مرکز» admin: tiles' title, short line, live/«به‌زودی» and
+  a rich page per service (`services` rows; slugs/icons/links/layout in code).
+- `1aad23e`, `86ba93a` course covers (`course-covers/`, public only when
+  published).
+- `ec937a1` «پیامک گروهی» (ADMIN): members / individuals / approved legal /
+  a course's enrollees; `sms_broadcasts` history.
+- `be63bbc` CSV exports of members and consulting requests (audited).
+- `788041d` draft preview: `/admin/preview/articles/<id>`,
+  `/admin/preview/pages/<slug>` (site chrome, staff only).
+- `e92a724` «مرکز در یک نگاه» figures (`home.stats`, band hidden while empty).
+- `fe44b54` editable site menu (`site.menu`, header reads it).
+- `07e7965` «رمز را فراموش کرده‌ام» by email (`admin_password_resets`).
+- `81b75f2` page history with preview and restore (`page_revisions`).
+
+Owner's rule (2026-10-03, also in `CLAUDE.md`): every panel change updates the
+staff guide `src/content/admin-guide.ts` in the same commit.
+
+Test counts: 119 unit, 56 DB, 27 browser — all pass.
 
 **Hosting (2026-10-03):** the owner bought «هاست لینوکس» at 130.185.76.122.
 It is a shared cPanel host (LiteSpeed, cPanel on 2082/2083, FTP, server name
