@@ -37,6 +37,13 @@ export default async function EditPagePage({
             مشاهده در سایت
           </Link>
         ) : null}
+        <Link
+          href={`/admin/preview/pages/${encodeURIComponent(page.slug)}`}
+          target="_blank"
+          className={secondaryButtonClass}
+        >
+          پیش‌نمایش
+        </Link>
         {page.isSystem ? null : (
           <ConfirmButton
             action={deletePageAction.bind(null, page.slug)}

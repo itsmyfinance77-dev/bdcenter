@@ -47,6 +47,13 @@ export default async function EditArticlePage({
             مشاهده در سایت
           </Link>
         ) : null}
+        <Link
+          href={`/admin/preview/articles/${article.id}`}
+          target="_blank"
+          className={secondaryButtonClass}
+        >
+          پیش‌نمایش
+        </Link>
         <ConfirmButton
           action={deleteArticleAction.bind(null, article.id)}
           message={`«${article.title}» برای همیشه حذف شود؟`}

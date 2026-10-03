@@ -11,7 +11,11 @@ import { PageBody } from '@/components/site/page-body';
 import { calendarCopy } from '@/content/site';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { ArticleKind } from '@/lib/prisma';
-import { getPublishedArticle, listPublishedArticles } from '@/modules/content/service';
+import {
+  getArticleForAdmin,
+  getPublishedArticle,
+  listPublishedArticles,
+} from '@/modules/content/service';
 
 const sectionTitle = { NEWS: 'اخبار', EVENT: 'رویدادها', ALL: 'اخبار و رویدادها' } as const;
 const kindLabel = { NEWS: 'خبر', EVENT: 'رویداد' } as const;
@@ -114,6 +118,33 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
   const related = (await listPublishedArticles({ kind, limit: 4 }))
     .filter((other) => other.id !== article.id)
     .slice(0, 3);
+  return <ArticleView article={article} related={related} />;
+}
+
+/**
+ * An article of any status as the site would show it, for the admin preview
+ * (/admin/preview/articles/<id>). Draft covers come from the admin route.
+ */
+export async function ArticlePreview({ id }: { id: string }) {
+  const article = await getArticleForAdmin(id);
+  if (!article) notFound();
+  return <ArticleView article={article} related={[]} preview />;
+}
+
+type ArticleWithCover = NonNullable<Awaited<ReturnType<typeof getArticleForAdmin>>>;
+
+function ArticleView({
+  article,
+  related,
+  preview = false,
+}: {
+  article: ArticleWithCover;
+  related: Awaited<ReturnType<typeof listPublishedArticles>>;
+  preview?: boolean;
+}) {
+  const kind = article.kind;
+  const cover = (id: string, variant: 'lg' | 'sm') =>
+    preview ? `/admin/media/${id}/${variant}` : coverUrl(id, variant);
   const upcomingEvent =
     kind === 'EVENT' && article.eventStartsAt && article.eventStartsAt > new Date();
 
@@ -133,7 +164,7 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
             <div className="bg-placeholder-stripes relative aspect-video overflow-hidden rounded-3xl">
               {article.coverImage ? (
                 <Image
-                  src={coverUrl(article.coverImage.id, 'lg')}
+                  src={cover(article.coverImage.id, 'lg')}
                   alt={article.coverImage.altText ?? article.title}
                   fill
                   unoptimized
