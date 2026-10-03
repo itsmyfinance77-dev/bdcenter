@@ -14,3 +14,8 @@ export function isSafeHref(href: string): boolean {
     return false;
   }
 }
+
+/** A full address to another site (any letter case), as opposed to a path on this one. */
+export function isExternalHref(href: string): boolean {
+  return /^https?:\/\//i.test(href);
+}
