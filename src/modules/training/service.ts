@@ -45,6 +45,7 @@ export async function listPublishedCourses() {
       instructor: true,
       location: true,
       startsAt: true,
+      coverKey: true,
       capacity: true,
       enrollmentOpen: true,
       _count: { select: { enrollments: { where: seatHolding } } },
