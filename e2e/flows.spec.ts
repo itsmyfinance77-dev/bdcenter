@@ -93,7 +93,8 @@ test('a wrong code is refused', async ({ page }) => {
   const code = await latestCode(phoneA);
   await page.getByLabel('کد ورود').fill(code === '000000' ? '111111' : '000000');
   await page.getByRole('button', { name: 'ورود', exact: true }).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  // Next.js's (empty) route announcer is also role="alert": match the message itself.
+  await expect(page.getByRole('alert').filter({ hasText: 'کد واردشده درست نیست' })).toBeVisible();
   await expect(page).toHaveURL(/\/account\/login/);
 });
 
