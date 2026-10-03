@@ -7,7 +7,7 @@ import { recordJobRun } from '@/modules/jobs/service';
 import { sendReminder } from '@/modules/notifications/service';
 import { getSetting } from '@/modules/settings/service';
 import { listAcceptedEnrollmentsStartingBetween } from '@/modules/training/service';
-import { inQuietHours, reminderDueAt, reminderWindow } from './schedule';
+import { inQuietHours, reminderDueAt, reminderWindow, type QuietHours } from './schedule';
 
 /**
  * Reminder SMS (owner's request, 2026-10-04): before a booked appointment and
@@ -15,13 +15,16 @@ import { inQuietHours, reminderDueAt, reminderWindow } from './schedule';
  * سایت». The scheduler calls `runReminders` every 15 minutes through
  * /api/cron/reminders; each run sends whatever is due and not yet sent.
  *
- * - Nothing is sent during the quiet hours; what fell due waits until they end
- *   and goes out then, if the start is still at least 30 minutes away.
+ * - Nothing is sent during the quiet hours. A reminder due in them goes out
+ *   when they end, or the evening before if the start comes too soon after
+ *   them (reminderDueAt).
  * - A booking made after its reminder time gets none: the booking SMS the
  *   member just received already carries the date and time.
  * - Each reminder is claimed in `reminders` (unique kind + target + start
  *   time) before it is sent, so overlapping runs never send it twice. A failed
- *   SMS is not retried (the provider may have delivered it anyway).
+ *   SMS is not retried (the provider may have delivered it anyway); neither is
+ *   a claim whose run died before recording the result (`smsSent` stays null).
+ * - Soonest starts go first when a run hits MAX_SENDS_PER_RUN.
  */
 
 /** Upper bound of messages per run; the rest go out on the next run. */
@@ -49,13 +52,20 @@ function accountLink(): string {
 
 const when = (date: Date) => `${formatWeekdayDate(date)}، ساعت ${formatTime(date)}`;
 
-async function bookingCandidates(now: Date, hoursBefore: number, result: ReminderRunResult) {
+async function bookingCandidates(
+  now: Date,
+  hoursBefore: number,
+  quiet: QuietHours,
+  result: ReminderRunResult,
+) {
   const { from, to } = reminderWindow(now, hoursBefore);
   const bookings = await listBookingsStartingBetween(from, to);
   const candidates: Candidate[] = [];
   for (const booking of bookings) {
     const { startsAt, location, staff } = booking.slot;
-    if (booking.createdAt > reminderDueAt(startsAt, hoursBefore)) {
+    const dueAt = reminderDueAt(startsAt, hoursBefore, quiet);
+    if (dueAt > now) continue;
+    if (booking.createdAt > dueAt) {
       result.skipped += 1;
       continue;
     }
@@ -82,12 +92,12 @@ async function bookingCandidates(now: Date, hoursBefore: number, result: Reminde
   return candidates;
 }
 
-async function courseCandidates(now: Date, hoursBefore: number) {
+async function courseCandidates(now: Date, hoursBefore: number, quiet: QuietHours) {
   const { from, to } = reminderWindow(now, hoursBefore);
   const enrollments = await listAcceptedEnrollmentsStartingBetween(from, to);
   return enrollments.flatMap((enrollment): Candidate[] => {
     const { title, startsAt, location } = enrollment.course;
-    if (!startsAt) return [];
+    if (!startsAt || reminderDueAt(startsAt, hoursBefore, quiet) > now) return [];
     return [
       {
         kind: 'COURSE',
@@ -133,21 +143,26 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
   const settings = await getSetting('reminders');
   const result: ReminderRunResult = { quiet: false, sent: 0, failed: 0, skipped: 0 };
 
-  if (inQuietHours(now, settings.quietFrom, settings.quietUntil)) {
+  const quiet = { from: settings.quietFrom, until: settings.quietUntil };
+  if (inQuietHours(now, quiet.from, quiet.until)) {
     result.quiet = true;
   } else {
     const candidates = [
       ...(settings.bookings.enabled
-        ? await bookingCandidates(now, settings.bookings.hoursBefore, result)
+        ? await bookingCandidates(now, settings.bookings.hoursBefore, quiet, result)
         : []),
       ...(settings.courses.enabled
-        ? await courseCandidates(now, settings.courses.hoursBefore)
+        ? await courseCandidates(now, settings.courses.hoursBefore, quiet)
         : []),
-    ];
+    ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
     for (const candidate of await notYetReminded(candidates)) {
       if (result.sent + result.failed >= MAX_SENDS_PER_RUN) break;
       if (!(await claim(candidate))) continue;
-      const smsSent = await candidate.send();
+      // One broken send (provider or database error) must not stop the others.
+      const smsSent = await candidate.send().catch((error: unknown) => {
+        console.error(`[reminders] ${candidate.kind} ${candidate.targetId} failed`, error);
+        return false;
+      });
       await prisma.reminder.update({
         where: {
           kind_targetId_occurrenceAt: {

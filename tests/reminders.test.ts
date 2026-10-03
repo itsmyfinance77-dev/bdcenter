@@ -9,6 +9,7 @@ import {
 } from '@/modules/reminders/schedule';
 import { reminderInputSchema } from '@/modules/settings/service';
 
+const DAY = 24 * 60 * 60 * 1000;
 /** Tehran is UTC+03:30 all year. */
 const tehran = (hour: number, minute = 0) =>
   new Date(Date.UTC(2026, 9, 5, hour, minute) - 3.5 * 60 * 60 * 1000);
@@ -30,12 +31,27 @@ describe('reminder timing', () => {
     expect(inQuietHours(tehran(3), 5, 5)).toBe(false);
   });
 
-  it('reminds from half an hour up to the chosen hours ahead', () => {
+  it('looks from half an hour up to the chosen hours ahead, plus a day for quiet-hour moves', () => {
     const now = new Date('2026-10-05T06:00:00Z');
     const { from, to } = reminderWindow(now, 24);
     expect(from.getTime() - now.getTime()).toBe(MIN_LEAD_MS);
-    expect(to.getTime() - now.getTime()).toBe(24 * 60 * 60 * 1000);
-    expect(reminderDueAt(new Date('2026-10-06T06:00:00Z'), 24)).toEqual(now);
+    expect(to.getTime() - now.getTime()).toBe(48 * 60 * 60 * 1000);
+  });
+
+  it('moves a reminder out of the quiet hours without losing it', () => {
+    const night = { from: 22, until: 8 };
+    // Due at 14:00 Tehran: not quiet, unchanged.
+    expect(reminderDueAt(tehran(16), 2, night)).toEqual(tehran(14));
+    // Due at 06:00 for a 10:00 start: sent at 08:00 when the quiet hours end.
+    expect(reminderDueAt(tehran(10), 4, night)).toEqual(tehran(8));
+    // Due at 06:15 for an 08:15 start: 08:00 would be too close, so 21:00 the evening before.
+    expect(reminderDueAt(tehran(8, 15), 2, night)).toEqual(new Date(tehran(21).getTime() - DAY));
+    // Due at 23:30 the day before a 23:30 start: 08:00 on the day itself.
+    expect(reminderDueAt(tehran(23, 30), 24, night)).toEqual(tehran(8));
+    // Quiet hours within the day (12–14): a 13:20 start is reminded at 11:00.
+    expect(reminderDueAt(tehran(13, 20), 1, { from: 12, until: 14 })).toEqual(tehran(11));
+    // No quiet hours at all.
+    expect(reminderDueAt(tehran(3), 1, { from: 0, until: 0 })).toEqual(tehran(2));
   });
 });
 

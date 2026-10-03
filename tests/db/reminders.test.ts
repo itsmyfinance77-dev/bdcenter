@@ -175,6 +175,20 @@ describe('reminder SMS', () => {
     expect(await reminderRows(b.id)).toHaveLength(0); // its start has passed by then
   });
 
+  it('sends the evening before when the morning would be too late', async () => {
+    await setSetting(
+      'reminders',
+      { ...defaults, bookings: { enabled: true, hoursBefore: 2 } },
+      admin.id,
+    );
+    // 08:15 Tehran on 11 March: due at 06:15 (quiet), 08:00 is too close, so 21:00 the day before.
+    const early = await booking(new Date('2031-03-11T04:45:00Z'));
+    await runReminders(new Date('2031-03-10T17:00:00Z')); // 20:30
+    expect(await reminderRows(early.id)).toHaveLength(0);
+    await runReminders(new Date('2031-03-10T17:30:00Z')); // 21:00
+    expect(await reminderRows(early.id)).toMatchObject([{ smsSent: true }]);
+  });
+
   it('follows the switches and the hours set in the panel', async () => {
     await setSetting(
       'reminders',
