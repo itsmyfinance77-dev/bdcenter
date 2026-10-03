@@ -10,6 +10,7 @@ import {
   parseHomeStats,
   parseRecipients,
   parseSiteMenu,
+  reminderInputSchema,
   saveContactInfo,
   setSetting,
   type AlertKind,
@@ -48,6 +49,21 @@ export async function saveAlertsAction(_prev: FormState, formData: FormData): Pr
   await setSetting('alerts.recipients', recipients, admin.id);
   revalidatePath('/admin/settings');
   return { status: 'success', message: 'گیرندگان اطلاع‌رسانی ذخیره شدند.' };
+}
+
+export async function saveRemindersAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const parsed = reminderInputSchema.safeParse(values);
+  if (!parsed.success) {
+    return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
+  }
+  await setSetting('reminders', parsed.data, admin.id);
+  revalidatePath('/admin/settings');
+  return { status: 'success', message: 'تنظیمات یادآوری ذخیره شد.' };
 }
 
 export async function saveStatsAction(_prev: FormState, formData: FormData): Promise<FormState> {

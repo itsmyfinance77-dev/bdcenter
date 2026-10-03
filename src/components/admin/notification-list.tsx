@@ -1,4 +1,5 @@
 import { notifyCopy } from '@/content/notifications';
+import { reminderEventLabel } from '@/content/reminders';
 import { formatDateTime } from '@/lib/format';
 import type { NotificationRow } from '@/modules/notifications/service';
 
@@ -9,6 +10,7 @@ export function NotificationList({ rows }: { rows: NotificationRow[] }) {
     <ul className="space-y-0.5 text-xs text-ink-2">
       {rows.map((row, index) => (
         <li key={index}>
+          {row.event.startsWith('reminder.') ? `${reminderEventLabel} · ` : null}
           {notifyCopy.channel[row.channel]}:{' '}
           <span className={row.status === 'SENT' ? 'text-success' : 'text-danger'}>
             {notifyCopy.status[row.status]}

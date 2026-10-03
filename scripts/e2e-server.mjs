@@ -31,6 +31,7 @@ const databaseUrl =
   'postgresql://bdcenter:bdcenter@127.0.0.1:5434/bdcenter_e2e?schema=public';
 const siteUrl = `http://127.0.0.1:${E2E_PORT}`;
 const runId = Date.now().toString(36);
+const cronSecret = randomBytes(32).toString('hex');
 const admin = {
   email: `e2e-admin-${runId}@bdcenter.test`,
   password: `e2e-${randomBytes(12).toString('hex')}`,
@@ -48,6 +49,7 @@ const env = {
   SESSION_SECRET: randomBytes(48).toString('base64'),
   OTP_SECRET: randomBytes(48).toString('base64'),
   DATA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  CRON_SECRET: cronSecret,
   STORAGE_DIR: '.tmp-build/e2e-storage',
   SMS_PROVIDER: 'kavenegar',
   KAVENEGAR_API_KEY: 'e2e',
@@ -106,6 +108,7 @@ writeFileSync(
     databaseUrl,
     smsOutbox: `http://127.0.0.1:${SMS_PORT}/outbox`,
     admin,
+    cronSecret,
   }),
 );
 

@@ -64,6 +64,9 @@ backup first for large updates (see backup.md).
 - `/admin/system` shows no new errors and a recent backup (the first one runs
   at `BACKUP_AT`, or run one by hand).
 - Member sign-in sends an SMS (needs `SMS_PROVIDER` and keys, OQ-BD-11).
+- `docker compose logs scheduler` shows a `reminders: {…}` line every 15
+  minutes, and «تنظیمات سایت» → «یادآوری پیامکی» shows the last run.
+  `https://<domain>/api/cron/reminders` must answer 404 (Caddy blocks it).
 
 ## Notes
 
@@ -76,5 +79,9 @@ backup first for large updates (see backup.md).
 - Uploaded files live in the `storage` volume, certificates in `caddy-data`.
   Never run `docker compose down -v`: `-v` deletes the volumes, i.e. the
   database, the uploads and the backups.
+- Reminder SMS: the `scheduler` container calls `http://app:3000/api/cron/reminders`
+  every 15 minutes (`SCHEDULER_INTERVAL` seconds) with `CRON_SECRET`; the app
+  refuses calls without it, and Caddy does not route `/api/cron` from the
+  internet. Timing and quiet hours are set by an ADMIN in «تنظیمات سایت».
 - The plain-HTTP LAN preview (`npm run preview`) is for viewing on a local
   network only; it is not this setup.

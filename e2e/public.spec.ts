@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { state } from './helpers';
 
 /** Public pages render in Persian, right to left, without errors. */
 
@@ -69,4 +70,17 @@ test('health check and security headers', async ({ request }) => {
   const home = await request.get('/');
   expect(home.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
   expect(home.headers()['x-content-type-options']).toBe('nosniff');
+});
+
+test('the reminders job answers only the scheduler', async ({ request }) => {
+  const url = '/api/cron/reminders';
+  expect((await request.post(url)).status()).toBe(401);
+  const wrong = await request.post(url, { headers: { Authorization: 'Bearer wrong-secret' } });
+  expect(wrong.status()).toBe(401);
+  expect((await request.get(url)).status()).toBe(405);
+  const run = await request.post(url, {
+    headers: { Authorization: `Bearer ${state().cronSecret}` },
+  });
+  expect(run.status()).toBe(200);
+  expect(await run.json()).toMatchObject({ sent: expect.any(Number), failed: expect.any(Number) });
 });
