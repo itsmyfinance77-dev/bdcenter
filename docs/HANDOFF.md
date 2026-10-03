@@ -200,7 +200,17 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   `npm run reminders:run` (`-- --url http://127.0.0.1:3020 --every 15` for
   the preview). The owner's `.env` got a `CRON_SECRET`. Task 4 (sessions)
   should feed one COURSE reminder per session start (the unique key already
-  allows it: `occurrenceAt` is the start time).
+  allows it: `occurrenceAt` is the start time). Merged as PR #3.
+- Task 2 — announcement bar (`feat/announcement-bar`): setting
+  `site.announcement` (`src/modules/settings/announcement.ts`: schema, the
+  «نوار اطلاعیه» form schema with Jalali start/end, `activeAnnouncement`),
+  form with live preview in «تنظیمات سایت», `AnnouncementBar` above
+  `SiteHeader` in `src/app/(site)/layout.tsx` (public pages are all
+  force-dynamic, so the date window is checked per request). Closing it sets
+  the cookie `bdc_notice=<key>` (30 days); the key is a hash of text, link and
+  tone, so an edited notice shows again. The privacy draft in
+  `src/content/pages.ts` mentions this cookie; a privacy page already edited
+  in the panel needs the same sentence (said in the guide).
 
 ## Where things live
 

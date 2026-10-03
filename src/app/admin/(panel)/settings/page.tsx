@@ -1,6 +1,7 @@
 import { AdminHeading } from '@/components/admin/ui';
 import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
 import { requireAdmin } from '@/modules/auth/service';
+import { announcementFormValues } from '@/modules/settings/announcement';
 import { getJobRun } from '@/modules/jobs/service';
 import {
   ALERT_KINDS,
@@ -10,6 +11,7 @@ import {
 } from '@/modules/settings/service';
 import {
   AlertSettingsForm,
+  AnnouncementSettingsForm,
   ContactSettingsForm,
   MenuSettingsForm,
   ReminderSettingsForm,
@@ -56,7 +58,8 @@ function ReminderRunNote({ run }: { run: Awaited<ReturnType<typeof getJobRun>> }
 
 export default async function SettingsPage() {
   await requireAdmin('ADMIN');
-  const [contact, alerts, stats, menu, reminders, reminderRun] = await Promise.all([
+  const [announcement, contact, alerts, stats, menu, reminders, reminderRun] = await Promise.all([
+    getSetting('site.announcement'),
     getSetting('site.contact'),
     getSetting('alerts.recipients'),
     getSetting('home.stats'),
@@ -91,6 +94,12 @@ export default async function SettingsPage() {
     <>
       <AdminHeading title="تنظیمات سایت" />
       <div className="space-y-6">
+        <Section
+          title="نوار اطلاعیه"
+          lead="پیامی کوتاه در نواری رنگی بالای همهٔ صفحه‌های سایت، مثل «مرکز تا ۱۵ فروردین تعطیل است». می‌توانید زمان شروع و پایان نمایش را هم تعیین کنید. بازدیدکننده می‌تواند آن را ببندد؛ اگر متن را عوض کنید، دوباره برایش نمایش داده می‌شود."
+        >
+          <AnnouncementSettingsForm initial={announcementFormValues(announcement)} />
+        </Section>
         <Section
           title="اطلاعات تماس مرکز"
           lead="در پاورقی همهٔ صفحه‌ها، صفحهٔ «تماس با ما»، صفحهٔ «درباره مرکز» و اطلاعات موتورهای جستجو نمایش داده می‌شود."

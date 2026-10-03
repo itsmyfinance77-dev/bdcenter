@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
+import { announcementInputSchema } from '@/modules/settings/announcement';
 import {
   ALERT_KINDS,
   contactInputSchema,
@@ -49,6 +50,27 @@ export async function saveAlertsAction(_prev: FormState, formData: FormData): Pr
   await setSetting('alerts.recipients', recipients, admin.id);
   revalidatePath('/admin/settings');
   return { status: 'success', message: 'گیرندگان اطلاع‌رسانی ذخیره شدند.' };
+}
+
+export async function saveAnnouncementAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const parsed = announcementInputSchema.safeParse(values);
+  if (!parsed.success) {
+    return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
+  }
+  await setSetting('site.announcement', parsed.data, admin.id);
+  // The bar is on every public page.
+  revalidatePath('/', 'layout');
+  return {
+    status: 'success',
+    message: parsed.data.enabled
+      ? 'اطلاعیه ذخیره شد و در زمان تعیین‌شده بالای همهٔ صفحه‌های سایت نمایش داده می‌شود.'
+      : 'اطلاعیه خاموش است و در سایت نمایش داده نمی‌شود.',
+  };
 }
 
 export async function saveRemindersAction(

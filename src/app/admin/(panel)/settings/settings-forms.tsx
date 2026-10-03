@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import {
   fieldState,
   FormMessage,
@@ -11,8 +11,11 @@ import {
 } from '@/components/form-controls';
 import { alertKindLabel, menuIconLabel } from '@/content/admin';
 import { actionResultKey, type FormState } from '@/lib/form-state';
+import { AnnouncementBar } from '@/components/site/announcement-bar';
+import { ANNOUNCEMENT_LONG, ANNOUNCEMENT_MAX } from '@/modules/settings/announcement-limits';
 import {
   saveAlertsAction,
+  saveAnnouncementAction,
   saveContactAction,
   saveMenuAction,
   saveRemindersAction,
@@ -150,6 +153,98 @@ export function MenuSettingsForm({
           برگرداندن منوی پیش‌فرض
         </button>
       </div>
+    </form>
+  );
+}
+
+const toneOptions = { info: 'اطلاع‌رسانی (آبی)', warning: 'هشدار (نارنجی)' };
+
+export function AnnouncementSettingsForm({ initial }: { initial: Record<string, string> }) {
+  const { state, formAction, field } = useForm(saveAnnouncementAction, initial);
+  const values = state.status === 'error' ? state.values : initial;
+  const key = actionResultKey(state);
+  // Live preview of what visitors will see; follows the text, link and tone as they are typed.
+  const [draft, setDraft] = useState(values);
+  useEffect(() => setDraft(values), [values]);
+  const update = (event: React.FormEvent<HTMLFormElement>) => {
+    const target = event.target as HTMLInputElement;
+    if (!target.name) return;
+    const value = target.type === 'checkbox' ? (target.checked ? 'on' : '') : target.value;
+    setDraft((current) => ({ ...current, [target.name]: value }));
+  };
+  const text = draft.text?.trim() ?? '';
+  return (
+    <form action={formAction} onInput={update} onChange={update} className="space-y-4">
+      <Message state={state} />
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input
+          key={key}
+          type="checkbox"
+          name="enabled"
+          defaultChecked={values.enabled === 'on'}
+          className="size-4 accent-primary"
+        />
+        نمایش اطلاعیه در سایت
+      </label>
+      <TextareaField
+        label="متن اطلاعیه"
+        rows={2}
+        hint={
+          text.length > ANNOUNCEMENT_LONG
+            ? `${new Intl.NumberFormat('fa-IR').format(text.length)} نویسه؛ متن بلند روی گوشی در چند خط دیده می‌شود. کوتاه‌تر بهتر است.`
+            : `حداکثر ${new Intl.NumberFormat('fa-IR').format(ANNOUNCEMENT_MAX)} نویسه؛ مثلاً «مرکز تا ۱۵ فروردین تعطیل است.»`
+        }
+        {...field('text')}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="پیوند"
+          hint="اختیاری؛ صفحه‌ای از همین سایت (مثلاً /news) یا نشانی کامل با https://"
+          {...field('link')}
+        />
+        <TextField
+          label="متن پیوند"
+          hint="اختیاری؛ پیش‌فرض: «اطلاعات بیشتر»"
+          {...field('linkLabel')}
+        />
+        <TextField
+          label="نمایش از"
+          hint="اختیاری؛ مثلاً ۱۴۰۵/۱۲/۲۵ ۰۸:۰۰. خالی یعنی از همین حالا."
+          {...field('startsAt')}
+        />
+        <TextField
+          label="نمایش تا"
+          hint="اختیاری؛ پس از این زمان خودکار برداشته می‌شود. خالی یعنی تا وقتی خاموشش کنید."
+          {...field('endsAt')}
+        />
+        <SelectField label="رنگ" options={toneOptions} {...field('tone')} />
+      </div>
+      {text ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-ink">
+            پیش‌نمایش
+            {draft.enabled === 'on' ? null : (
+              <span className="font-normal text-ink-2">
+                {' '}
+                (تیک «نمایش اطلاعیه در سایت» خاموش است؛ این نوار در سایت دیده نمی‌شود)
+              </span>
+            )}
+          </p>
+          <div className="overflow-hidden rounded-control border border-line">
+            <AnnouncementBar
+              preview
+              announcement={{
+                text,
+                link: draft.link?.trim() || null,
+                linkLabel: draft.linkLabel?.trim() || 'اطلاعات بیشتر',
+                tone: draft.tone === 'warning' ? 'warning' : 'info',
+                key: 'preview',
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+      <SubmitButton>ذخیرهٔ اطلاعیه</SubmitButton>
     </form>
   );
 }

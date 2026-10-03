@@ -3,8 +3,15 @@ import { menuIconLabel } from '@/content/admin';
 import { mainNav, servicesMenu, siteInfo } from '@/content/site';
 import { formatNumber } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
+import { isSafeHref } from '@/lib/safe-href';
 import { toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
+import {
+  activeAnnouncement,
+  announcementSchema,
+  noAnnouncement,
+  type ActiveAnnouncement,
+} from './announcement';
 
 /**
  * Small switches and texts an ADMIN can change from the panel, stored as one
@@ -70,6 +77,8 @@ const definitions = {
    * center enters; the band stays hidden while the list is empty.
    */
   'home.stats': { schema: statsSchema, fallback: [] as HomeStat[] },
+  /** Notice above the header of every public page (owner's request, 2026-10-04). */
+  'site.announcement': { schema: announcementSchema, fallback: noAnnouncement },
   /** The header: the «خدمات» dropdown and the top-level links (owner's request, 2026-10-03). */
   'site.menu': { schema: menuSchema, fallback: defaultMenu },
   /**
@@ -240,11 +249,6 @@ export async function getSiteMenu(): Promise<SiteMenu> {
   }
 }
 
-/** Internal paths (/…) or full http(s) addresses only. */
-function validHref(href: string) {
-  return /^\/(?!\/)[^\s]*$/.test(href) || /^https?:\/\/[^\s]+$/.test(href);
-}
-
 /**
  * Reads the menu form: `s<i>title` / `s<i>href` / `s<i>icon` rows for the
  * «خدمات» dropdown and `m<i>title` / `m<i>href` rows for the top links. Empty
@@ -262,7 +266,7 @@ export function parseSiteMenu(values: Record<string, string>) {
       if (!title && !href) continue;
       if (!title) errors[`${prefix}${i}title`] = 'عنوان را بنویسید.';
       else if (title.length > 40) errors[`${prefix}${i}title`] = 'عنوان بیش از حد طولانی است.';
-      if (!validHref(href)) {
+      if (!isSafeHref(href)) {
         errors[`${prefix}${i}href`] =
           'نشانی باید با / (صفحه‌ای از همین سایت) یا https:// شروع شود.';
       }
@@ -273,6 +277,16 @@ export function parseSiteMenu(values: Record<string, string>) {
   const services = read('s', MAX_SERVICE_ITEMS);
   const main = read('m', MAX_MAIN_ITEMS).map(({ title, href }) => ({ title, href }));
   return { menu: { services, main }, errors };
+}
+
+/** The site notice to show now, or null; nothing when the database is unreachable. */
+export async function getActiveAnnouncement(now = new Date()): Promise<ActiveAnnouncement | null> {
+  try {
+    return activeAnnouncement(await getSetting('site.announcement'), now);
+  } catch (error) {
+    console.error('getActiveAnnouncement: showing no notice', error);
+    return null;
+  }
 }
 
 const hourField = (label: string, min: number, max: number) =>
