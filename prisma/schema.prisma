@@ -155,7 +155,9 @@ model Page {
   id          String        @id @default(cuid())
   slug        String        @unique
   title       String
-  sections    Json // typed sections rendered by the web layer; no raw HTML
+  /// Typed sections: `markdown` (older pages) or `html` from the rich editor,
+  /// sanitized on save and on render (ADR-0005), with its plain `text`.
+  sections    Json
   status      ContentStatus @default(DRAFT)
   seoTitle    String?
   seoDesc     String?
@@ -200,6 +202,9 @@ model MediaAsset {
   mimeType     String
   sizeBytes    Int
   altText      String?
+  /// "cover" (article covers, public once the article is published) or
+  /// "page" (images placed in rich page bodies, public once uploaded).
+  purpose      String   @default("cover")
   createdAt    DateTime @default(now())
 
   articles Article[]

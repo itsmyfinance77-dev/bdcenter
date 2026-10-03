@@ -293,3 +293,34 @@ export async function countArticlesByStatus() {
     Record<'DRAFT' | 'PUBLISHED' | 'ARCHIVED', number>
   >;
 }
+
+// ---------------------------------------------------------------------------
+// Images placed in rich page bodies (ADR-0005). Re-encoded like covers and
+// public as soon as they are uploaded: the editor inserts them right away.
+// ---------------------------------------------------------------------------
+
+export type PageImageResult = { ok: true; id: string; url: string } | { ok: false; error: string };
+
+export async function storePageImage(file: File, actorId: string): Promise<PageImageResult> {
+  const problem = checkImageUpload(file);
+  if (problem) return { ok: false, error: problem };
+  const stored = await storeImage('page-images', file);
+  if (!stored) return { ok: false, error: 'فایل تصویر معتبر نیست.' };
+  const asset = await prisma.mediaAsset.create({ data: { ...stored, purpose: 'page' } });
+  await recordAudit({
+    actorId,
+    action: 'page.image.upload',
+    entity: 'MediaAsset',
+    entityId: asset.id,
+    metadata: { name: stored.originalName },
+  });
+  return { ok: true, id: asset.id, url: `/page-images/${asset.id}/lg` };
+}
+
+export async function getPageImageKey(assetId: string): Promise<string | null> {
+  const asset = await prisma.mediaAsset.findFirst({
+    where: { id: assetId, purpose: 'page' },
+    select: { storageKey: true },
+  });
+  return asset?.storageKey ?? null;
+}

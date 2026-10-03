@@ -25,7 +25,7 @@ export default async function EditPagePage({
     status: page.status,
     title: page.title,
     slug: page.isSystem ? '' : page.slug,
-    body: page.body,
+    body: page.html,
     seoDesc: page.seoDesc,
   };
 
@@ -54,7 +54,7 @@ export default async function EditPagePage({
           ذخیره شد.
         </p>
       ) : null}
-      {page.status !== 'PUBLISHED' && page.body.includes('[') ? (
+      {page.status !== 'PUBLISHED' && page.html.includes('[') ? (
         <p className="mb-4 rounded-control border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           {pageCopy.draftWarning}
         </p>

@@ -6,9 +6,9 @@ import {
   FormMessage,
   SelectField,
   SubmitButton,
-  TextareaField,
   TextField,
 } from '@/components/form-controls';
+import { RichEditor } from '@/components/admin/rich-editor';
 import { contentStatusLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
 import { savePageAction } from './actions';
@@ -43,12 +43,14 @@ export function PageForm({
         )}
       </div>
       <TextField label="عنوان" required {...field('title')} />
-      <TextareaField
+      <RichEditor
+        // A failed save re-renders with the posted HTML, so nothing typed is lost.
+        key={state.status === 'error' ? state.values.body : 'initial'}
+        name="body"
         label="متن"
-        required
-        rows={18}
-        hint="قالب‌بندی: «## » تیتر، «- » فهرست، **پررنگ**، [متن پیوند](https://...)"
-        {...field('body')}
+        initialHtml={(state.status === 'error' ? state.values.body : initial.body) ?? ''}
+        error={state.status === 'error' ? state.errors.body : undefined}
+        uploadUrl="/admin/pages/images"
       />
       <TextField
         label="توضیح کوتاه برای موتورهای جستجو"

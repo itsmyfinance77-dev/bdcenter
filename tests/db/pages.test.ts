@@ -52,7 +52,7 @@ describe('built-in pages', () => {
     await prisma.page.deleteMany({ where: { slug: 'privacy' } });
     const draft = await getPageForAdmin('privacy');
     expect(draft).toMatchObject({ exists: false, isSystem: true, status: 'DRAFT' });
-    expect(draft!.body).toContain('شماره همراه');
+    expect(draft!.html).toContain('شماره همراه');
     expect(await getSystemPageContent('privacy')).toBeNull();
 
     // A slug in the input is ignored for built-in pages.

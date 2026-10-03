@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { MarkdownBody } from '@/components/markdown';
+import { RichHtml } from '@/components/rich-html';
 import { PageHeader } from '@/components/page-header';
 import { Icon } from '@/components/site/icons';
 import { PageBody } from '@/components/site/page-body';
@@ -72,7 +73,11 @@ export function InstitutionalPage({
             {page ? (
               <>
                 <div className="text-justify text-[clamp(16px,1.6vw,18px)] [&_p]:leading-[2.25]">
-                  <MarkdownBody source={page.body} />
+                  {page.format === 'html' ? (
+                    <RichHtml html={page.body} />
+                  ) : (
+                    <MarkdownBody source={page.body} />
+                  )}
                 </div>
                 {page.updatedAt ? (
                   <p className="mt-10 text-xs text-ink-2">
@@ -99,7 +104,7 @@ export async function systemPageMetadata(slug: string): Promise<Metadata> {
   return {
     title: page?.title ?? definition.title,
     // An empty page must not output an empty description: fall back to the site's.
-    description: (page && (page.seoDesc || plainExcerpt(page.body))) || undefined,
+    description: (page && (page.seoDesc || plainExcerpt(page.text))) || undefined,
     alternates: { canonical: pagePath(slug) },
   };
 }

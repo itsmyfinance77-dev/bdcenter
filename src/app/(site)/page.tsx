@@ -30,7 +30,7 @@ async function latestArticles(): Promise<ArticleSummary[]> {
 async function aboutSummary(): Promise<string> {
   try {
     const page = await getSystemPageContent('about');
-    return page ? plainText(page.body) : aboutText;
+    return page ? plainText(page.text) : aboutText;
   } catch (error) {
     console.error('Home page: could not load the about page', error);
     return aboutText;

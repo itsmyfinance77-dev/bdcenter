@@ -1,24 +1,54 @@
+import { marked } from 'marked';
 import { z } from 'zod';
 import { systemPages, type SystemPage } from '@/content/pages';
 import { prisma } from '@/lib/prisma';
 import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
+import { richHtmlToText, sanitizeRichHtml } from '@/lib/rich-html';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 
 /**
  * Admin-editable institutional pages (the `Page` model). Built-in pages
  * (about, privacy, terms) live at fixed addresses; admins can also add their
- * own pages, served at `/pages/<slug>`. Bodies are Markdown, stored as one
- * typed section so richer section types can be added later without a
- * migration; nothing is ever rendered as raw HTML.
+ * own pages, served at `/pages/<slug>`. Bodies are written in the rich editor
+ * and stored as one `html` section (ADR-0005): sanitized on save and again on
+ * render, with its plain text kept for search and excerpts. Pages saved
+ * before the editor existed hold a `markdown` section and still render as
+ * Markdown until they are next saved.
  */
 
-const sectionsSchema = z.array(z.object({ type: z.literal('markdown'), body: z.string() }));
+const sectionsSchema = z.array(
+  z.discriminatedUnion('type', [
+    z.object({ type: z.literal('markdown'), body: z.string() }),
+    z.object({ type: z.literal('html'), body: z.string(), text: z.string() }),
+  ]),
+);
 
-function bodyOf(sections: unknown): string {
+export type PageContent = {
+  format: 'markdown' | 'html';
+  /** Markdown or sanitized HTML, depending on `format`. */
+  body: string;
+  /** Plain text, for excerpts and search snippets. */
+  text: string;
+};
+
+function contentOf(sections: unknown): PageContent {
   const parsed = sectionsSchema.safeParse(sections);
-  return parsed.success ? parsed.data.map((section) => section.body).join('\n\n') : '';
+  const list = parsed.success ? parsed.data : [];
+  if (list.some((section) => section.type === 'html')) {
+    const html = list.map((section) =>
+      section.type === 'html' ? sanitizeRichHtml(section.body) : markdownToHtml(section.body),
+    );
+    return { format: 'html', body: html.join(''), text: html.map(richHtmlToText).join(' ') };
+  }
+  const markdown = list.map((section) => section.body).join('\n\n');
+  return { format: 'markdown', body: markdown, text: markdown };
+}
+
+/** Markdown (older pages, built-in drafts) as editor HTML. */
+export function markdownToHtml(markdown: string): string {
+  return sanitizeRichHtml(marked.parse(markdown, { async: false, gfm: true, breaks: true }));
 }
 
 export function systemPage(slug: string): SystemPage | undefined {
@@ -30,9 +60,8 @@ export function pagePath(slug: string): string {
   return systemPage(slug)?.path ?? `/pages/${slug}`;
 }
 
-export type PublicPage = {
+export type PublicPage = PageContent & {
   title: string;
-  body: string;
   seoDesc: string | null;
   updatedAt: Date | null;
 };
@@ -43,7 +72,7 @@ export async function getPublishedPage(slug: string): Promise<PublicPage | null>
   if (!page) return null;
   return {
     title: page.title,
-    body: bodyOf(page.sections),
+    ...contentOf(page.sections),
     seoDesc: page.seoDesc,
     updatedAt: page.updatedAt,
   };
@@ -60,12 +89,19 @@ export async function getSystemPageContent(slug: string): Promise<PublicPage | n
   if (published) return published;
   return definition.fallback === null
     ? null
-    : { title: definition.title, body: definition.fallback, seoDesc: null, updatedAt: null };
+    : {
+        title: definition.title,
+        format: 'markdown',
+        body: definition.fallback,
+        text: definition.fallback,
+        seoDesc: null,
+        updatedAt: null,
+      };
 }
 
 /** The section bodies as one text, so JSON keys never match a search. */
 const sectionsText =
-  "(SELECT string_agg(section->>'body', ' ') FROM jsonb_array_elements(sections) AS section)";
+  "(SELECT string_agg(coalesce(section->>'text', section->>'body'), ' ') FROM jsonb_array_elements(sections) AS section)";
 
 /** Published pages matching every search term, with their public addresses. */
 export async function searchPublishedPages(terms: string[], limit = 10) {
@@ -82,7 +118,7 @@ export async function searchPublishedPages(terms: string[], limit = 10) {
   return rows.map((row) => ({
     title: row.title,
     path: pagePath(row.slug),
-    body: bodyOf(row.sections),
+    text: contentOf(row.sections).text,
   }));
 }
 
@@ -148,7 +184,8 @@ export type AdminPage = {
   isSystem: boolean;
   exists: boolean;
   title: string;
-  body: string;
+  /** Editor HTML (older Markdown pages and drafts are converted). */
+  html: string;
   seoDesc: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   updatedAt: Date | null;
@@ -164,7 +201,7 @@ export async function getPageForAdmin(slug: string): Promise<AdminPage | null> {
       isSystem: Boolean(definition),
       exists: true,
       title: row.title,
-      body: bodyOf(row.sections),
+      html: editorHtml(contentOf(row.sections)),
       seoDesc: row.seoDesc ?? '',
       status: row.status,
       updatedAt: row.updatedAt,
@@ -176,17 +213,24 @@ export async function getPageForAdmin(slug: string): Promise<AdminPage | null> {
     isSystem: true,
     exists: false,
     title: definition.title,
-    body: definition.draft,
+    html: markdownToHtml(definition.draft),
     seoDesc: '',
     status: 'DRAFT',
     updatedAt: null,
   };
 }
 
+function editorHtml(content: PageContent): string {
+  return content.format === 'html' ? content.body : markdownToHtml(content.body);
+}
+
 export const pageInputSchema = z.object({
   title: requiredText('عنوان', 200),
   slug: optionalText('نامک', 120),
-  body: requiredText('متن', 50000),
+  body: requiredText('متن', 500_000).refine(
+    (html) => richHtmlToText(html) !== '' || /<img\s/i.test(html),
+    'متن را وارد کنید.',
+  ),
   seoDesc: optionalText('توضیح برای موتورهای جستجو', 300),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
 });
@@ -214,12 +258,13 @@ export async function savePage(
   }
 
   const existing = slug ? await prisma.page.findUnique({ where: { slug } }) : null;
+  const html = sanitizeRichHtml(input.body);
   if (slug && !existing && !isSystem) return { ok: false, errors: { _form: 'این صفحه پیدا نشد.' } };
 
   const data = {
     slug: targetSlug,
     title: input.title,
-    sections: [{ type: 'markdown' as const, body: input.body }],
+    sections: [{ type: 'html' as const, body: html, text: richHtmlToText(html) }],
     seoDesc: input.seoDesc ?? null,
     status: input.status,
     publishedAt: existing?.publishedAt ?? (input.status === 'PUBLISHED' ? new Date() : null),
