@@ -49,7 +49,11 @@ export default async function MembersPage({
 
   return (
     <>
-      <AdminHeading title="اعضای سایت" />
+      <AdminHeading title="اعضای سایت">
+        <a href={`/admin/members/export`} download className={secondaryButtonClass}>
+          خروجی Excel
+        </a>
+      </AdminHeading>
 
       <section className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line bg-white px-5 py-4">
         <div>

@@ -35,6 +35,9 @@ import { clear, consume, LIMITS } from '@/modules/ratelimit/service';
 import { getSetting } from '@/modules/settings/service';
 import { memberAccess, type IdentityState, type MemberAccess } from './access';
 import { smsSender } from '@/modules/messaging/sms';
+import { approvalLabel, personTypeLabel } from '@/content/members';
+import { toCsv } from '@/lib/csv';
+import { formatDateTime } from '@/lib/format';
 
 export { safeMemberNext } from './next-path';
 export { memberAccess, type MemberAccess } from './access';
@@ -547,4 +550,46 @@ export async function setMemberActive(memberId: string, isActive: boolean, actor
 
 export async function countMembers() {
   return prisma.member.count();
+}
+
+/** Every member as CSV for Excel (ADMIN), with the export recorded in the audit log. */
+export async function exportMembersCsv(actorId: string) {
+  const members = await prisma.member.findMany({ orderBy: { createdAt: 'asc' } });
+  const rows = members.map((m) => [
+    formatDateTime(m.createdAt),
+    m.phone,
+    m.fullName ?? '',
+    m.personType ? personTypeLabel[m.personType] : 'تکمیل نشده',
+    m.nationalId ?? '',
+    m.postalCode ?? '',
+    m.companyName ?? '',
+    m.legalNationalId ?? '',
+    m.personType === 'LEGAL' ? approvalLabel[m.approval] : '',
+    m.email ?? '',
+    m.isActive ? 'فعال' : 'غیرفعال',
+    m.lastLoginAt ? formatDateTime(m.lastLoginAt) : '',
+  ]);
+  await recordAudit({
+    actorId,
+    action: 'member.export',
+    entity: 'Member',
+    metadata: { rows: rows.length },
+  });
+  return toCsv([
+    [
+      'تاریخ عضویت',
+      'شماره همراه',
+      'نام',
+      'نوع',
+      'کد ملی',
+      'کد پستی',
+      'شخص حقوقی',
+      'شناسه ملی شخص حقوقی',
+      'وضعیت تأیید',
+      'ایمیل',
+      'وضعیت',
+      'آخرین ورود',
+    ],
+    ...rows,
+  ]);
 }

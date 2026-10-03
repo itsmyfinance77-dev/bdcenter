@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { AdminHeading, Badge, EmptyState, Pager, Table, Td } from '@/components/admin/ui';
+import {
+  AdminHeading,
+  Badge,
+  EmptyState,
+  Pager,
+  secondaryButtonClass,
+  Table,
+  Td,
+} from '@/components/admin/ui';
 import { membershipTierLabel, requestStatusLabel } from '@/content/admin';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { pageParam } from '@/lib/params';
@@ -28,7 +36,14 @@ export default async function ConsultingListPage({
 
   return (
     <>
-      <AdminHeading title="درخواست‌های مشاوره" />
+      <AdminHeading title="درخواست‌های مشاوره">
+        <a
+          href={`/admin/consulting/export${status ? `?status=${status}` : ''}`}
+          className={secondaryButtonClass}
+        >
+          خروجی Excel
+        </a>
+      </AdminHeading>
       <nav aria-label="فیلتر وضعیت" className="mb-4 flex flex-wrap gap-2 text-sm">
         {filters.map((filter) => {
           const active = filter.value === status;

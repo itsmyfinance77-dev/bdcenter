@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { membershipTierLabel, requestStatusLabel } from '@/content/admin';
+import { toCsv } from '@/lib/csv';
+import { formatDateTime } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { email, nationalId, optionalText, phone, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
@@ -93,4 +96,45 @@ export async function countNewConsultingRequests() {
 /** Consulting requests per Tehran day, for the statistics dashboard. */
 export function countConsultingPerDay(from: Date) {
   return countCreatedPerDay('consulting', from);
+}
+
+/** Consulting requests (optionally of one status) as CSV for Excel, audited. */
+export async function exportConsultingCsv(actorId: string, status?: RequestStatus) {
+  const requests = await prisma.consultingRequest.findMany({
+    where: status ? { status } : {},
+    orderBy: { createdAt: 'asc' },
+  });
+  const rows = requests.map((r) => [
+    formatDateTime(r.createdAt),
+    requestStatusLabel[r.status],
+    r.fullName,
+    r.phone,
+    r.nationalId ?? '',
+    r.companyName ?? '',
+    r.email ?? '',
+    r.topic,
+    r.description ?? '',
+    r.membershipTier ? membershipTierLabel[r.membershipTier] : '',
+  ]);
+  await recordAudit({
+    actorId,
+    action: 'consulting.export',
+    entity: 'ConsultingRequest',
+    metadata: { rows: rows.length, status: status ?? 'all' },
+  });
+  return toCsv([
+    [
+      'تاریخ',
+      'وضعیت',
+      'نام',
+      'تلفن',
+      'کد/شناسه ملی',
+      'شرکت',
+      'ایمیل',
+      'موضوع',
+      'توضیحات',
+      'سطح عضویت',
+    ],
+    ...rows,
+  ]);
 }
