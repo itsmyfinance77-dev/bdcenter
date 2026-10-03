@@ -133,7 +133,15 @@ export default async function CoursePage({
             </form>
           )}
           {course.startsAt && course.startsAt > new Date() ? (
-            <AddToCalendar href={`${coursePath}/ics`} />
+            <AddToCalendar
+              href={`${coursePath}/ics`}
+              event={{
+                title: course.title,
+                startsAt: course.startsAt,
+                endsAt: course.endsAt,
+                location: course.location,
+              }}
+            />
           ) : null}
         </aside>
       </div>

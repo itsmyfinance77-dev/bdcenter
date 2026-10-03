@@ -208,7 +208,15 @@ export async function listMemberEnrollments(memberId: string) {
       status: true,
       createdAt: true,
       course: {
-        select: { slug: true, title: true, startsAt: true, status: true, certificateEnabled: true },
+        select: {
+          slug: true,
+          title: true,
+          startsAt: true,
+          endsAt: true,
+          location: true,
+          status: true,
+          certificateEnabled: true,
+        },
       },
       certificate: { select: { revokedAt: true } },
     },

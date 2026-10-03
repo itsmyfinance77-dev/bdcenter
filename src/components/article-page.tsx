@@ -170,7 +170,16 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
               ) : null}
             </dl>
             {upcomingEvent ? (
-              <AddToCalendar href={`/events/${encodeURIComponent(article.slug)}/ics`} />
+              <AddToCalendar
+                href={`/events/${encodeURIComponent(article.slug)}/ics`}
+                event={{
+                  title: article.title,
+                  startsAt: article.eventStartsAt!,
+                  endsAt: article.eventEndsAt,
+                  location: article.eventLocation,
+                  description: article.excerpt,
+                }}
+              />
             ) : null}
             <div className="text-justify text-[clamp(16px,1.6vw,18px)] [&_p]:leading-[2.2]">
               <MarkdownBody source={article.bodyMarkdown} />

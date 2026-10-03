@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { CalendarSubscribe } from '@/components/calendar-subscribe';
 import { PageHeader } from '@/components/page-header';
 import { calendarCopy } from '@/content/site';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { formatJalaliMonthParam, parseJalaliMonth, type JalaliMonth } from '@/lib/jalali';
+import { siteOrigin } from '@/lib/site-origin';
 import { currentJalaliMonth, getMonthGrid } from '@/modules/calendar/service';
 
 export const dynamic = 'force-dynamic';
@@ -31,10 +33,7 @@ export default async function CalendarPage({
   const requested = parseJalaliMonth((await searchParams).month);
   const current = currentJalaliMonth();
   const grid = await getMonthGrid(requested ?? current);
-  const feedUrl = new URL(
-    '/calendar.ics',
-    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010',
-  ).toString();
+  const feedUrl = `${await siteOrigin()}/calendar.ics`;
 
   return (
     <>
@@ -170,12 +169,8 @@ export default async function CalendarPage({
           <h2 id="subscribe-heading" className="font-semibold text-ink">
             {calendarCopy.subscribe}
           </h2>
-          <p className="mt-1 text-ink-2">{calendarCopy.subscribeHint}</p>
-          <p className="mt-2">
-            <a href="/calendar.ics" dir="ltr" className="text-primary hover:underline">
-              {feedUrl}
-            </a>
-          </p>
+          <p className="mt-1 mb-4 leading-7 text-ink-2">{calendarCopy.subscribeHint}</p>
+          <CalendarSubscribe feedUrl={feedUrl} name={calendarCopy.feedName} />
         </section>
       </div>
     </>

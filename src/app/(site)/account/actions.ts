@@ -11,6 +11,7 @@ import {
   logoutMemberEverywhere,
   profileSchema,
   requireMember,
+  rotateMemberCalendar,
   safeMemberNext,
   saveProfile,
 } from '@/modules/members/service';
@@ -59,6 +60,12 @@ export async function memberLogoutEverywhereAction() {
   const member = await requireMember();
   await logoutMemberEverywhere(member.id);
   redirect('/');
+}
+
+export async function rotateCalendarAction() {
+  const member = await requireMember();
+  await rotateMemberCalendar(member.id);
+  revalidatePath('/account');
 }
 
 export async function cancelBookingAction(bookingId: string) {

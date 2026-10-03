@@ -411,6 +411,20 @@ export async function listMembers(page: number, query?: string, filter: MemberLi
   return { items, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
+/** Version in the member's personal calendar address (calendar domain). */
+export async function getMemberCalendarVersion(id: string): Promise<number | null> {
+  const member = await prisma.member.findUnique({
+    where: { id },
+    select: { calendarVersion: true, isActive: true },
+  });
+  return member?.isActive ? member.calendarVersion : null;
+}
+
+/** Gives the member a new personal calendar address; the old one stops working. */
+export async function rotateMemberCalendar(id: string) {
+  await prisma.member.update({ where: { id }, data: { calendarVersion: { increment: 1 } } });
+}
+
 /** Contact details for the notifications domain. */
 export async function getMemberContact(id: string) {
   return prisma.member.findUnique({

@@ -7,6 +7,11 @@ import { consultingCopy, memberCopy } from '@/content/members';
 import { formatDate, formatDateTime, formatTime, toPersianDigits } from '@/lib/format';
 import { listMemberBookings } from '@/modules/appointments/service';
 import { listMemberConsultingRequests } from '@/modules/consulting/service';
+import { CalendarSubscribe } from '@/components/calendar-subscribe';
+import { calendarCopy } from '@/content/site';
+import { googleCalendarEventUrl } from '@/lib/calendar-links';
+import { siteOrigin } from '@/lib/site-origin';
+import { memberFeedPath } from '@/modules/calendar/service';
 import { requireMember } from '@/modules/members/service';
 import { listMemberEnrollments } from '@/modules/training/service';
 import {
@@ -14,6 +19,7 @@ import {
   cancelEnrollmentAction,
   memberLogoutAction,
   memberLogoutEverywhereAction,
+  rotateCalendarAction,
 } from './actions';
 import { ProfileForm } from './profile-form';
 
@@ -31,10 +37,12 @@ export default async function AccountPage({
 }) {
   const member = await requireMember();
   const { welcome, next, booked } = await searchParams;
-  const [enrollments, consultingRequests, bookings] = await Promise.all([
+  const [enrollments, consultingRequests, bookings, feedPath, origin] = await Promise.all([
     listMemberEnrollments(member.id),
     listMemberConsultingRequests(member.id),
     listMemberBookings(member.id),
+    memberFeedPath(member.id),
+    siteOrigin(),
   ]);
   const now = new Date();
 
@@ -147,6 +155,19 @@ export default async function AccountPage({
                           >
                             {appointmentsCopy.addToCalendar}
                           </a>
+                          <a
+                            href={googleCalendarEventUrl({
+                              title: `${calendarCopy.bookingPrefix} ${booking.slot.staff.fullName} — ${booking.topic}`,
+                              startsAt: booking.slot.startsAt,
+                              endsAt: booking.slot.endsAt,
+                              location: booking.slot.location,
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Google Calendar
+                          </a>
                           <form action={cancelBookingAction.bind(null, booking.id)}>
                             <button type="submit" className="text-danger hover:underline">
                               {appointmentsCopy.cancel}
@@ -245,6 +266,24 @@ export default async function AccountPage({
             )}
           </div>
 
+          {feedPath ? (
+            <div className="rounded-panel border border-line bg-white p-6">
+              <h2 id="my-calendar-heading" className="text-lg font-bold text-brand-900">
+                {calendarCopy.personalTitle}
+              </h2>
+              <p className="mt-1 mb-4 text-sm leading-7 text-ink-2">{calendarCopy.personalLead}</p>
+              <CalendarSubscribe
+                feedUrl={`${origin}${feedPath}`}
+                name={calendarCopy.personalFeedName}
+              />
+              <p className="mt-3 text-xs leading-6 text-ink-2">{calendarCopy.personalPrivate}</p>
+              <form action={rotateCalendarAction} className="mt-2">
+                <button type="submit" className="text-sm text-primary hover:underline">
+                  {calendarCopy.personalRotate}
+                </button>
+              </form>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-4 text-sm">
             <form action={memberLogoutAction}>
               <button type="submit" className="text-ink-2 hover:text-danger">

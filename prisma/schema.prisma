@@ -111,6 +111,9 @@ model Member {
   email          String?
   isActive       Boolean   @default(true)
   sessionVersion Int       @default(0)
+  /// Part of the secret address of the member's personal calendar feed;
+  /// bumping it makes the old address stop working.
+  calendarVersion Int      @default(0)
   lastLoginAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
