@@ -22,6 +22,17 @@ docker run --rm -v bdcenter_backups:/b alpine tar -C /b -cf - . > bdcenter-backu
 
 (The volume name is `<project folder>_backups`; see `docker volume ls`.)
 
+Backups hold everything: members' phone numbers and national IDs, requests,
+uploaded attachments and admin password hashes. **Encrypt a copy before it
+leaves the server** and keep the passphrase apart from it, for example:
+
+```sh
+gpg --symmetric --cipher-algo AES256 bdcenter-backups.tar   # writes bdcenter-backups.tar.gpg
+rm bdcenter-backups.tar
+```
+
+(`gpg --decrypt bdcenter-backups.tar.gpg > bdcenter-backups.tar` reverses it.)
+
 ## Backup now
 
 ```sh

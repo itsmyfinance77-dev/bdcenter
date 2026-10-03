@@ -17,6 +17,14 @@ import { countEnrollmentsPerDay } from '@/modules/training/service';
 const untracked = /^\/(admin|api|_next|account)(\/|$)/;
 
 /**
+ * Only the site's real sections are counted, at most one level deep, so made-up
+ * addresses cannot fill the table. Certificate pages (they show a person's
+ * name) and single-slot booking pages are left out on purpose.
+ */
+const tracked =
+  /^\/(?:|about|contact|privacy|terms|search|certificates|(?:news|events|courses|forms)(?:\/[^/]+)?|(?:pages|services)\/[^/]+|appointments\/(?:consulting|service-desk))$/;
+
+/**
  * The path to count for a page view, or null when it should not be counted.
  * Query strings and fragments are dropped; Persian slugs are decoded.
  */
@@ -32,7 +40,7 @@ export function normalizeTrackedPath(raw: unknown): string | null {
   }
   path = path.length > 1 ? path.replace(/\/+$/, '') : path;
   if (untracked.test(path) || path.length > 200 || /[\u0000-\u001f]/.test(path)) return null;
-  return path;
+  return tracked.test(path) ? path : null;
 }
 
 /** Counts one view of `path` for today (Tehran). One atomic upsert. */

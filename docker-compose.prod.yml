@@ -55,6 +55,9 @@ services:
       STORAGE_DIR: /app/storage
       BACKUP_DIR: /backups
       CLIENT_IP_HEADER: x-real-ip
+      # Always off here, whatever .env.production says: it would drop Secure
+      # cookies and HSTS (it exists only for the plain-HTTP LAN preview).
+      INSECURE_HTTP_PREVIEW: ''
     volumes:
       - storage:/app/storage
       - backups:/backups:ro

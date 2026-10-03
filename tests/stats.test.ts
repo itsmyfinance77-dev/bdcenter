@@ -8,6 +8,16 @@ describe('page-view paths', () => {
     expect(normalizeTrackedPath('/news?view=all#x')).toBe('/news');
     expect(normalizeTrackedPath('/courses/')).toBe('/courses');
     expect(normalizeTrackedPath('/events/%D9%86%D8%B4%D8%B3%D8%AA')).toBe('/events/نشست');
+    for (const path of [
+      '/about',
+      '/events/calendar',
+      '/services/consulting',
+      '/pages/x',
+      '/certificates',
+      '/appointments/service-desk',
+    ]) {
+      expect(normalizeTrackedPath(path)).toBe(path);
+    }
   });
 
   it('drops private areas, machinery and junk', () => {
@@ -22,6 +32,12 @@ describe('page-view paths', () => {
       '/%E0%A4%A',
       '/a\u0000b',
       `/${'x'.repeat(250)}`,
+      // Made-up addresses and pages that are not counted on purpose.
+      '/random-junk',
+      '/news/a/b',
+      '/certificates/BDC-7K2M-9QX4',
+      '/appointments/book/cm1abcdefghijklmnopqrstuv',
+      '/pages',
       42,
       null,
     ]) {
