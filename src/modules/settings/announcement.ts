@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { toPersianDigits } from '@/lib/format';
 import { formatJalaliInput, jalaliDateTime } from '@/lib/jalali';
+import { isSafeHref } from '@/lib/safe-href';
 import { optionalText } from '@/lib/validation';
 import { ANNOUNCEMENT_MAX } from './announcement-limits';
 
@@ -63,15 +64,12 @@ export function activeAnnouncement(
   };
 }
 
-/** Internal paths (/…) or full http(s) addresses only, like the menu editor. */
-const hrefPattern = /^(\/(?!\/)\S*|https?:\/\/\S+)$/;
-
 /** The «نوار اطلاعیه» form: the checkbox arrives as "on" or not at all. */
 export const announcementInputSchema = z
   .object({
     enabled: z.preprocess((value) => value === 'on', z.boolean()),
     text: optionalText('متن اطلاعیه', ANNOUNCEMENT_MAX),
-    link: optionalText('پیوند', 500).refine((value) => !value || hrefPattern.test(value), {
+    link: optionalText('پیوند', 500).refine((value) => !value || isSafeHref(value), {
       message: 'نشانی باید با / (صفحه‌ای از همین سایت) یا https:// شروع شود.',
     }),
     linkLabel: optionalText('متن پیوند', 30),

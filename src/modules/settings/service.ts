@@ -3,6 +3,7 @@ import { menuIconLabel } from '@/content/admin';
 import { mainNav, servicesMenu, siteInfo } from '@/content/site';
 import { formatNumber } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
+import { isSafeHref } from '@/lib/safe-href';
 import { toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import {
@@ -248,11 +249,6 @@ export async function getSiteMenu(): Promise<SiteMenu> {
   }
 }
 
-/** Internal paths (/…) or full http(s) addresses only. */
-function validHref(href: string) {
-  return /^\/(?!\/)[^\s]*$/.test(href) || /^https?:\/\/[^\s]+$/.test(href);
-}
-
 /**
  * Reads the menu form: `s<i>title` / `s<i>href` / `s<i>icon` rows for the
  * «خدمات» dropdown and `m<i>title` / `m<i>href` rows for the top links. Empty
@@ -270,7 +266,7 @@ export function parseSiteMenu(values: Record<string, string>) {
       if (!title && !href) continue;
       if (!title) errors[`${prefix}${i}title`] = 'عنوان را بنویسید.';
       else if (title.length > 40) errors[`${prefix}${i}title`] = 'عنوان بیش از حد طولانی است.';
-      if (!validHref(href)) {
+      if (!isSafeHref(href)) {
         errors[`${prefix}${i}href`] =
           'نشانی باید با / (صفحه‌ای از همین سایت) یا https:// شروع شود.';
       }

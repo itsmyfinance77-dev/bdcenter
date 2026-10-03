@@ -168,7 +168,9 @@ export function AnnouncementSettingsForm({ initial }: { initial: Record<string, 
   useEffect(() => setDraft(values), [values]);
   const update = (event: React.FormEvent<HTMLFormElement>) => {
     const target = event.target as HTMLInputElement;
-    if (target.name) setDraft((current) => ({ ...current, [target.name]: target.value }));
+    if (!target.name) return;
+    const value = target.type === 'checkbox' ? (target.checked ? 'on' : '') : target.value;
+    setDraft((current) => ({ ...current, [target.name]: value }));
   };
   const text = draft.text?.trim() ?? '';
   return (
@@ -219,7 +221,15 @@ export function AnnouncementSettingsForm({ initial }: { initial: Record<string, 
       </div>
       {text ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-ink">پیش‌نمایش</p>
+          <p className="text-sm font-semibold text-ink">
+            پیش‌نمایش
+            {draft.enabled === 'on' ? null : (
+              <span className="font-normal text-ink-2">
+                {' '}
+                (تیک «نمایش اطلاعیه در سایت» خاموش است؛ این نوار در سایت دیده نمی‌شود)
+              </span>
+            )}
+          </p>
           <div className="overflow-hidden rounded-control border border-line">
             <AnnouncementBar
               preview

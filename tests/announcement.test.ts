@@ -77,6 +77,8 @@ describe('site notice', () => {
     expect(errors({})).toEqual([]); // off and empty is fine
     expect(errors({ text: 'x', link: 'javascript:alert(1)' })).toEqual(['link']);
     expect(errors({ text: 'x', link: '//evil.example' })).toEqual(['link']);
+    // Browsers read `/\host` as `//host`, another site.
+    expect(errors({ text: 'x', link: '/\\evil.example' })).toEqual(['link']);
     expect(errors({ text: 'x', linkLabel: 'بیشتر' })).toEqual(['link']);
     expect(errors({ text: 'x', startsAt: '1405/07/20 08:00', endsAt: '1405/07/15 08:00' })).toEqual(
       ['endsAt'],
