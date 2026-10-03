@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/prisma';
+import { createTestActor, removeTestActor } from './actor';
 import { deleteStoredFile, storedFileSchema } from '@/modules/files/service';
 import {
   getMemberForAdmin,
@@ -47,23 +48,27 @@ async function cleanup() {
   await prisma.member.deleteMany({ where: { phone: { startsWith: '0993' } } });
 }
 
+const ACTOR = 'test-members-actor@bdcenter.test';
+let admin: { id: string };
+
 beforeAll(async () => {
+  admin = await createTestActor(ACTOR);
   await cleanup();
   cardSetting = await getSetting('members.nationalCardRequired');
 });
 afterAll(async () => {
   await cleanup();
-  const admin = await prisma.adminUser.findFirst({ select: { id: true } });
-  if (admin) await setSetting('members.nationalCardRequired', cardSetting, admin.id);
+  await setSetting('members.nationalCardRequired', cardSetting, admin.id);
   // Only the setting changes this file made (the toggles below and the restore above).
   await prisma.auditLog.deleteMany({
     where: {
       entity: 'SiteSetting',
       entityId: 'members.nationalCardRequired',
-      actorId: admin?.id,
+      actorId: admin.id,
       createdAt: { gte: startedAt },
     },
   });
+  await removeTestActor(ACTOR);
   await prisma.$disconnect();
 });
 
@@ -94,7 +99,6 @@ describe('member profile', () => {
   });
 
   it('holds a representative until an ADMIN approves, and again after a change', async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     const member = await prisma.member.create({ data: { phone: '09930000003' } });
     expect(
       await saveProfile(member.id, legal, { letter: png('letter.png'), nationalCard: null }),
@@ -131,7 +135,6 @@ describe('member profile', () => {
   });
 
   it('asks for the national card only when an ADMIN requires it', async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     const member = await prisma.member.create({ data: { phone: '09930000005' } });
     const input = profileSchema.parse({ ...base, personType: 'INDIVIDUAL' });
     await setSetting('members.nationalCardRequired', true, admin.id);
@@ -146,7 +149,6 @@ describe('member profile', () => {
   });
 
   it('does not review individuals', async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     const member = await prisma.member.findUniqueOrThrow({ where: { phone: '09930000001' } });
     expect(await reviewMember(member.id, { decision: 'APPROVED' }, admin.id)).toBeNull();
   });

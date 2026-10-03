@@ -1,0 +1,105 @@
+# Checks for every pull request and every push to main (docs/HANDOFF.md, PR
+# workflow): install, migrate a fresh PostgreSQL 16, lint, format, types, unit
+# tests, DB tests, production build; browser tests in a second job.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to a PR cancels its older run; runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '12.8.1'
+  NEXT_TELEMETRY_DISABLED: '1'
+  # Same address and credentials as the dev container (docker-compose.yml), so
+  # .env.example and scripts/e2e-server.mjs work unchanged.
+  DATABASE_URL: postgresql://bdcenter:bdcenter@127.0.0.1:5434/bdcenter_dev?schema=public
+
+jobs:
+  checks:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bdcenter
+          POSTGRES_PASSWORD: bdcenter
+          POSTGRES_DB: bdcenter_dev
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U bdcenter -d bdcenter_dev"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Write .env with throwaway secrets
+        run: sh scripts/ci-env.sh
+      - run: pnpm exec prisma generate
+      - name: Apply migrations to an empty database
+        run: pnpm exec prisma migrate deploy
+      - run: pnpm run lint
+      - run: pnpm run format:check
+      - run: pnpm run typecheck
+      - run: pnpm run test
+      - run: pnpm run test:db
+      - name: Production build
+        run: pnpm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bdcenter
+          POSTGRES_PASSWORD: bdcenter
+          POSTGRES_DB: bdcenter_dev
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U bdcenter -d bdcenter_dev"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: sh scripts/ci-env.sh
+      - run: pnpm exec prisma generate
+      # The tests drive the runner's installed Google Chrome (channel: 'chrome');
+      # scripts/e2e-server.mjs creates and migrates the bdcenter_e2e database.
+      - run: pnpm run test:e2e
+      - name: Keep traces and screenshots of failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: .tmp-build/e2e-results
+          retention-days: 7

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/lib/prisma';
+import { createTestActor, removeTestActor } from './actor';
 import { createConsultingRequest } from '@/modules/consulting/service';
 import { getSetting, setSetting } from '@/modules/settings/service';
 import {
@@ -47,11 +48,16 @@ async function cleanup() {
 
 let log: string[] = [];
 
+const ACTOR = 'test-notify-actor@bdcenter.test';
+let admin: { id: string };
+
 beforeAll(async () => {
+  admin = await createTestActor(ACTOR);
   await cleanup();
   vi.spyOn(console, 'info').mockImplementation((line: string) => void log.push(line));
 });
 afterAll(async () => {
+  await removeTestActor(ACTOR);
   await cleanup();
   vi.restoreAllMocks();
   await prisma.$disconnect();
@@ -153,7 +159,6 @@ describe('status notifications', () => {
   });
 
   it('alerts the chosen staff about a new request, with a panel link', async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     const before = await getSetting('alerts.recipients');
     await setSetting(
       'alerts.recipients',

@@ -68,11 +68,18 @@ members, panel users and audit log.
 ```bash
 npm run verify    # lint + typecheck + unit tests + build
 npm run test:db   # integration tests against the dev database
+npm run test:e2e  # browser tests (production build, own database, installed Chrome)
 ```
 
-On Windows without Developer Mode, the final `standalone` step of `next build`
-fails with `EPERM ... symlink` (it cannot create symlinks); the code itself has
-compiled by then. Build on Linux/Docker for deployment.
+**CI:** `.github/workflows/ci.yml` runs on every pull request and every push to
+`main`: install, `prisma migrate deploy` on an empty PostgreSQL 16, lint,
+`format:check`, typecheck, unit tests, DB tests and the production build (job
+«Lint, types, tests, build»), and the browser tests (job «Browser tests»).
+`scripts/ci-env.sh` writes a `.env` with throwaway secrets. A PR is merged only
+when both jobs are green on its reviewed head.
+
+The `standalone` output is only built in Docker (`NEXT_STANDALONE=1`); on
+Windows without Developer Mode it fails with `EPERM ... symlink`.
 
 ---
 

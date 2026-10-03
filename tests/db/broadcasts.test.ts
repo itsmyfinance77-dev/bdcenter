@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/lib/prisma';
+import { createTestActor, removeTestActor } from './actor';
 import { broadcastSchema, runBroadcast, startBroadcast } from '@/modules/broadcasts/service';
 
 /**
@@ -23,11 +24,16 @@ async function cleanup() {
   await prisma.sandboxSms.deleteMany({ where: { phone: { startsWith: '0989' } } });
 }
 
+const ACTOR = 'test-bc-actor@bdcenter.test';
+let admin: { id: string };
+
 beforeAll(async () => {
+  admin = await createTestActor(ACTOR);
   await cleanup();
   vi.spyOn(console, 'info').mockImplementation((line: string) => void log.push(line));
 });
 afterAll(async () => {
+  await removeTestActor(ACTOR);
   await cleanup();
   vi.restoreAllMocks();
   await prisma.$disconnect();
@@ -35,7 +41,6 @@ afterAll(async () => {
 
 describe('group SMS', () => {
   it("texts a course's accepted enrollees once each and records the counts", async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     const course = await prisma.course.create({
       data: { slug: `${PREFIX}course`, title: `${PREFIX}دوره`, status: 'PUBLISHED' },
     });
@@ -69,7 +74,6 @@ describe('group SMS', () => {
   });
 
   it('refuses an empty audience and a missing course', async () => {
-    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
     expect(broadcastSchema.safeParse({ audience: 'course', text: 'x' }).success).toBe(false);
     const empty = await prisma.course.create({
       data: { slug: `${PREFIX}empty`, title: `${PREFIX}خالی`, status: 'PUBLISHED' },

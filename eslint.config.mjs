@@ -10,6 +10,7 @@ const eslintConfig = [
       '.next/**',
       '.next-preview/**',
       '.next-e2e/**',
+      '.next-verify/**',
       '.tmp-build/**',
       'prisma/generated/**',
       'next-env.d.ts',
