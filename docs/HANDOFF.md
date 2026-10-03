@@ -1,11 +1,118 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-04 (fifth session, continued: the owner's 12-item panel list). Read this first in a new session,
+Last updated: 2026-10-04 (end of the fifth session; next steps in «START HERE»). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
 The owner communicates in Persian and prefers short, concrete Persian
 explanations; code, commits and technical docs stay in English (see `CLAUDE.md`).
+
+## START HERE — sixth session (written 2026-10-04 before a context clear)
+
+### 1. New way of working (owner's decision, 2026-10-04)
+
+From now on **every task goes in its own branch and PR, reviewed before it is
+merged** — following the owner's merge policy at
+`D:\SKILLS\Merge policy Skill\Merge policy Skill.md` (read it). In short:
+
+- One branch per task (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`), never
+  commit to `main`. Bring `main` in with `git merge origin/main`, never
+  rebase/force-push a shared branch.
+- Open a PR on `itsmyfinance77-dev/bdcenter` (push needs
+  `gh auth switch --user itsmyfinance77-dev`, then switch back to the
+  previously active account, `itsmyfinance99-eng`).
+- **Independent review on the exact head before merging**: a reviewer that is
+  not the author (e.g. a read-only review subagent of another model, or
+  `/code-review`). Findings as
+  `severity · confidence · file:line · trigger → wrong outcome · fix`;
+  fix every Critical/High, one push per round, the reviewer checks the delta.
+- **Checks**: the repo has **no GitHub Actions CI** yet. Until there is one,
+  the gate is the local run on the PR head — `npm run verify` (lint, types,
+  unit, build), `npm run test:db`, `npm run test:e2e` — with the results
+  written in the PR. Adding a CI workflow (PostgreSQL service) is a good
+  first task, see the list below.
+- Merge **squash, head-pinned**: `gh pr merge N --squash --match-head-commit <sha>`,
+  one PR at a time; afterwards check `main` again.
+- The staff-guide rule still applies to every PR (see `CLAUDE.md`).
+
+### 2. State of git right now
+
+- Local `main` = `origin/main` = `e6a32f7` (end of the fourth session).
+- **All fifth-session work (22 commits, `3cc26c9`…the handoff commit) is on
+  branch `session5/panel-and-member-features`, not pushed yet.** First job:
+  push it, open one PR for it ("Fifth session: SMS sandbox, member identity,
+  rich editor, calendar links, 12-item panel list"), get it reviewed under
+  the policy above, fix findings, squash-merge. It was fully tested locally
+  (119 unit, 56 DB, 27 browser tests, all green on 2026-10-04).
+- The «BDC site» preview (port 3020, `http://10.20.30.6:3020` for the owner)
+  runs a build of this branch.
+
+### 3. Tasks the owner asked for (2026-10-04), each its own branch + PR
+
+Order: 0 (optional, helps every later PR), then 1–5, then 6.
+
+0. **CI workflow** (`ci/github-actions`): GitHub Actions on PRs and `main`:
+   pnpm install, `prisma migrate deploy` against a PostgreSQL 16 service,
+   lint, typecheck, unit, DB tests, build (e2e optional/nightly). Then the
+   "every check green" gate becomes real.
+1. **Automatic SMS reminders** (`feat/sms-reminders`): e.g. the day before a
+   booked appointment and before a course starts (and before each session
+   once item 4 exists). Needs a scheduler: there is none yet. Idea: a
+   protected endpoint (`/api/cron/reminders` with a secret header) that sends
+   due reminders once (store `remindedAt`/a `Reminder` row to avoid repeats),
+   called every 15 min by cron — in production a small service in
+   `docker-compose.prod.yml` (the `backup` container already runs cron), in
+   dev/preview a script or Windows Task Scheduler. Reminder timing as an
+   ADMIN setting (e.g. 24 h before; quiet hours, no SMS at night). Log every
+   send in `notifications`; respect the SMS sandbox. Guide section.
+2. **Announcement bar** (`feat/announcement-bar`): a site-wide notice at the
+   top of every public page («مرکز تا ۱۵ فروردین تعطیل است»), set in
+   «تنظیمات سایت»: on/off, text, optional link, optional start/end date,
+   tone (info/warning). New setting key in `src/modules/settings`, rendered
+   in `src/app/(site)/layout.tsx` above `SiteHeader`; visitors may close it
+   (remember per text in localStorage). Guide section.
+3. **Satisfaction survey** (`feat/satisfaction-survey`): after a consulting
+   request/booking is DONE and after a course enrollment is DONE, SMS a link
+   to a short survey (score 1–5 + comment; one answer per link, token in the
+   URL, no login). Admin: results per service/course/consultant, average,
+   CSV. Decide whether it reuses the form builder (`src/modules/forms`) or a
+   small `surveys` module (likely simpler and safer). Opt-in per send like
+   the status notices. Guide section.
+4. **Multi-session courses** (`feat/course-sessions`): a course gets a list
+   of sessions (date, start/end time, place, optional topic) instead of only
+   start/end. Course page and calendar (`src/modules/calendar`, .ics, member
+   feed) show every session; course start/end derived from the sessions;
+   admin editor for the list (add/remove/reorder). Migration must keep
+   existing courses (one session from their start/end). Reminders (item 1)
+   per session. Guide section.
+5. **Editable home-page texts** (`feat/home-texts`): the hero title and the
+   lead sentence (and possibly the about kicker/title) editable in
+   «تنظیمات سایت», with the current `homeCopy` in `src/content/site.ts` as
+   the fallback. Keep the design's line lengths in mind (warn on long text).
+   Guide section.
+6. **Research report** (no code): a thorough research of features not yet
+   built **and not yet proposed to the owner** that would help visitors,
+   members or staff (look at comparable Iranian chamber/incubator/accelerator
+   sites and good CMS/booking practice). Already proposed earlier, so leave
+   out or only mention: consultant panel, mandatory 2FA for ADMIN, course
+   waiting list, member account deletion, payment, roster import. Deliver as
+   a Persian report (artifact or doc) with priority, effort and why for each.
+
+The owner also still has to: get a Linux **VPS** instead of the shared
+cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
+
+### 4. Lessons from the fifth session (also in "Gotchas")
+
+- After every `prisma migrate dev`, **restart the dev server**, or pages fail
+  with "Unknown field/argument" from the stale Prisma client (seen 3 times).
+- Write TS/py files with the Write tool; Python strings in Bash heredocs lose
+  or mangle backslashes (`\1` became `\x01`), and a Bash heredoc with
+  backticks/`${}` once failed to parse.
+- Backticks inside `src/content/admin-guide.ts` template literals must be
+  escaped (`\``).
+- React 19 resets forms after an action; radios need `actionResultKey()`.
+- DB tests delete members by phone prefix (0993–0999 etc.); sandbox test
+  members use 0990.
 
 ## Where things live
 
