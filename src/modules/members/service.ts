@@ -300,7 +300,12 @@ async function checkProfileUpload(kind: MemberFileKind, file: File): Promise<str
 }
 
 export type SaveProfileResult =
-  | { ok: true; approval: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED' }
+  | {
+      ok: true;
+      approval: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+      /** The legal-entity details are new or changed: an ADMIN should review them. */
+      reviewNeeded: boolean;
+    }
   | { ok: false; errors: Record<string, string> };
 
 /**
@@ -372,7 +377,7 @@ export async function saveProfile(
   if (oldLetter.success && (newLetter || !legal)) await deleteStoredFile(oldLetter.data.storageKey);
   const oldCard = storedFileSchema.safeParse(member.nationalCardFile);
   if (oldCard.success && newCard) await deleteStoredFile(oldCard.data.storageKey);
-  return { ok: true, approval };
+  return { ok: true, approval, reviewNeeded: approval === 'PENDING' && legalChanged };
 }
 
 // ---------------------------------------------------------------------------

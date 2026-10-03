@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/page-header';
 import { FormCard, InfoCard, PageBody } from '@/components/site/page-body';
-import { siteInfo } from '@/content/site';
 import { toPersianDigits } from '@/lib/format';
+import { getContactInfo } from '@/modules/settings/service';
 import { ContactForm } from './contact-form';
 
 export const metadata: Metadata = {
@@ -11,8 +11,10 @@ export const metadata: Metadata = {
   alternates: { canonical: '/contact' },
 };
 
-export default function ContactPage() {
-  const { address, postalCode, phone, phoneExtension, email } = siteInfo.contact;
+export const dynamic = 'force-dynamic';
+
+export default async function ContactPage() {
+  const { address, postalCode, phone, phoneExtension, email } = await getContactInfo();
   return (
     <>
       <PageHeader title="تماس با ما" crumbs={[{ title: 'تماس با ما' }]} />

@@ -16,8 +16,9 @@ import {
   saveProfile,
 } from '@/modules/members/service';
 import { cancelBookingByMember } from '@/modules/appointments/service';
-import { notifyBooking } from '@/modules/notifications/service';
+import { alertStaff, notifyBooking } from '@/modules/notifications/service';
 import { cancelEnrollment } from '@/modules/training/service';
+import { staffAlertText } from '@/content/admin';
 
 export async function saveProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const member = await requireMember();
@@ -38,6 +39,15 @@ export async function saveProfileAction(_prev: FormState, formData: FormData): P
     return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
   }
   const pending = result.approval === 'PENDING';
+  if (result.reviewNeeded) {
+    after(() =>
+      alertStaff(
+        'members',
+        staffAlertText.members(parsed.data.fullName, parsed.data.companyName ?? ''),
+        `/admin/members/${member.id}`,
+      ),
+    );
+  }
   const next = safeMemberNext(formData.get('next'));
   if (next !== '/account' && !pending) redirect(next);
   revalidatePath('/account');

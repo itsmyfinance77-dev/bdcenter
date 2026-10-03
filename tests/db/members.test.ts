@@ -71,7 +71,7 @@ describe('member profile', () => {
   it('needs no review for an individual', async () => {
     const member = await prisma.member.create({ data: { phone: '09930000001' } });
     const input = profileSchema.parse({ ...base, personType: 'INDIVIDUAL', companyName: 'x' });
-    expect(await saveProfile(member.id, input, noFiles)).toEqual({
+    expect(await saveProfile(member.id, input, noFiles)).toMatchObject({
       ok: true,
       approval: 'NOT_REQUIRED',
     });
@@ -98,17 +98,20 @@ describe('member profile', () => {
     const member = await prisma.member.create({ data: { phone: '09930000003' } });
     expect(
       await saveProfile(member.id, legal, { letter: png('letter.png'), nationalCard: null }),
-    ).toEqual({ ok: true, approval: 'PENDING' });
+    ).toEqual({ ok: true, approval: 'PENDING', reviewNeeded: true });
 
     expect(await reviewMember(member.id, { decision: 'APPROVED' }, admin.id)).toBe('09930000003');
     // Saving the same company details keeps the approval…
-    expect(await saveProfile(member.id, legal, noFiles)).toEqual({
+    expect(await saveProfile(member.id, legal, noFiles)).toMatchObject({
       ok: true,
       approval: 'APPROVED',
     });
     // …a different company sends it back for review.
     const other = { ...legal, companyName: 'شرکت دیگر' };
-    expect(await saveProfile(member.id, other, noFiles)).toEqual({ ok: true, approval: 'PENDING' });
+    expect(await saveProfile(member.id, other, noFiles)).toMatchObject({
+      ok: true,
+      approval: 'PENDING',
+    });
 
     await reviewMember(member.id, { decision: 'REJECTED', note: 'معرفی‌نامه ناخواناست' }, admin.id);
     const rejected = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
@@ -138,7 +141,7 @@ describe('member profile', () => {
     });
     expect(
       await saveProfile(member.id, input, { letter: null, nationalCard: png('card.png') }),
-    ).toEqual({ ok: true, approval: 'NOT_REQUIRED' });
+    ).toMatchObject({ ok: true, approval: 'NOT_REQUIRED' });
     await setSetting('members.nationalCardRequired', false, admin.id);
   });
 

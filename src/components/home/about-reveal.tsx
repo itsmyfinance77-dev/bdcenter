@@ -9,7 +9,7 @@ import { homeCopy, siteInfo } from '@/content/site';
  * The building photo; hovering (mouse), keyboard focus or the button reveals
  * the "about" text over it. The button pins it open; Escape closes it.
  */
-export function AboutReveal({ text }: { text: string }) {
+export function AboutReveal({ text, address }: { text: string; address: string }) {
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -77,7 +77,7 @@ export function AboutReveal({ text }: { text: string }) {
         <p className="text-[clamp(22px,2.4vw,28px)] font-extrabold text-white">
           {homeCopy.aboutKicker}
         </p>
-        <p className="mt-1.5 text-[15px] text-on-dark">{siteInfo.contact.address}</p>
+        <p className="mt-1.5 text-[15px] text-on-dark">{address}</p>
       </div>
 
       <div

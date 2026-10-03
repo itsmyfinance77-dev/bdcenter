@@ -52,6 +52,7 @@ export const adminNav = [
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
   { href: '/admin/audit', title: 'گزارش فعالیت', adminOnly: true },
   { href: '/admin/system', title: 'وضعیت سامانه', adminOnly: true },
+  { href: '/admin/settings', title: 'تنظیمات سایت', adminOnly: true },
   { href: '/admin/sms-sandbox', title: 'صندوق پیامک آزمایشی', adminOnly: false, sandboxOnly: true },
   { href: '/admin/account', title: 'حساب من و امنیت', adminOnly: false },
   { href: '/admin/help', title: 'راهنما', adminOnly: false },
@@ -69,4 +70,23 @@ export const smsSandboxCopy = {
   empty:
     'هنوز پیامکی نیامده است. در سایت با یک شمارهٔ همراه «ورود / ثبت‌نام» را بزنید؛ کد ورود اینجا دیده می‌شود.',
   codeLabel: 'کد ورود',
+} as const;
+
+/** Kinds of new requests staff can be alerted about (src/modules/settings). */
+export const alertKindLabel = {
+  consulting: 'درخواست مشاورهٔ تازه',
+  forms: 'درخواست تازه در فرم‌ها (مثل میز خدمت)',
+  contact: 'پیام تازه در «تماس با ما»',
+  enrollments: 'ثبت‌نام تازه در دوره‌ها',
+  members: 'عضو حقوقی منتظر تأیید',
+} as const;
+
+/** Short SMS/email texts to staff about a new request; a panel link is appended. */
+export const staffAlertText = {
+  consulting: (name: string, topic: string) => `درخواست مشاورهٔ تازه از ${name}: ${topic}`,
+  forms: (form: string) => `درخواست تازه در فرم «${form}» ثبت شد.`,
+  contact: (name: string) => `پیام تازه در «تماس با ما» از ${name}`,
+  enrollments: (name: string, course: string) => `ثبت‌نام تازه در دورهٔ «${course}»: ${name}`,
+  members: (name: string, company: string) =>
+    `${name} از طرف «${company}» ثبت‌نام کرده و منتظر تأیید است.`,
 } as const;

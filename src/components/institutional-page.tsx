@@ -22,10 +22,13 @@ export function InstitutionalPage({
   page,
   lead,
   aboutLayout = false,
+  address,
 }: {
   title: string;
   page: PublicPage | null;
   lead?: string;
+  /** The center's address, shown under the building photo of the about page. */
+  address?: string;
   /** The "about" page: building photo and a branded heading above the text. */
   aboutLayout?: boolean;
 }) {
@@ -48,7 +51,7 @@ export function InstitutionalPage({
               />
               <figcaption className="flex items-center gap-2 text-sm text-ink-2">
                 <Icon name="pin" size={16} />
-                {siteInfo.contact.address}
+                {address}
               </figcaption>
             </figure>
           ) : null}

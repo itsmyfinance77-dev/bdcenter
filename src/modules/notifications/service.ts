@@ -15,6 +15,8 @@ import { getMemberContact } from '@/modules/members/service';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSender } from '@/modules/messaging/sms';
 import { getEnrollmentContact } from '@/modules/training/service';
+import { alertKindLabel } from '@/content/admin';
+import { getSetting, type AlertKind } from '@/modules/settings/service';
 
 /**
  * Tells applicants about status changes (OQ-BD-13, requested by the owner on
@@ -26,7 +28,7 @@ import { getEnrollmentContact } from '@/modules/training/service';
 type Notice = { subject: string; text: string };
 
 type Target = {
-  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member';
+  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member' | 'StaffAlert';
   entityId: string;
   event: string;
   phone: string | null;
@@ -177,6 +179,47 @@ export async function notifyMemberReview(memberId: string, decision: 'APPROVED' 
     phone: member.phone,
     email: member.email,
     notice: { subject: 'نتیجهٔ بررسی حساب کاربری', text },
+  });
+}
+
+/**
+ * Tells the staff chosen in «تنظیمات سایت» about a new request (owner's
+ * request, 2026-10-03), by SMS and/or email, with a link into the panel.
+ * Runs after the response; every attempt is logged.
+ */
+export async function alertStaff(kind: AlertKind, text: string, panelPath: string) {
+  const recipients = (await getSetting('alerts.recipients'))[kind];
+  if (!recipients) return;
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010';
+  const body = `${text}\n${new URL(panelPath, base).toString()}`;
+  const sender = recipients.phones.length > 0 ? smsSender() : null;
+  for (const phone of recipients.phones) {
+    const sent = sender ? await sender.send(phone, body) : false;
+    await logStaffAlert(kind, 'SMS', phone, sent);
+  }
+  if (emailAvailable()) {
+    for (const to of recipients.emails) {
+      const sent = await sendEmail({ to, subject: alertKindLabel[kind], text: body });
+      await logStaffAlert(kind, 'EMAIL', to, sent);
+    }
+  }
+}
+
+function logStaffAlert(
+  kind: AlertKind,
+  channel: 'SMS' | 'EMAIL',
+  recipient: string,
+  sent: boolean,
+) {
+  return prisma.notification.create({
+    data: {
+      entity: 'StaffAlert',
+      entityId: kind,
+      event: `alert.${kind}`,
+      channel,
+      recipient,
+      status: sent ? 'SENT' : 'FAILED',
+    },
   });
 }
 

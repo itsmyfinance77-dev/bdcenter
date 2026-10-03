@@ -14,6 +14,9 @@ import { fieldErrors } from '@/lib/validation';
 import { consultingRequestSchema, createConsultingRequest } from '@/modules/consulting/service';
 import { getCurrentMember } from '@/modules/members/service';
 import { consume, LIMITS } from '@/modules/ratelimit/service';
+import { after } from 'next/server';
+import { staffAlertText } from '@/content/admin';
+import { alertStaff } from '@/modules/notifications/service';
 
 export async function submitConsultingRequest(
   _prev: FormState,
@@ -32,6 +35,13 @@ export async function submitConsultingRequest(
 
   const member = await getCurrentMember();
   await createConsultingRequest(parsed.data, member?.id ?? null);
+  after(() =>
+    alertStaff(
+      'consulting',
+      staffAlertText.consulting(parsed.data.fullName, parsed.data.topic),
+      '/admin/consulting?status=NEW',
+    ),
+  );
   return {
     status: 'success',
     message: member ? `${SUCCESS_MESSAGE} ${consultingCopy.trackInAccount}` : SUCCESS_MESSAGE,

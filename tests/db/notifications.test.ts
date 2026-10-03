@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/lib/prisma';
 import { createConsultingRequest } from '@/modules/consulting/service';
+import { getSetting, setSetting } from '@/modules/settings/service';
 import {
+  alertStaff,
   listNotifications,
   notifyBooking,
   notifyConsultingStatus,
@@ -148,5 +150,37 @@ describe('status notifications', () => {
       'booking.staff.booked',
       'booking.staff.cancelledByMember',
     ]);
+  });
+
+  it('alerts the chosen staff about a new request, with a panel link', async () => {
+    const admin = await prisma.adminUser.findFirstOrThrow({ select: { id: true } });
+    const before = await getSetting('alerts.recipients');
+    await setSetting(
+      'alerts.recipients',
+      { consulting: { phones: ['09970000007'], emails: ['staff@bdcenter.test'] } },
+      admin.id,
+    );
+    try {
+      log = [];
+      await alertStaff('consulting', 'درخواست مشاورهٔ تازه از آزمون', '/admin/consulting');
+      await alertStaff('forms', 'بدون گیرنده', '/admin/forms');
+      expect(log.filter((line) => line.includes('09970000007'))).toHaveLength(1);
+      expect(log.some((line) => line.includes('/admin/consulting'))).toBe(true);
+      expect(log.some((line) => line.includes('staff@bdcenter.test'))).toBe(true);
+      expect(log.some((line) => line.includes('بدون گیرنده'))).toBe(false);
+    } finally {
+      await setSetting('alerts.recipients', before, admin.id);
+      await prisma.notification.deleteMany({
+        where: { entity: 'StaffAlert', recipient: { in: ['09970000007', 'staff@bdcenter.test'] } },
+      });
+      await prisma.auditLog.deleteMany({
+        where: {
+          entity: 'SiteSetting',
+          entityId: 'alerts.recipients',
+          actorId: admin.id,
+          createdAt: { gt: new Date(Date.now() - 60_000) },
+        },
+      });
+    }
   });
 });

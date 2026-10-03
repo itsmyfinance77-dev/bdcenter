@@ -11,6 +11,9 @@ import {
 } from '@/lib/form-state';
 import { submitForm } from '@/modules/forms/service';
 import { consume, LIMITS } from '@/modules/ratelimit/service';
+import { after } from 'next/server';
+import { staffAlertText } from '@/content/admin';
+import { alertStaff } from '@/modules/notifications/service';
 
 export async function submitDynamicForm(
   slug: string,
@@ -24,7 +27,10 @@ export async function submitDynamicForm(
     return { status: 'error', message: RATE_LIMITED, errors: {}, values: formValues(formData) };
   }
   const result = await submitForm(slug, Object.fromEntries(formData));
-  if (result.ok) return { status: 'success', message: SUCCESS_MESSAGE };
+  if (result.ok) {
+    after(() => alertStaff('forms', staffAlertText.forms(result.formTitle), '/admin/forms'));
+    return { status: 'success', message: SUCCESS_MESSAGE };
+  }
 
   const values = formValues(formData);
   if (result.reason === 'not-found') {

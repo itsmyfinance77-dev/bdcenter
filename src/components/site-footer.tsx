@@ -6,6 +6,7 @@ import { homeCopy, siteInfo } from '@/content/site';
 import { formatYear, toPersianDigits } from '@/lib/format';
 import { listLinksSafe } from '@/modules/links/service';
 import { listPublishedSystemPages } from '@/modules/pages/service';
+import { getContactInfo } from '@/modules/settings/service';
 
 /** Published privacy/terms pages; the footer still renders if the database is down. */
 async function publishedLegalPages() {
@@ -21,12 +22,13 @@ const headingClass = 'mb-4 text-[15px] font-bold text-white';
 
 /** Navy footer (BDC Yazd design). Unconfirmed contact items (OQ-BD-02/03) are left out. */
 export async function SiteFooter() {
-  const [usefulLinks, socialLinks, legalPages] = await Promise.all([
+  const [usefulLinks, socialLinks, legalPages, contact] = await Promise.all([
     listLinksSafe('useful-links'),
     listLinksSafe('social'),
     publishedLegalPages(),
+    getContactInfo(),
   ]);
-  const { address, postalCode, phone, phoneExtension, email } = siteInfo.contact;
+  const { address, postalCode, phone, phoneExtension, email } = contact;
 
   return (
     <footer className="bg-brand-950 text-on-dark">
