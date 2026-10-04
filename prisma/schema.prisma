@@ -523,21 +523,39 @@ model FormField {
 }
 
 model FormSubmission {
-  id        String         @id @default(cuid())
-  formId    String
-  form      FormDefinition @relation(fields: [formId], references: [id])
+  id         String               @id @default(cuid())
+  formId     String
+  form       FormDefinition       @relation(fields: [formId], references: [id])
   /// The member who sent it (members domain; a plain id), for members-only forms.
-  memberId  String?
-  data      Json // { [fieldKey]: value }
+  memberId   String?
+  data       Json // { [fieldKey]: value }
   /// The form's fields as they were when this was sent ([{ key, label, type }]),
   /// so it stays readable after fields are renamed or removed.
-  fields    Json?
-  status    RequestStatus  @default(NEW)
-  createdAt DateTime       @default(now())
+  fields     Json?
+  status     RequestStatus        @default(NEW)
+  /// The staff member following it up (auth domain; a plain id).
+  assigneeId String?
+  notes      FormSubmissionNote[]
+  createdAt  DateTime             @default(now())
 
   @@index([formId, createdAt])
   @@index([formId, memberId])
+  @@index([assigneeId])
   @@map("form_submissions")
+}
+
+/// Staff notes on a form submission; never shown to the applicant.
+model FormSubmissionNote {
+  id           String         @id @default(cuid())
+  submissionId String
+  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  /// The staff member who wrote it (auth domain; a plain id).
+  authorId     String
+  body         String
+  createdAt    DateTime       @default(now())
+
+  @@index([submissionId, createdAt])
+  @@map("form_submission_notes")
 }
 
 // ---------------------------------------------------------------------------
