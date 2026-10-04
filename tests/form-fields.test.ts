@@ -76,6 +76,12 @@ describe('form field types', () => {
     expect(check(field('NUMBER'), '1,200.5')).toEqual({ value: 1200.5 });
     expect(check(field('NUMBER'), '-3')).toEqual({ value: -3 });
     expect(check(field('NUMBER'), 'abc')).toHaveProperty('error');
+    // Separators that are not groups of three are refused, not guessed.
+    expect(check(field('NUMBER'), ',')).toHaveProperty('error');
+    expect(check(field('NUMBER'), thousands)).toHaveProperty('error');
+    expect(check(field('NUMBER'), '12,5')).toHaveProperty('error');
+    expect(check(field('NUMBER'), '1,20')).toHaveProperty('error');
+    expect(check(field('NUMBER'), '12,345,678')).toEqual({ value: 12345678 });
     const rating = field('RATING', { settings: { scale: 7 }, isRequired: true });
     expect(check(rating, '7')).toEqual({ value: 7 });
     expect(check(rating, '8')).toHaveProperty('error');
