@@ -5,7 +5,7 @@ import {
   staffBookingSms,
 } from '@/content/appointments';
 import { memberReviewSms } from '@/content/members';
-import { consultingNotice, enrollmentNotice } from '@/content/notifications';
+import { consultingNotice, enrollmentNotice, formStatusNotice } from '@/content/notifications';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { mobilePhone } from '@/lib/validation';
@@ -15,6 +15,7 @@ import { getMemberContact } from '@/modules/members/service';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSender } from '@/modules/messaging/sms';
 import { getEnrollmentContact } from '@/modules/training/service';
+import { submissionContact } from '@/modules/forms/submissions';
 import { alertKindLabel } from '@/content/admin';
 import { getSetting, type AlertKind } from '@/modules/settings/service';
 
@@ -143,6 +144,22 @@ export async function notifyConsultingStatus(requestId: string, status: string) 
     phone: request.phone,
     email: request.email,
     notice: build(request.topic, accountLink()),
+  });
+}
+
+/** Tells the applicant that staff moved a form submission on (staff opt in per change). */
+export async function notifyFormStatus(submissionId: string, status: string) {
+  const build = formStatusNotice[status as keyof typeof formStatusNotice];
+  if (!build) return;
+  const contact = await submissionContact(submissionId);
+  if (!contact) return;
+  await deliver({
+    entity: 'FormSubmission',
+    entityId: submissionId,
+    event: `status.${status}`,
+    phone: contact.phone,
+    email: contact.email,
+    notice: build(contact.formTitle),
   });
 }
 
