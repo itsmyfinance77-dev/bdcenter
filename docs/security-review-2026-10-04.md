@@ -68,17 +68,17 @@ local or preview instance.
 
 ## Hardening ideas evaluated
 
-| Idea                                      | Verdict                                                                                                                                                               |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Least-privilege database role             | **Done** (finding 7): `bdcenter_app` with only `SELECT/INSERT/UPDATE/DELETE`; checked to be refused `CREATE TABLE`, `DROP`, the migration table and `COPY … PROGRAM`. |
-| Mandatory two-step login for ADMIN        | **Recommended** (owner decision): the code exists; enforce it by refusing ADMIN pages until set up.                                                                   |
-| Nonce-based CSP without `'unsafe-inline'` | Not now: it makes every page dynamic (no static caching) and needs the intro script reworked. Revisit after go-live.                                                  |
-| Account lockout notice by email           | Useful once SMTP exists (OQ-BD-23).                                                                                                                                   |
-| Stricter limits on admin uploads          | Not needed: ADMIN/EDITOR only, re-encoded, 10 MB cap.                                                                                                                 |
-| `security.txt`                            | Needs a real contact address (OQ-BD-03); add with it.                                                                                                                 |
-| Encrypted off-site backups                | Already in the backup guide; destination is OQ-BD-19.                                                                                                                 |
-| Proxy-level limits (fail2ban-like)        | Optional: the app limits per IP in the database; Caddy's rate-limit plugin would need a custom build.                                                                 |
-| Image scan, ZAP, Semgrep                  | Run once the owner approves downloading the tools; only against our own instance.                                                                                     |
+| Idea                                      | Verdict                                                                                                                                                                                                                                              |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Least-privilege database role             | **Done** (finding 7): `bdcenter_app` with only `SELECT/INSERT/UPDATE/DELETE`; refused `CREATE TABLE`, `ALTER`/`DROP`, `CREATE ROLE`, the migration table and `COPY … PROGRAM` — asserted by `tests/db/app-role.test.ts`, which CI runs as that role. |
+| Mandatory two-step login for ADMIN        | **Recommended** (owner decision): the code exists; enforce it by refusing ADMIN pages until set up.                                                                                                                                                  |
+| Nonce-based CSP without `'unsafe-inline'` | Not now: it makes every page dynamic (no static caching) and needs the intro script reworked. Revisit after go-live.                                                                                                                                 |
+| Account lockout notice by email           | Useful once SMTP exists (OQ-BD-23).                                                                                                                                                                                                                  |
+| Stricter limits on admin uploads          | Not needed: ADMIN/EDITOR only, re-encoded, 10 MB cap.                                                                                                                                                                                                |
+| `security.txt`                            | Needs a real contact address (OQ-BD-03); add with it.                                                                                                                                                                                                |
+| Encrypted off-site backups                | Already in the backup guide; destination is OQ-BD-19.                                                                                                                                                                                                |
+| Proxy-level limits (fail2ban-like)        | Optional: the app limits per IP in the database; Caddy's rate-limit plugin would need a custom build.                                                                                                                                                |
+| Image scan, ZAP, Semgrep                  | Run once the owner approves downloading the tools; only against our own instance.                                                                                                                                                                    |
 
 ## Next
 

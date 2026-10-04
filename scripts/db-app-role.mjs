@@ -34,15 +34,19 @@ try {
         p text := current_setting('bdc.app_password');
       BEGIN
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
-          EXECUTE format('ALTER ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', r, p);
+          -- Every security-relevant attribute is reset, whatever was set by hand.
+          EXECUTE format('ALTER ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT -1 VALID UNTIL ''infinity'' PASSWORD %L', r, p);
         ELSE
-          EXECUTE format('CREATE ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', r, p);
+          EXECUTE format('CREATE ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT -1 VALID UNTIL ''infinity'' PASSWORD %L', r, p);
         END IF;
         EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), r);
         EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', r);
         EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I', r);
         EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I', r);
-        EXECUTE format('REVOKE ALL ON TABLE public._prisma_migrations FROM %I', r);
+        -- Absent on a database no migration has run on yet.
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '_prisma_migrations') THEN
+          EXECUTE format('REVOKE ALL ON TABLE public._prisma_migrations FROM %I', r);
+        END IF;
         -- Tables added by later migrations (created by this owner role).
         EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', r);
         EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I', r);
