@@ -305,7 +305,7 @@ export const reminderInputSchema = z
     bookingsEnabled: z.literal('on').optional(),
     bookingsHours: hourField('ساعت پیش از نوبت', 1, 72),
     coursesEnabled: z.literal('on').optional(),
-    coursesHours: hourField('ساعت پیش از شروع دوره', 1, 72),
+    coursesHours: hourField('ساعت پیش از جلسهٔ دوره', 1, 72),
     quietFrom: hourField('ساعت شروع سکوت', 0, 23),
     quietUntil: hourField('ساعت پایان سکوت', 0, 23),
   })

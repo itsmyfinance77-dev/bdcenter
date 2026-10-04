@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { availabilityLabel, trainingCopy } from '@/content/training';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatNumber } from '@/lib/format';
 import { courseCoverUrl, listPublishedCourses } from '@/modules/training/service';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +60,9 @@ export default async function CoursesPage() {
                         <time dateTime={course.startsAt.toISOString()}>
                           {formatDateTime(course.startsAt)}
                         </time>
+                      ) : null}
+                      {course.sessionCount > 1 ? (
+                        <span>· {formatNumber(course.sessionCount)} جلسه</span>
                       ) : null}
                       {course.location ? <span>· {course.location}</span> : null}
                     </div>

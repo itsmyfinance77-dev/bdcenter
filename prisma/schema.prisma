@@ -352,8 +352,28 @@ model Course {
   updatedAt   DateTime      @updatedAt
 
   enrollments Enrollment[]
+  /// The course's meetings; startsAt/endsAt above are derived from them on save.
+  sessions    CourseSession[]
 
   @@map("courses")
+}
+
+/// One meeting of a course (owner's request, 2026-10-04): a start, an optional
+/// end on the same day, and optionally its own place and topic.
+model CourseSession {
+  id        String    @id @default(cuid())
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime?
+  /// Empty: the course's place.
+  location  String?
+  topic     String?
+  createdAt DateTime  @default(now())
+
+  @@index([courseId, startsAt])
+  @@index([startsAt])
+  @@map("course_sessions")
 }
 
 model Enrollment {

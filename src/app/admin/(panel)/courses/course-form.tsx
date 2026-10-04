@@ -13,15 +13,19 @@ import { RichEditor } from '@/components/admin/rich-editor';
 import { contentStatusLabel } from '@/content/admin';
 import type { FormState } from '@/lib/form-state';
 import { saveCourseAction } from './actions';
+import { SessionRows } from './session-rows';
 
 export function CourseForm({
   id,
   initial,
   hasCover = false,
+  legacyEnd = null,
 }: {
   id: string | null;
   initial: Record<string, string>;
   hasCover?: boolean;
+  /** A stored course end the sessions do not explain (see unexplainedEnd), formatted. */
+  legacyEnd?: string | null;
 }) {
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveCourseAction.bind(null, id), initialState);
@@ -84,8 +88,6 @@ export function CourseForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="مدرس" {...field('instructor')} />
         <TextField label="مکان" {...field('location')} />
-        <TextField label="زمان شروع" hint="مثلاً ۱۴۰۵/۰۸/۰۱ ۱۶:۰۰" {...field('startsAt')} />
-        <TextField label="زمان پایان" hint="اختیاری" {...field('endsAt')} />
         <TextField
           label="ظرفیت"
           type="number"
@@ -93,6 +95,7 @@ export function CourseForm({
           {...field('capacity')}
         />
       </div>
+      <SessionRows state={state} legacyEnd={legacyEnd} />
       <fieldset className="space-y-4 rounded-control border border-line p-4">
         <legend className="px-1 text-sm font-semibold text-brand-900">گواهی پایان دوره</legend>
         <label className="flex items-center gap-2 text-sm text-ink">
