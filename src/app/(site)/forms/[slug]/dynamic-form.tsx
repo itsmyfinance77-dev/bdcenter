@@ -51,7 +51,8 @@ const digits = new Intl.NumberFormat('fa-IR');
 /** What the field shows: what was sent (after an error), else its default. */
 function shownValue(state: FormState, field: PublicFormField): string | undefined {
   if (state.status === 'error') return state.values[field.key];
-  return field.settings.defaultValue;
+  // Multi-choice has no preset (the builder offers none).
+  return field.type === 'MULTI_CHOICE' ? undefined : field.settings.defaultValue;
 }
 
 function ErrorLine({ id, error }: { id: string; error?: string }) {

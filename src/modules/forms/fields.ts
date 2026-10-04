@@ -133,6 +133,18 @@ function checked(
   });
 }
 
+// Built from code points: the editing tools turn \u escapes into look-alike characters.
+const ARABIC_DECIMAL = new RegExp(String.fromCharCode(0x066b), 'g');
+const THOUSANDS = new RegExp(`[${String.fromCharCode(0x066c)},\\s]`, 'g');
+
+/**
+ * A number as typed on a Persian keyboard: Persian/Arabic digits, «٫» as the
+ * decimal mark, «٬» or «,» between thousands.
+ */
+export function latinNumber(text: string): string {
+  return toLatinDigits(text).replace(ARABIC_DECIMAL, '.').replace(THOUSANDS, '');
+}
+
 const trimmed = (value: unknown) =>
   typeof blank(value) === 'string' ? (value as string).trim() : undefined;
 
@@ -157,8 +169,10 @@ export function valueSchema(field: PublicFormField): z.ZodTypeAny {
       return phone(required);
     case 'NUMBER':
       return checked(label, required, 30, trimmed, (text) => {
-        const value = Number(toLatinDigits(text));
-        if (!Number.isFinite(value)) return { error: `${label} باید عدد باشد.` };
+        const value = Number(latinNumber(text));
+        if (text.trim() === '' || !Number.isFinite(value)) {
+          return { error: `${label} باید عدد باشد.` };
+        }
         if (settings.min !== undefined && value < settings.min) {
           return { error: `${label} نباید کمتر از ${n(settings.min)} باشد.` };
         }
@@ -282,7 +296,10 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
   if (settings.min !== undefined && settings.max !== undefined && settings.min > settings.max) {
     return 'حداقل عدد نباید از حداکثر عدد بیشتر باشد.';
   }
-  if (settings.defaultValue && CHOICE_TYPES.has(type) && type !== 'MULTI_CHOICE') {
+  if (settings.defaultValue && type === 'MULTI_CHOICE') {
+    return 'چندگزینه‌ای گزینهٔ پیش‌فرض ندارد.';
+  }
+  if (settings.defaultValue && CHOICE_TYPES.has(type)) {
     if (!options.includes(settings.defaultValue)) return 'مقدار پیش‌فرض باید یکی از گزینه‌ها باشد.';
   }
   return null;

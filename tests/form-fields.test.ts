@@ -68,6 +68,14 @@ describe('form field types', () => {
     const number = field('NUMBER', { settings: { min: 1, max: 10 } });
     expect(check(number, '۷')).toEqual({ value: 7 });
     expect(check(number, '11')).toEqual({ error: 'فیلد نباید بیشتر از ۱۰ باشد.' });
+    // Persian keyboard: «٫» is the decimal mark, «٬» or «,» separate thousands.
+    const decimal = String.fromCharCode(0x066b);
+    const thousands = String.fromCharCode(0x066c);
+    expect(check(field('NUMBER'), `۱۲${decimal}۵`)).toEqual({ value: 12.5 });
+    expect(check(field('NUMBER'), `۱${thousands}۲۰۰`)).toEqual({ value: 1200 });
+    expect(check(field('NUMBER'), '1,200.5')).toEqual({ value: 1200.5 });
+    expect(check(field('NUMBER'), '-3')).toEqual({ value: -3 });
+    expect(check(field('NUMBER'), 'abc')).toHaveProperty('error');
     const rating = field('RATING', { settings: { scale: 7 }, isRequired: true });
     expect(check(rating, '7')).toEqual({ value: 7 });
     expect(check(rating, '8')).toHaveProperty('error');
@@ -87,6 +95,7 @@ describe('form field types', () => {
     expect(settingsProblem('TEXT', { minLength: 5, maxLength: 2 }, [])).toContain('طول');
     expect(settingsProblem('SELECT', { defaultValue: 'x' }, ['a'])).toContain('پیش‌فرض');
     expect(settingsProblem('SELECT', { defaultValue: 'a' }, ['a'])).toBeNull();
+    expect(settingsProblem('MULTI_CHOICE', { defaultValue: 'a' }, ['a'])).toContain('پیش‌فرض');
   });
 
   it('shows answers readably and reads repeated form names as lists', () => {

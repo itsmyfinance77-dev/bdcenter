@@ -44,6 +44,14 @@ function numberOrUndefined(text: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
+/** `field_n` with the first n no field uses yet. */
+function freeKey(keys: string[]): string {
+  const taken = new Set(keys);
+  let n = keys.length + 1;
+  while (taken.has(`field_${n}`)) n += 1;
+  return `field_${n}`;
+}
+
 /** Settings that only make sense for some types are dropped when the type changes. */
 function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
   const keep: (keyof FieldSettings)[] = ['hint'];
@@ -51,7 +59,8 @@ function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
   else if (type === 'NUMBER') keep.push('placeholder', 'defaultValue', 'min', 'max');
   else if (type === 'FILE') keep.push('fileKinds', 'maxSizeMb');
   else if (type === 'RATING') keep.push('scale');
-  else if (CHOICE_TYPES.has(type)) keep.push('defaultValue');
+  // A preset choice only for single-choice fields (multi-choice has no default control).
+  else if (type === 'SELECT' || type === 'RADIO') keep.push('defaultValue');
   else if (type !== 'SECTION' && type !== 'CHECKBOX') keep.push('placeholder', 'defaultValue');
   return Object.fromEntries(
     keep.filter((key) => settings[key] !== undefined).map((key) => [key, settings[key]]),
@@ -348,7 +357,7 @@ export function FormBuilder({
     setFields((current) => [
       ...current,
       {
-        key: `field_${current.length + 1}`,
+        key: freeKey(current.map((field) => field.key)),
         label: '',
         type: 'TEXT',
         isRequired: false,
