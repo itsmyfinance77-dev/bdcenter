@@ -18,6 +18,7 @@ import {
   storeUpload,
   type StoredFile,
 } from '@/modules/files/service';
+import { listStaff, submissionWhere, type SubmissionFilter } from './submissions';
 import { formAvailability, type FormAvailability, type FormRules } from './availability';
 import {
   CHOICE_TYPES,
@@ -34,6 +35,24 @@ import {
 } from './fields';
 
 export type { PublicFormField } from './fields';
+export {
+  addSubmissionNote,
+  assignSubmission,
+  assigneeSchema,
+  countAnswers,
+  filterQuery,
+  getSubmissionForAdmin,
+  hasFilter,
+  listStaff,
+  listSubmissions,
+  noteSchema,
+  parseSubmissionFilter,
+  setSubmissionStatus,
+  submissionContact,
+  SUBMISSION_STATUSES,
+  type SubmissionFilter,
+  type SubmissionStatus,
+} from './submissions';
 
 /**
  * Dynamic form builder ("فرم‌ساز" / "میز خدمت"). Staff define fields in the
@@ -318,8 +337,6 @@ async function confirmationContact(
 // Admin: form builder and submissions
 // ---------------------------------------------------------------------------
 
-const SUBMISSIONS_PAGE_SIZE = 20;
-
 export async function listFormsForAdmin() {
   const forms = await prisma.formDefinition.findMany({
     orderBy: { createdAt: 'asc' },
@@ -557,34 +574,6 @@ export async function duplicateForm(id: string, actorId: string): Promise<string
   return copy.id;
 }
 
-export async function listSubmissions(formId: string, page: number) {
-  const [items, total] = await Promise.all([
-    prisma.formSubmission.findMany({
-      where: { formId },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * SUBMISSIONS_PAGE_SIZE,
-      take: SUBMISSIONS_PAGE_SIZE,
-    }),
-    prisma.formSubmission.count({ where: { formId } }),
-  ]);
-  return { items, pageCount: Math.max(1, Math.ceil(total / SUBMISSIONS_PAGE_SIZE)) };
-}
-
-export async function setSubmissionStatus(
-  id: string,
-  status: 'NEW' | 'IN_REVIEW' | 'ACCEPTED' | 'REJECTED' | 'DONE',
-  actorId: string,
-) {
-  await prisma.formSubmission.update({ where: { id }, data: { status } });
-  await recordAudit({
-    actorId,
-    action: 'form.submission.status',
-    entity: 'FormSubmission',
-    entityId: id,
-    metadata: { status },
-  });
-}
-
 export async function countNewSubmissions() {
   return prisma.formSubmission.count({ where: { status: 'NEW' } });
 }
@@ -626,14 +615,26 @@ export function submissionFields(
     .map((field) => ({ ...field, settings: settingsOf.get(field.key) }));
 }
 
-/** All submissions of a form as CSV (UTF-8 with BOM so Excel shows Persian correctly). */
-export async function exportSubmissionsCsv(formId: string, actorId: string) {
+/**
+ * The submissions a filter matches as CSV (UTF-8 with BOM so Excel shows
+ * Persian correctly), oldest first.
+ */
+export async function exportSubmissionsCsv(
+  formId: string,
+  actorId: string,
+  filter: SubmissionFilter = {},
+) {
   const form = await getFormForAdmin(formId);
   if (!form) return null;
-  const submissions = await prisma.formSubmission.findMany({
-    where: { formId },
-    orderBy: { createdAt: 'asc' },
-  });
+  const [submissions, staff] = await Promise.all([
+    prisma.formSubmission.findMany({
+      where: await submissionWhere(form.id, filter, actorId),
+      orderBy: { createdAt: 'asc' },
+      include: { _count: { select: { notes: true } } },
+    }),
+    listStaff(),
+  ]);
+  const staffName = new Map(staff.map((admin) => [admin.id, admin.fullName]));
 
   // Columns: today's fields, then any field only older submissions have.
   const columns = new Map<
@@ -647,12 +648,20 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
       if (!columns.has(field.key)) columns.set(field.key, field);
     }
   }
-  const header = ['تاریخ ثبت', 'وضعیت', ...[...columns.values()].map((field) => field.label)];
+  const header = [
+    'تاریخ ثبت',
+    'وضعیت',
+    'مسئول پیگیری',
+    'یادداشت‌ها',
+    ...[...columns.values()].map((field) => field.label),
+  ];
   const rows = submissions.map((submission) => {
     const data = submission.data as Record<string, unknown>;
     return [
       formatDateTime(submission.createdAt),
       requestStatusLabel[submission.status],
+      submission.assigneeId ? (staffName.get(submission.assigneeId) ?? '') : '',
+      String(submission._count.notes),
       ...[...columns.values()].map((field) => displayValue(data[field.key], field)),
     ];
   });
@@ -661,7 +670,7 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
     action: 'form.submission.export',
     entity: 'FormDefinition',
     entityId: form.id,
-    metadata: { rows: rows.length },
+    metadata: { rows: rows.length, filter },
   });
   return { filename: `${form.slug}-submissions.csv`, content: toCsv([header, ...rows]) };
 }

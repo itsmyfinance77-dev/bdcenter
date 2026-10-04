@@ -2,17 +2,24 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
+import { z } from 'zod';
 import { formatNumber } from '@/lib/format';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
-import { requestStatusSchema } from '@/modules/consulting/service';
 import {
+  addSubmissionNote,
+  assignSubmission,
+  assigneeSchema,
   duplicateForm,
   formDefinitionInputSchema,
+  noteSchema,
   saveFormDefinition,
   setSubmissionStatus,
+  SUBMISSION_STATUSES,
 } from '@/modules/forms/service';
+import { notifyFormStatus } from '@/modules/notifications/service';
 
 function parseFields(raw: FormDataEntryValue | null): unknown {
   try {
@@ -53,11 +60,55 @@ export async function saveFormAction(
   redirect(`/admin/forms/${result.id}/edit?saved=1`);
 }
 
+function revalidateSubmission(formId: string, id: string) {
+  revalidatePath(`/admin/forms/${formId}`);
+  revalidatePath(`/admin/forms/${formId}/submissions/${id}`);
+}
+
 export async function setSubmissionStatusAction(id: string, formId: string, formData: FormData) {
   const admin = await requireAdmin();
-  const status = requestStatusSchema.parse(formData.get('status'));
-  await setSubmissionStatus(id, status, admin.id);
-  revalidatePath(`/admin/forms/${formId}`);
+  const status = z.enum(SUBMISSION_STATUSES).parse(formData.get('status'));
+  const changed = await setSubmissionStatus(id, status, admin.id);
+  if (changed && formData.get('notify') === 'on') {
+    // After the response: a slow SMS provider must not hold up the panel.
+    after(() => notifyFormStatus(id, status));
+  }
+  revalidateSubmission(formId, id);
+}
+
+export async function assignSubmissionAction(
+  id: string,
+  formId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin();
+  const parsed = assigneeSchema.safeParse(formData.get('assignee') ?? '');
+  const result = parsed.success
+    ? await assignSubmission(id, parsed.data || null, admin.id)
+    : { ok: false as const, error: 'مسئول پیگیری معتبر نیست.' };
+  if (!result.ok) return { status: 'error', message: result.error, errors: {}, values: {} };
+  revalidateSubmission(formId, id);
+  return { status: 'success', message: 'مسئول پیگیری ثبت شد.' };
+}
+
+export async function addSubmissionNoteAction(
+  id: string,
+  formId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin();
+  const values = formValues(formData);
+  const parsed = noteSchema.safeParse(values);
+  if (!parsed.success) {
+    return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
+  }
+  if (!(await addSubmissionNote(id, parsed.data.body, admin.id))) {
+    return { status: 'error', message: 'درخواست پیدا نشد.', errors: {}, values };
+  }
+  revalidateSubmission(formId, id);
+  return { status: 'success', message: 'یادداشت ثبت شد.' };
 }
 
 export async function duplicateFormAction(id: string) {

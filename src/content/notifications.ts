@@ -43,6 +43,24 @@ export const consultingNotice: Partial<
   }),
 };
 
+/** Status changes of a form submission («فرم‌ها و درخواست‌ها»). */
+export const formStatusNotice: Partial<
+  Record<'ACCEPTED' | 'REJECTED' | 'DONE', (form: string) => Notice>
+> = {
+  ACCEPTED: (form) => ({
+    subject: `پذیرش درخواست «${form}»`,
+    text: `درخواست شما در «${form}» پذیرفته شد.\n${signature}`,
+  }),
+  REJECTED: (form) => ({
+    subject: `نتیجه درخواست «${form}»`,
+    text: `درخواست شما در «${form}» پذیرفته نشد.\n${signature}`,
+  }),
+  DONE: (form) => ({
+    subject: `پایان درخواست «${form}»`,
+    text: `درخواست شما در «${form}» انجام شد.\n${signature}`,
+  }),
+};
+
 export const notifyCopy = {
   checkbox: 'اطلاع به متقاضی با پیامک/ایمیل',
   channel: { SMS: 'پیامک', EMAIL: 'ایمیل' },
