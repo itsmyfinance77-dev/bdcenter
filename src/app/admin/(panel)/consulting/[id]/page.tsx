@@ -74,6 +74,7 @@ export default async function ConsultingDetailPage({
           action={setConsultingStatusAction.bind(null, request.id)}
           current={request.status}
           notify
+          survey
         />
         <NotificationList rows={notifications[request.id] ?? []} />
         <p className="text-xs text-ink-2">

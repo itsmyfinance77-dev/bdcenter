@@ -177,6 +177,7 @@ export default async function EditCoursePage({
                     action={setEnrollmentStatusAction.bind(null, enrollment.id)}
                     current={enrollment.status}
                     notify
+                    survey
                   />
                   <NotificationList rows={notifications[enrollment.id] ?? []} />
                   <CertificateCell

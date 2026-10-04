@@ -210,7 +210,20 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   the cookie `bdc_notice=<key>` (30 days); the key is a hash of text, link and
   tone, so an edited notice shows again. The privacy draft in
   `src/content/pages.ts` mentions this cookie; a privacy page already edited
-  in the panel needs the same sentence (said in the guide).
+  in the panel needs the same sentence (said in the guide). Merged as PR #4;
+  PR #5 made the bar's "link to another site" check case-insensitive, and
+  `src/lib/safe-href.ts` (`isSafeHref`) now guards both the notice and the
+  menu editor against `/\host` links.
+- Task 3 — satisfaction survey (`feat/satisfaction-survey`): own module
+  `src/modules/surveys` (not the form builder), table `survey_invites` (one
+  per consulting request / booking / enrollment: unique kind + target; token
+  32 random bytes, only SHA-256 stored; 30 days; answered once via an atomic
+  `updateMany`). Sent after «انجام شده» when the new «ارسال پیامک نظرسنجی»
+  box (on by default) is ticked in `StatusForm` (consulting, enrollments)
+  and `BookingStatusForm`. Public `/survey/<token>` (noindex, no-referrer,
+  rate-limited, robots disallow). Admin «نظرسنجی‌ها» (`/admin/surveys`, all
+  staff): summary per consulting / consultant / course with average, answers
+  with filter, CSV export (audited). Privacy draft lists the survey data.
 
 ## Where things live
 

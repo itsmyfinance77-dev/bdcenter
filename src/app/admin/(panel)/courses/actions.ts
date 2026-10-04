@@ -7,6 +7,7 @@ import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
 import { notifyEnrollmentStatus } from '@/modules/notifications/service';
+import { sendSurvey } from '@/modules/surveys/service';
 import { refreshCertificate } from '@/modules/training/certificates';
 import {
   courseInputSchema,
@@ -50,6 +51,9 @@ export async function setEnrollmentStatusAction(enrollmentId: string, formData: 
   if (changed && formData.get('notify') === 'on') {
     // After the response: a slow SMS provider must not hold up the panel.
     after(() => notifyEnrollmentStatus(enrollmentId, status));
+  }
+  if (changed && status === 'DONE' && formData.get('survey') === 'on') {
+    after(() => sendSurvey('COURSE', enrollmentId));
   }
   revalidatePath(`/admin/courses/${courseId}`);
 }

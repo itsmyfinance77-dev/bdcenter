@@ -24,11 +24,14 @@ export function FormCard({
   id,
   title,
   note,
+  requiredNote = true,
   children,
 }: {
   id: string;
   title: string;
   note?: React.ReactNode;
+  /** The «فیلدهای ستاره‌دار الزامی است» line; off for forms without such fields. */
+  requiredNote?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -40,7 +43,9 @@ export function FormCard({
         <h2 id={id} className="text-xl font-extrabold text-brand-900">
           {title}
         </h2>
-        <p className="text-[13px] text-ink-2">فیلدهای ستاره‌دار الزامی است.</p>
+        {requiredNote ? (
+          <p className="text-[13px] text-ink-2">فیلدهای ستاره‌دار الزامی است.</p>
+        ) : null}
         {note}
       </div>
       {children}

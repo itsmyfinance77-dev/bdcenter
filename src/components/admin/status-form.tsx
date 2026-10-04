@@ -1,19 +1,23 @@
 import { requestStatusLabel } from '@/content/admin';
 import { notifyCopy } from '@/content/notifications';
+import { surveyCopy } from '@/content/surveys';
 import { secondaryButtonClass } from './ui';
 
 /**
  * Select + submit for moving a request between statuses. Works without client
- * JS. With `notify`, a checkbox (on by default) lets staff tell the applicant.
+ * JS. With `notify`, a checkbox (on by default) lets staff tell the applicant;
+ * with `survey`, another one sends the satisfaction survey when it becomes DONE.
  */
 export function StatusForm({
   action,
   current,
   notify = false,
+  survey = false,
 }: {
   action: (formData: FormData) => Promise<void>;
   current: keyof typeof requestStatusLabel;
   notify?: boolean;
+  survey?: boolean;
 }) {
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
@@ -48,6 +52,18 @@ export function StatusForm({
             className="size-3.5 accent-primary"
           />
           {notifyCopy.checkbox}
+        </label>
+      ) : null}
+      {survey ? (
+        <label className="flex items-center gap-1 text-xs text-ink-2">
+          <input
+            key={current}
+            type="checkbox"
+            name="survey"
+            defaultChecked
+            className="size-3.5 accent-primary"
+          />
+          {surveyCopy.checkbox}
         </label>
       ) : null}
     </form>

@@ -174,6 +174,42 @@ test('the admin marks the enrollment done: SMS notice and certificate', async ({
   await expect(pageB.getByText('سارا آزمون')).toBeVisible();
 });
 
+test('the member answers the satisfaction survey from the SMS link', async ({ browser }) => {
+  // Sent with the «انجام شده» above (the survey box is ticked by default).
+  let link = '';
+  await expect
+    .poll(async () => {
+      const outbox = (await (await fetch(state().smsOutbox)).json()) as {
+        to: string;
+        text: string;
+      }[];
+      link = outbox.find((sms) => sms.to === phoneA && sms.text.includes('/survey/'))?.text ?? '';
+      return link;
+    })
+    .toContain('/survey/');
+  const path = new URL(link.match(/https?:\/\/\S+/)![0]).pathname;
+
+  // No sign-in needed: a fresh browser opens the link.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(path);
+  await expect(page.getByText(courseTitle).first()).toBeVisible();
+  await page.getByRole('button', { name: 'ثبت نظر' }).click();
+  await expect(page.getByText('یک نمره از ۱ تا ۵ انتخاب کنید.').first()).toBeVisible();
+  await page.getByText('راضی', { exact: true }).click();
+  await page.getByLabel('پیشنهاد یا توضیح (اختیاری)').fill('مدرس عالی بود.');
+  await page.getByRole('button', { name: 'ثبت نظر' }).click();
+  await expect(page.getByText('نظر شما ثبت شد')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('قبلاً پاسخ داده شده')).toBeVisible();
+  await context.close();
+
+  const survey = await db().surveyInvite.findFirstOrThrow({ where: { phone: phoneA } });
+  expect(survey).toMatchObject({ kind: 'COURSE', score: 4, comment: 'مدرس عالی بود.' });
+  await pageB.goto('/survey/not-a-real-link');
+  await expect(pageB.getByText('این نشانی نظرسنجی معتبر نیست.')).toBeVisible();
+});
+
 test('a legal-entity representative waits for approval, then may enroll', async ({
   page,
   browser,
@@ -291,6 +327,8 @@ test('admin pages load', async ({ page }) => {
     ['/admin/help', 'راهنمای پنل مدیریت'],
     ['/admin/appointments', null],
     ['/admin/members', null],
+    ['/admin/surveys', 'نظرسنجی‌ها'],
+    ['/admin/settings', 'تنظیمات سایت'],
   ] as const) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(200);
