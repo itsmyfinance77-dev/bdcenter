@@ -171,6 +171,9 @@ describe('conditions and steps', () => {
     ).toContain('یکی از گزینه‌ها');
     expect(conditionProblem(reg, [agree])).toBeNull();
     expect(settingsProblem('TEXT', { newPage: true }, [])).toContain('مرحلهٔ تازه');
+    expect(settingsProblem('SECTION', { showIf: { field: 'kind', value: 'حقوقی' } }, [])).toContain(
+      'شرط نمایش نمی‌گیرد',
+    );
   });
 
   it('splits the form into steps at sections that start a new one', () => {

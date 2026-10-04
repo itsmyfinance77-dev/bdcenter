@@ -71,8 +71,8 @@ function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
     keep.push('placeholder', 'defaultValue');
   }
   if (PREFILL_TYPES.has(type)) keep.push('prefill');
-  keep.push('showIf');
   if (type === 'SECTION') keep.push('newPage');
+  else keep.push('showIf');
   return Object.fromEntries(
     keep.filter((key) => settings[key] !== undefined).map((key) => [key, settings[key]]),
   ) as FieldSettings;
@@ -301,11 +301,13 @@ function FieldEditor({
               این عنوان یک مرحلهٔ تازه را شروع کند (فرم چندمرحله‌ای)
             </label>
           ) : null}
-          <ConditionEditor
-            value={settings.showIf}
-            earlier={earlier}
-            onChange={(showIf) => set({ showIf })}
-          />
+          {isSection ? null : (
+            <ConditionEditor
+              value={settings.showIf}
+              earlier={earlier}
+              onChange={(showIf) => set({ showIf })}
+            />
+          )}
           {canPrefill ? (
             <label className="text-xs text-ink-2 sm:col-span-2">
               پر کردن از حساب عضو

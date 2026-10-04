@@ -439,7 +439,6 @@ export function DynamicForm({
             ref={progressRef}
             tabIndex={-1}
             className="mb-2 text-sm font-bold text-brand-900 outline-none"
-            aria-live="polite"
           >
             مرحلهٔ {digits.format(position + 1)} از {digits.format(steps.length)}
             {titles[current] ? `: ${titles[current]}` : ''}

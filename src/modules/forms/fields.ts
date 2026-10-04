@@ -343,6 +343,10 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
   if (settings.newPage && type !== 'SECTION') {
     return 'فقط «عنوان بخش» می‌تواند مرحلهٔ تازه را شروع کند.';
   }
+  // A heading on its own would hide while its questions stay: conditions go on questions.
+  if (settings.showIf && type === 'SECTION') {
+    return '«عنوان بخش» شرط نمایش نمی‌گیرد؛ شرط را روی خود پرسش‌ها بگذارید.';
+  }
   if (settings.prefill && !PREFILL_TYPES.has(type)) {
     return 'این نوع فیلد از حساب عضو پر نمی‌شود.';
   }
