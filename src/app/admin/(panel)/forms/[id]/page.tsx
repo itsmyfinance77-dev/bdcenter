@@ -19,6 +19,7 @@ import {
   listStaff,
   listSubmissions,
   parseSubmissionFilter,
+  unreadDates,
 } from '@/modules/forms/service';
 import { setSubmissionStatusAction } from '../actions';
 import { SubmissionAnswers } from './submission-answers';
@@ -120,6 +121,11 @@ export default async function SubmissionsPage({
           </Link>
         ) : null}
       </form>
+      {unreadDates(filter).map((text) => (
+        <p key={text} className="mb-2 text-sm text-danger">
+          تاریخ «{text}» خوانده نشد و در فیلتر به کار نرفت؛ آن را مثل ۱۴۰۵/۰۸/۰۱ بنویسید.
+        </p>
+      ))}
       <p className="mb-3 text-sm text-ink-2" role="status">
         {formatNumber(total)} درخواست{hasFilter(filter) ? ' با این فیلترها' : ''}
       </p>

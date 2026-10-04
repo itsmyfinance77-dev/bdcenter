@@ -50,8 +50,7 @@ export type SubmissionFilter = z.infer<typeof filterSchema>;
 export function parseSubmissionFilter(
   query: Record<string, string | string[] | undefined>,
 ): SubmissionFilter {
-  const first = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? value[0] : value;
+  const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   return filterSchema.parse({
     status: first(query.status),
     assignee: first(query.assignee),
@@ -76,6 +75,13 @@ export function hasFilter(filter: SubmissionFilter): boolean {
 function dayStart(text: string | undefined): Date | null {
   if (!text) return null;
   return parseJalaliDateTime(text.split(/\s+/)[0]!);
+}
+
+/** Typed dates the list could not read (and so did not filter by), for a warning. */
+export function unreadDates(filter: SubmissionFilter): string[] {
+  return [filter.from, filter.to].filter(
+    (text): text is string => Boolean(text) && dayStart(text) === null,
+  );
 }
 
 function escapeLike(text: string): string {

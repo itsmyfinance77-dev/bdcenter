@@ -259,15 +259,29 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   readable in the panel and CSV. The public action reads answers with
   `answersFrom` (repeated names → arrays). Merged as PR #9 (number fields
   refuse ambiguous separators: «,»/«٬» only between groups of three).
-- Package ب (`feat/form-settings`): `FormDefinition.opensAt/closesAt/
+- Package ب, merged as PR #10 (`8b842a8`): `FormDefinition.opensAt/closesAt/
 maxSubmissions/membersOnly/onePerMember/thankYouText/confirmToApplicant/
 alertRecipients`, `FormSubmission.memberId`. Rules in
   `src/modules/forms/availability.ts`, re-checked in `submitForm` with the
-  form row locked (`FOR UPDATE`). Field setting `prefill` fills members-only
-  forms from the profile (`prefillValues`). Confirmation SMS/email
-  (`sendFormConfirmation`, event `form.received`) to the member's phone or
-  the form's first MOBILE answer; per-form staff recipients passed to
-  `alertStaff(..., only)`. «کپی فرم» = `duplicateForm` (DRAFT, `-copy[-n]`).
+  form row locked (`FOR UPDATE`); uploads are stored before the lock and
+  deleted when the answer is refused. Field setting `prefill` (only
+  `PREFILL_TYPES`) fills members-only forms from the profile
+  (`prefillValues`). The «received» SMS goes only to a signed-in member's
+  verified phone; anonymous applicants get an email to the first EMAIL
+  answer, max 3/day per address (`LIMITS.formConfirmEmail`). Per-form staff
+  recipients via `alertStaff(..., only)`. «کپی فرم» = `duplicateForm`.
+- Package ج (`feat/form-submissions`): `FormSubmission.assigneeId` and
+  `FormSubmissionNote` (migration `form_submission_management`). Logic in
+  `src/modules/forms/submissions.ts` (re-exported by the forms service):
+  filters from the query string (`parseSubmissionFilter`: status, assignee
+  me/none/id, text `q` searched in answers via `jsonb_each_text` and in
+  notes, Jalali `from`/`to`), `assignSubmission`, `addSubmissionNote`,
+  `countAnswers` (charts), `submissionContact`; status SMS to the applicant
+  `notifyFormStatus` (staff opt in per change). Pages: list
+  `/admin/forms/[id]` (filters, CSV export of the filter), detail
+  `/admin/forms/[id]/submissions/[submissionId]` (image previews via
+  `?view=1` on the file route, inline only for checked JPEG/PNG/WebP under
+  `CSP sandbox`), charts `/admin/forms/[id]/stats`.
 
 ## Where things live
 

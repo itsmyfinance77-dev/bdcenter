@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { db, signInMember, state, testPhone } from './helpers';
+import { db, signInAdmin, signInMember, state, testPhone } from './helpers';
 
 /**
  * The form builder's newer field types in a real browser: several ticked
@@ -127,4 +127,71 @@ test('a members-only form asks to sign in, fills in from the profile and takes o
   const submission = await db().formSubmission.findFirstOrThrow({ where: { form: { slug } } });
   expect(submission.memberId).not.toBeNull();
   expect(submission.data).toMatchObject({ mobile: phone, note: 'درخواست آزمایشی' });
+});
+
+test('staff search the answers, take one on, note it and tell the applicant', async ({ page }) => {
+  const slug = `e2e-staff-${state().runId}`;
+  const mobile = testPhone();
+  const fields = [
+    { key: 'name', label: 'نام', type: 'TEXT' as const, sortOrder: 1 },
+    { key: 'mobile', label: 'همراه', type: 'MOBILE' as const, sortOrder: 2 },
+    {
+      key: 'topic',
+      label: 'زمینه',
+      type: 'RADIO' as const,
+      sortOrder: 3,
+      options: ['صادرات', 'مالی'],
+    },
+  ];
+  const form = await db().formDefinition.create({
+    data: { slug, title: 'فرم پیگیری کارمندان', status: 'PUBLISHED', fields: { create: fields } },
+  });
+  const snapshot = fields.map(({ key, label, type }) => ({ key, label, type }));
+  await db().formSubmission.createMany({
+    data: [
+      { formId: form.id, data: { name: 'نگار آزمون', mobile, topic: 'صادرات' }, fields: snapshot },
+      { formId: form.id, data: { name: 'حسن دیگر', topic: 'مالی' }, fields: snapshot },
+    ],
+  });
+
+  await signInAdmin(page);
+  await page.goto(`/admin/forms/${form.id}`);
+  await page.getByLabel('جستجو در پاسخ‌ها و یادداشت‌ها').fill('نگار');
+  await page.getByRole('button', { name: 'اعمال فیلتر' }).click();
+  await expect(page.getByText('۱ درخواست با این فیلترها')).toBeVisible();
+  await expect(page.getByText('حسن دیگر')).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'جزئیات، مسئول و یادداشت‌ها' }).click();
+  const admin = await db().adminUser.findUniqueOrThrow({ where: { email: state().admin.email } });
+  // Retried: a choice made before the page has hydrated is reset by React.
+  await expect(async () => {
+    await page.getByLabel('مسئول پیگیری').selectOption(admin.id);
+    await page.getByRole('button', { name: 'ثبت مسئول' }).click();
+    await expect(page.getByText('مسئول پیگیری ثبت شد.')).toBeVisible({ timeout: 2_000 });
+    const saved = await db().formSubmission.findFirstOrThrow({
+      where: { formId: form.id, assigneeId: admin.id },
+    });
+    expect(saved.assigneeId).toBe(admin.id);
+  }).toPass({ timeout: 20_000 });
+  await page.getByLabel('یادداشت تازه').fill('تماس گرفته شد.');
+  await page.getByRole('button', { name: 'ثبت یادداشت' }).click();
+  await expect(page.getByText('یادداشت ثبت شد.')).toBeVisible();
+  await expect(page.getByText('تماس گرفته شد.', { exact: true })).toBeVisible();
+
+  await page.getByRole('combobox', { name: 'وضعیت', exact: true }).selectOption('ACCEPTED');
+  await page.getByRole('button', { name: 'ثبت وضعیت' }).click();
+  await expect
+    .poll(async () => {
+      const outbox = (await (await fetch(state().smsOutbox)).json()) as {
+        to: string;
+        text: string;
+      }[];
+      return outbox.some((sms) => sms.to === mobile && sms.text.includes('پذیرفته شد'));
+    })
+    .toBe(true);
+
+  // Only this person's submission is "mine"; the chart counts the filter's answers.
+  await page.goto(`/admin/forms/${form.id}/stats?assignee=me`);
+  await expect(page.getByText('بر پایهٔ ۱ درخواست')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'زمینه' })).toBeVisible();
 });
