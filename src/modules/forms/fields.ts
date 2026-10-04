@@ -106,6 +106,18 @@ export const fieldSettingsSchema = z.object({
   scale: z.number().int().min(3).max(10).optional(),
   /** Members-only forms: start from this value of the member's profile. */
   prefill: z.enum(PREFILL_SOURCES).optional(),
+  /**
+   * Shown only while an earlier choice or tick field has this answer
+   * (CHECKBOX: CHECKED). Hidden fields are not required and not stored.
+   */
+  showIf: z
+    .object({
+      field: z.string().regex(/^[a-z][a-z0-9_]{0,39}$/),
+      value: z.string().trim().min(1).max(200),
+    })
+    .optional(),
+  /** SECTION: starts a new step of a multi-step form. */
+  newPage: z.boolean().optional(),
 });
 export type FieldSettings = z.infer<typeof fieldSettingsSchema>;
 
@@ -328,6 +340,9 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
   if (settings.min !== undefined && settings.max !== undefined && settings.min > settings.max) {
     return 'حداقل عدد نباید از حداکثر عدد بیشتر باشد.';
   }
+  if (settings.newPage && type !== 'SECTION') {
+    return 'فقط «عنوان بخش» می‌تواند مرحلهٔ تازه را شروع کند.';
+  }
   if (settings.prefill && !PREFILL_TYPES.has(type)) {
     return 'این نوع فیلد از حساب عضو پر نمی‌شود.';
   }
@@ -338,6 +353,81 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
     if (!options.includes(settings.defaultValue)) return 'مقدار پیش‌فرض باید یکی از گزینه‌ها باشد.';
   }
   return null;
+}
+
+/** The answer a CHECKBOX controller needs for `showIf`: the box is ticked. */
+export const CHECKED = 'checked';
+
+/** Field types whose answer can show or hide later fields (`showIf`). */
+export const CONDITION_TYPES: ReadonlySet<FieldType> = new Set([...CHOICE_TYPES, 'CHECKBOX']);
+
+/**
+ * Why a field's `showIf` cannot work, or null: it must point at an earlier
+ * choice or tick field and name one of its options.
+ */
+export function conditionProblem(
+  field: { settings: FieldSettings },
+  earlier: { key: string; type: FieldType; options: string[] }[],
+): string | null {
+  const condition = field.settings.showIf;
+  if (!condition) return null;
+  const controller = earlier.find((f) => f.key === condition.field);
+  if (!controller || !CONDITION_TYPES.has(controller.type)) {
+    return 'شرط نمایش باید به یک فیلد گزینه‌ای یا تیک پیش از همین فیلد اشاره کند.';
+  }
+  const allowed = controller.type === 'CHECKBOX' ? [CHECKED] : controller.options;
+  return allowed.includes(condition.value) ? null : 'مقدار شرط نمایش باید یکی از گزینه‌ها باشد.';
+}
+
+type RawAnswer = FormDataEntryValue | FormDataEntryValue[] | undefined;
+
+function answers(value: RawAnswer): string[] {
+  const list = Array.isArray(value) ? value : value === undefined ? [] : [value];
+  return list.filter((item): item is string => typeof item === 'string' && item !== '');
+}
+
+/**
+ * Keys of the fields that are shown for these answers, in form order. A
+ * field whose condition points at a hidden field is hidden too.
+ */
+export function visibleFieldKeys(
+  fields: { key: string; type: FieldType; settings: FieldSettings }[],
+  values: Record<string, RawAnswer>,
+): Set<string> {
+  const visible = new Set<string>();
+  const types = new Map(fields.map((field) => [field.key, field.type]));
+  for (const field of fields) {
+    const condition = field.settings.showIf;
+    if (condition) {
+      if (!visible.has(condition.field)) continue;
+      const given = answers(values[condition.field]);
+      const met =
+        types.get(condition.field) === 'CHECKBOX'
+          ? condition.value === CHECKED && given.length > 0
+          : given.includes(condition.value);
+      if (!met) continue;
+    }
+    visible.add(field.key);
+  }
+  return visible;
+}
+
+/**
+ * The form's steps: a new one starts at each SECTION marked `newPage`.
+ * Returns each field's step index and the steps' titles (null for a first
+ * step without a heading). One step means an ordinary single-page form.
+ */
+export function formSteps(
+  fields: { key: string; label: string; type: FieldType; settings: FieldSettings }[],
+) {
+  const stepOf = new Map<string, number>();
+  const titles: (string | null)[] = [];
+  for (const field of fields) {
+    const starts = field.type === 'SECTION' && field.settings.newPage === true;
+    if (titles.length === 0 || starts) titles.push(starts ? field.label : null);
+    stepOf.set(field.key, titles.length - 1);
+  }
+  return { stepOf, titles: titles.length ? titles : [null] };
 }
 
 /** Human-readable value of one submitted answer, for the panel and CSV. */
