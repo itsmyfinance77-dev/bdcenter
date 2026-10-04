@@ -9,7 +9,18 @@ import { homeCopy, siteInfo } from '@/content/site';
  * The building photo; hovering (mouse), keyboard focus or the button reveals
  * the "about" text over it. The button pins it open; Escape closes it.
  */
-export function AboutReveal({ text, address }: { text: string; address: string }) {
+export function AboutReveal({
+  text,
+  address,
+  kicker,
+  title,
+}: {
+  text: string;
+  address: string;
+  /** Set in «تنظیمات سایت»; see src/modules/settings/home-texts.ts. */
+  kicker: string;
+  title: string;
+}) {
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -74,9 +85,7 @@ export function AboutReveal({ text, address }: { text: string; address: string }
           open ? 'translate-y-3 opacity-0' : 'opacity-100'
         }`}
       >
-        <p className="text-[clamp(22px,2.4vw,28px)] font-extrabold text-white">
-          {homeCopy.aboutKicker}
-        </p>
+        <p className="text-[clamp(22px,2.4vw,28px)] font-extrabold text-white">{kicker}</p>
         <p className="mt-1.5 text-[15px] text-on-dark">{address}</p>
       </div>
 
@@ -95,7 +104,7 @@ export function AboutReveal({ text, address }: { text: string; address: string }
             open ? 'opacity-100' : 'translate-y-4 opacity-0'
           }`}
         >
-          <span className="text-sm font-bold text-accent-light">{homeCopy.aboutTitle}</span>
+          <span className="text-sm font-bold text-accent-light">{title}</span>
           <h3 className="mt-2 text-[clamp(24px,2.8vw,32px)] leading-[1.4] font-extrabold">
             {siteInfo.name}
           </h3>

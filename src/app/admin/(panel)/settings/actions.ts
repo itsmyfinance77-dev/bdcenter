@@ -5,6 +5,7 @@ import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
 import { announcementInputSchema } from '@/modules/settings/announcement';
+import { parseHomeTexts } from '@/modules/settings/home-texts';
 import {
   ALERT_KINDS,
   contactInputSchema,
@@ -86,6 +87,21 @@ export async function saveRemindersAction(
   await setSetting('reminders', parsed.data, admin.id);
   revalidatePath('/admin/settings');
   return { status: 'success', message: 'تنظیمات یادآوری ذخیره شد.' };
+}
+
+export async function saveHomeTextsAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const admin = await requireAdmin('ADMIN');
+  const values = formValues(formData);
+  const { stored, errors } = parseHomeTexts(values);
+  if (Object.keys(errors).length > 0) {
+    return { status: 'error', message: GENERIC_ERROR, errors, values };
+  }
+  await setSetting('home.texts', stored, admin.id);
+  revalidatePath('/');
+  return { status: 'success', message: 'متن‌های صفحهٔ اصلی ذخیره شد.' };
 }
 
 export async function saveStatsAction(_prev: FormState, formData: FormData): Promise<FormState> {

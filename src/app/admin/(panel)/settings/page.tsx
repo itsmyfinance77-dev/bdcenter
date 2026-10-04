@@ -5,6 +5,7 @@ import { announcementFormValues } from '@/modules/settings/announcement';
 import { getJobRun } from '@/modules/jobs/service';
 import {
   ALERT_KINDS,
+  getHomeTexts,
   getSetting,
   MAX_MAIN_ITEMS,
   MAX_SERVICE_ITEMS,
@@ -13,6 +14,7 @@ import {
   AlertSettingsForm,
   AnnouncementSettingsForm,
   ContactSettingsForm,
+  HomeTextsForm,
   MenuSettingsForm,
   ReminderSettingsForm,
   StatsSettingsForm,
@@ -58,15 +60,17 @@ function ReminderRunNote({ run }: { run: Awaited<ReturnType<typeof getJobRun>> }
 
 export default async function SettingsPage() {
   await requireAdmin('ADMIN');
-  const [announcement, contact, alerts, stats, menu, reminders, reminderRun] = await Promise.all([
-    getSetting('site.announcement'),
-    getSetting('site.contact'),
-    getSetting('alerts.recipients'),
-    getSetting('home.stats'),
-    getSetting('site.menu'),
-    getSetting('reminders'),
-    getJobRun('reminders'),
-  ]);
+  const [announcement, contact, alerts, stats, menu, reminders, reminderRun, homeTexts] =
+    await Promise.all([
+      getSetting('site.announcement'),
+      getSetting('site.contact'),
+      getSetting('alerts.recipients'),
+      getSetting('home.stats'),
+      getSetting('site.menu'),
+      getSetting('reminders'),
+      getJobRun('reminders'),
+      getHomeTexts(),
+    ]);
   const menuValues: Record<string, string> = {};
   menu.services.forEach((item, i) => {
     menuValues[`s${i}title`] = item.title;
@@ -123,6 +127,12 @@ export default async function SettingsPage() {
             serviceRows={MAX_SERVICE_ITEMS}
             mainRows={MAX_MAIN_ITEMS}
           />
+        </Section>
+        <Section
+          title="متن‌های صفحهٔ اصلی"
+          lead="عنوان و جمله‌های بالای صفحهٔ اصلی و بخش «درباره مرکز». کادر خالی یعنی متن پیش‌فرض طراحی (زیر هر کادر نوشته شده است)."
+        >
+          <HomeTextsForm initial={homeTexts} />
         </Section>
         <Section
           title="مرکز در یک نگاه"

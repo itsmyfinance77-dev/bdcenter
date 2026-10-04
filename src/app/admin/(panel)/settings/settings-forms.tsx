@@ -14,9 +14,17 @@ import { actionResultKey, type FormState } from '@/lib/form-state';
 import { AnnouncementBar } from '@/components/site/announcement-bar';
 import { ANNOUNCEMENT_LONG, ANNOUNCEMENT_MAX } from '@/modules/settings/announcement-limits';
 import {
+  defaultHomeTexts,
+  HOME_TEXT_KEYS,
+  homeTextLabels,
+  homeTextLimits,
+  type HomeTextKey,
+} from '@/modules/settings/home-texts';
+import {
   saveAlertsAction,
   saveAnnouncementAction,
   saveContactAction,
+  saveHomeTextsAction,
   saveMenuAction,
   saveRemindersAction,
   saveStatsAction,
@@ -297,6 +305,47 @@ export function ReminderSettingsForm({ initial }: { initial: Record<string, stri
         <SelectField label="تا ساعت" options={hourOptions} {...field('quietUntil')} />
       </div>
       <SubmitButton>ذخیرهٔ تنظیمات یادآوری</SubmitButton>
+    </form>
+  );
+}
+
+export function HomeTextsForm({ initial }: { initial: Record<string, string> }) {
+  const { state, formAction, field } = useForm(saveHomeTextsAction, initial);
+  // Live lengths, for the "longer than the design" hint.
+  const [lengths, setLengths] = useState<Record<string, number>>(() =>
+    Object.fromEntries(HOME_TEXT_KEYS.map((key) => [key, (initial[key] ?? '').trim().length])),
+  );
+  const digits = new Intl.NumberFormat('fa-IR');
+  const hint = (key: HomeTextKey) => {
+    const { fits } = homeTextLimits[key];
+    const long = (lengths[key] ?? 0) > fits;
+    return `${long ? `بلندتر از اندازهٔ طراحی (${digits.format(fits)} نویسه)؛ در چند خط شکسته می‌شود. ` : ''}پیش‌فرض: «${defaultHomeTexts[key]}»`;
+  };
+  return (
+    <form
+      action={formAction}
+      onInput={(event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.name)
+          setLengths((current) => ({ ...current, [target.name]: target.value.trim().length }));
+      }}
+      className="space-y-4"
+    >
+      <Message state={state} />
+      {HOME_TEXT_KEYS.map((key) =>
+        key === 'heroLead' ? (
+          <TextareaField
+            key={key}
+            label={homeTextLabels[key]}
+            rows={3}
+            hint={hint(key)}
+            {...field(key)}
+          />
+        ) : (
+          <TextField key={key} label={homeTextLabels[key]} hint={hint(key)} {...field(key)} />
+        ),
+      )}
+      <SubmitButton>ذخیرهٔ متن‌ها</SubmitButton>
     </form>
   );
 }
