@@ -54,16 +54,9 @@ export default async function EditFormPage({
           کپی فرم
         </ConfirmButton>
       </AdminHeading>
-      {saved ? (
-        <p
-          role="status"
-          className="mb-4 rounded-control border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
-        >
-          ذخیره شد.
-        </p>
-      ) : null}
       <FormBuilder
         key={form.updatedAt.toISOString()}
+        saved={saved === '1'}
         id={form.id}
         initial={{
           title: form.title,

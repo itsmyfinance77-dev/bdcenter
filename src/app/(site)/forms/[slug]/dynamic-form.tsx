@@ -1,10 +1,16 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useRef, useState } from 'react';
 import { Field, FormMessage, Honeypot, SubmitButton } from '@/components/form-controls';
 import { Icon } from '@/components/site/icons';
 import { actionResultKey, initialFormState, type FormState } from '@/lib/form-state';
-import { FILE_KINDS, MAX_FILE_MB, type PublicFormField } from '@/modules/forms/fields';
+import {
+  FILE_KINDS,
+  formSteps,
+  MAX_FILE_MB,
+  visibleFieldKeys,
+  type PublicFormField,
+} from '@/modules/forms/fields';
 import type { PublicForm } from '@/modules/forms/service';
 import { submitDynamicForm } from './actions';
 
@@ -180,6 +186,36 @@ function FileDrop({
   );
 }
 
+type Answers = Record<string, string[]>;
+
+/** The answers the form starts with, as the fields will show them. */
+function startingAnswers(
+  fields: PublicFormField[],
+  state: FormState,
+  prefill: Record<string, string>,
+): Answers {
+  const result: Answers = {};
+  for (const field of fields) {
+    const value = shownValue(state, field, prefill);
+    if (value) result[field.key] = value.split('\n');
+  }
+  return result;
+}
+
+/** What is filled in right now; an unchosen file counts as empty. */
+function readAnswers(form: HTMLFormElement): Answers {
+  const result: Answers = {};
+  const data = new FormData(form);
+  for (const key of new Set(data.keys())) {
+    const given = data
+      .getAll(key)
+      .map((value) => (typeof value === 'string' ? value : value.size > 0 ? value.name : ''))
+      .filter(Boolean);
+    if (given.length) result[key] = given;
+  }
+  return result;
+}
+
 export function DynamicForm({
   form,
   prefill = {},
@@ -189,6 +225,66 @@ export function DynamicForm({
   prefill?: Record<string, string>;
 }) {
   const [state, action] = useActionState(submitDynamicForm.bind(null, form.slug), initialFormState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const progressRef = useRef<HTMLParagraphElement>(null);
+  const { stepOf, titles } = formSteps(form.fields);
+  const [answers, setAnswers] = useState(() => startingAnswers(form.fields, state, prefill));
+  const [step, setStep] = useState(0);
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  // After each send React resets the form: start again from what it shows,
+  // on the first step that has an error (or the first step).
+  const [seenState, setSeenState] = useState(state);
+  if (seenState !== state) {
+    setSeenState(state);
+    setAnswers(startingAnswers(form.fields, state, prefill));
+    setStepError(null);
+    const errorSteps =
+      state.status === 'error'
+        ? Object.keys(state.errors).flatMap((key) => stepOf.get(key) ?? [])
+        : [];
+    setStep(errorSteps.length ? Math.min(...errorSteps) : 0);
+  }
+
+  const visible = visibleFieldKeys(form.fields, answers);
+  // Steps whose questions are all hidden by conditions are skipped.
+  const steps = titles
+    .map((_, index) => index)
+    .filter((index) =>
+      form.fields.some(
+        (f) => stepOf.get(f.key) === index && f.type !== 'SECTION' && visible.has(f.key),
+      ),
+    );
+  if (steps.length === 0) steps.push(0);
+  const position = Math.max(
+    0,
+    steps.findLastIndex((index) => index <= step),
+  );
+  const current = steps[position]!;
+  const last = position === steps.length - 1;
+
+  function go(offset: 1 | -1) {
+    if (offset === 1) {
+      const missing = form.fields.filter(
+        (f) =>
+          stepOf.get(f.key) === current &&
+          f.isRequired &&
+          f.type !== 'SECTION' &&
+          visible.has(f.key) &&
+          !answers[f.key]?.length,
+      );
+      if (missing.length) {
+        setStepError(
+          `پیش از رفتن به مرحلهٔ بعد این‌ها را پر کنید: ${missing.map((f) => f.label).join('، ')}`,
+        );
+        return;
+      }
+    }
+    setStepError(null);
+    setStep(steps[position + offset]!);
+    formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    progressRef.current?.focus({ preventScroll: true });
+  }
 
   function renderField(field: PublicFormField) {
     const { settings } = field;
@@ -317,20 +413,93 @@ export function DynamicForm({
   }
 
   return (
-    <form action={action} className="relative grid gap-x-4 gap-y-[18px] sm:grid-cols-2" noValidate>
+    <form
+      ref={formRef}
+      action={action}
+      onChange={(event) => setAnswers(readAnswers(event.currentTarget))}
+      onKeyDown={(event) => {
+        // Enter in a one-line box moves on instead of sending a half-filled form.
+        const target = event.target as HTMLElement;
+        if (event.key === 'Enter' && !last && target.tagName === 'INPUT') {
+          event.preventDefault();
+          go(1);
+        }
+      }}
+      className="relative grid scroll-mt-24 gap-x-4 gap-y-[18px] sm:grid-cols-2"
+      noValidate
+    >
       {state.status === 'idle' ? null : (
         <div className="sm:col-span-2">
           <FormMessage state={state} />
         </div>
       )}
-      {form.fields.map((field) => (
-        <div key={field.key} className={wide.has(field.type) ? 'sm:col-span-2' : undefined}>
-          {renderField(field)}
+      {steps.length > 1 ? (
+        <div className="sm:col-span-2">
+          <p
+            ref={progressRef}
+            tabIndex={-1}
+            className="mb-2 text-sm font-bold text-brand-900 outline-none"
+          >
+            مرحلهٔ {digits.format(position + 1)} از {digits.format(steps.length)}
+            {titles[current] ? `: ${titles[current]}` : ''}
+          </p>
+          <div
+            role="progressbar"
+            aria-label="پیشرفت فرم"
+            aria-valuemin={1}
+            aria-valuemax={steps.length}
+            aria-valuenow={position + 1}
+            className="h-2 overflow-hidden rounded-chip bg-surface"
+          >
+            <div
+              className="h-full rounded-chip bg-primary transition-[width] duration-300"
+              style={{ width: `${((position + 1) / steps.length) * 100}%` }}
+            />
+          </div>
         </div>
-      ))}
+      ) : null}
+      {form.fields.map((field) => {
+        const shown = visible.has(field.key);
+        // A hidden question is disabled, so it is not sent; another step's is
+        // only out of sight, so its answer still goes with the form.
+        return (
+          <fieldset
+            key={field.key}
+            disabled={!shown}
+            hidden={!shown || stepOf.get(field.key) !== current}
+            className={`min-w-0 ${wide.has(field.type) ? 'sm:col-span-2' : ''}`}
+          >
+            {renderField(field)}
+          </fieldset>
+        );
+      })}
       <Honeypot />
-      <div className="mt-1.5 sm:col-span-2">
-        <SubmitButton>ثبت درخواست</SubmitButton>
+      {stepError ? (
+        <p role="alert" className="text-[13px] font-semibold text-danger sm:col-span-2">
+          {stepError}
+        </p>
+      ) : null}
+      <div className="mt-1.5 flex flex-wrap items-center gap-3 sm:col-span-2">
+        {position > 0 ? (
+          <button
+            type="button"
+            onClick={() => go(-1)}
+            className="min-h-[50px] rounded-control border-[1.5px] border-line bg-white px-6 text-[15px] font-bold text-brand-900 hover:border-primary"
+          >
+            مرحلهٔ قبل
+          </button>
+        ) : null}
+        {last ? (
+          <SubmitButton>ثبت درخواست</SubmitButton>
+        ) : (
+          <button
+            type="button"
+            onClick={() => go(1)}
+            className="min-h-[50px] rounded-control bg-primary px-6 text-[15px] font-bold text-white hover:bg-primary-hover"
+          >
+            مرحلهٔ بعد
+          </button>
+        )}
       </div>
     </form>
   );

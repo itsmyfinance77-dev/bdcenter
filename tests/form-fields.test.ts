@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   answersFrom,
+  CHECKED,
+  conditionProblem,
   displayAnswer,
   fileProblem,
+  formSteps,
   settingsProblem,
+  visibleFieldKeys,
   valueSchema,
   type FieldType,
   type PublicFormField,
@@ -117,5 +121,71 @@ describe('form field types', () => {
     data.append('choice', 'ب');
     data.append('name', 'سارا');
     expect(answersFrom(data)).toEqual({ choice: ['الف', 'ب'], name: 'سارا' });
+  });
+});
+
+describe('conditions and steps', () => {
+  const kind = field('RADIO', { key: 'kind', options: ['حقیقی', 'حقوقی'] });
+  const company = field('TEXT', {
+    key: 'company',
+    settings: { showIf: { field: 'kind', value: 'حقوقی' } },
+  });
+  const agree = field('CHECKBOX', { key: 'agree' });
+  // Shown only when «company» is shown and the box is ticked.
+  const reg = field('TEXT', {
+    key: 'reg',
+    settings: { showIf: { field: 'agree', value: CHECKED } },
+  });
+  const nested = field('TEXT', {
+    key: 'nested',
+    settings: { showIf: { field: 'company', value: 'x' } },
+  });
+  const fields = [kind, company, agree, reg, nested];
+
+  it('shows a field only while its condition holds, hiding what hangs on hidden fields', () => {
+    expect([...visibleFieldKeys(fields, {})]).toEqual(['kind', 'agree']);
+    expect([...visibleFieldKeys(fields, { kind: 'حقوقی', agree: 'on' })]).toEqual([
+      'kind',
+      'company',
+      'agree',
+      'reg',
+    ]);
+    expect([...visibleFieldKeys(fields, { kind: 'حقوقی', company: 'x' })]).toContain('nested');
+    expect([...visibleFieldKeys(fields, { kind: 'حقیقی', company: 'x' })]).not.toContain('nested');
+    const topics = field('MULTI_CHOICE', { key: 'topics', options: ['الف', 'ب'] });
+    const more = field('TEXT', {
+      key: 'more',
+      settings: { showIf: { field: 'topics', value: 'ب' } },
+    });
+    expect(visibleFieldKeys([topics, more], { topics: ['الف', 'ب'] }).has('more')).toBe(true);
+  });
+
+  it('checks that a condition looks back at a choice or tick field and one of its options', () => {
+    expect(conditionProblem(company, [kind])).toBeNull();
+    expect(conditionProblem(company, [])).toContain('پیش از');
+    expect(conditionProblem(nested, [kind, company])).toContain('گزینه‌ای');
+    expect(
+      conditionProblem(field('TEXT', { settings: { showIf: { field: 'kind', value: 'سوم' } } }), [
+        kind,
+      ]),
+    ).toContain('یکی از گزینه‌ها');
+    expect(conditionProblem(reg, [agree])).toBeNull();
+    expect(settingsProblem('TEXT', { newPage: true }, [])).toContain('مرحلهٔ تازه');
+    expect(settingsProblem('SECTION', { showIf: { field: 'kind', value: 'حقوقی' } }, [])).toContain(
+      'شرط نمایش نمی‌گیرد',
+    );
+  });
+
+  it('splits the form into steps at sections that start a new one', () => {
+    const page = (key: string, label: string) =>
+      field('SECTION', { key, label, settings: { newPage: true } });
+    const plain = formSteps([kind, page('p2', 'مدارک'), company, field('SECTION', { key: 's' })]);
+    expect(plain.titles).toEqual([null, 'مدارک']);
+    expect([...plain.stepOf.values()]).toEqual([0, 1, 1, 1]);
+    expect(formSteps([page('p1', 'اول'), kind, page('p2', 'دوم'), agree]).titles).toEqual([
+      'اول',
+      'دوم',
+    ]);
+    expect(formSteps([kind, agree]).titles).toEqual([null]);
   });
 });
