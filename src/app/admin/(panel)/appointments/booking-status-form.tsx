@@ -1,6 +1,7 @@
 import { secondaryButtonClass } from '@/components/admin/ui';
 import { bookingStatusLabel } from '@/content/appointments';
 import { notifyCopy } from '@/content/notifications';
+import { surveyCopy } from '@/content/surveys';
 
 /** Select + submit for a booking's status; works without client JS. */
 export function BookingStatusForm({
@@ -40,6 +41,16 @@ export function BookingStatusForm({
           className="size-3.5 accent-primary"
         />
         {notifyCopy.checkbox} (هنگام لغو)
+      </label>
+      <label className="flex items-center gap-1 text-xs text-ink-2">
+        <input
+          key={current}
+          type="checkbox"
+          name="survey"
+          defaultChecked
+          className="size-3.5 accent-primary"
+        />
+        {surveyCopy.checkbox}
       </label>
     </form>
   );

@@ -311,6 +311,27 @@ export async function getBookingContact(bookingId: string) {
   });
 }
 
+/** Who to survey about a booking and with whom it was, for the surveys domain. */
+export async function getBookingSurveyTarget(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      phone: true,
+      email: true,
+      slot: { select: { staff: { select: { id: true, fullName: true, service: true } } } },
+    },
+  });
+  if (!booking) return null;
+  const { staff } = booking.slot;
+  return {
+    phone: booking.phone,
+    email: booking.email,
+    staffId: staff.id,
+    staffName: staff.fullName,
+    service: staff.service,
+  };
+}
+
 /**
  * Live bookings whose slot starts between `from` and `to`, soonest first,
  * for the reminders domain.

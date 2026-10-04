@@ -506,6 +506,22 @@ export async function getEnrollmentContact(enrollmentId: string) {
     : null;
 }
 
+/** Who to survey about an enrollment and which course it was, for the surveys domain. */
+export async function getEnrollmentSurveyTarget(enrollmentId: string) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: { phone: true, email: true, course: { select: { id: true, title: true } } },
+  });
+  return enrollment
+    ? {
+        phone: enrollment.phone,
+        email: enrollment.email,
+        courseId: enrollment.course.id,
+        courseTitle: enrollment.course.title,
+      }
+    : null;
+}
+
 /**
  * Accepted enrollments in published courses that start between `from` and
  * `to`, for the reminders domain.

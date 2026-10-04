@@ -23,6 +23,7 @@ import {
 } from '@/modules/appointments/service';
 import { requireAdmin } from '@/modules/auth/service';
 import { notifyBooking } from '@/modules/notifications/service';
+import { sendSurvey } from '@/modules/surveys/service';
 
 /** Free slots show on the public pages; bookings on every admin page of this section. */
 function refresh() {
@@ -139,6 +140,9 @@ export async function setBookingStatusAction(bookingId: string, formData: FormDa
   const result = await setBookingStatus(bookingId, status, admin.id);
   if (result.ok && result.changed && status === 'CANCELLED' && formData.get('notify') === 'on') {
     after(() => notifyBooking(bookingId, 'cancelledByStaff'));
+  }
+  if (result.ok && result.changed && status === 'DONE' && formData.get('survey') === 'on') {
+    after(() => sendSurvey('BOOKING', bookingId));
   }
   refresh();
   if (!result.ok) redirect('/admin/appointments?taken=1');

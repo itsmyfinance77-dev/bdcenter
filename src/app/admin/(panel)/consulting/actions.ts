@@ -5,6 +5,7 @@ import { after } from 'next/server';
 import { requireAdmin } from '@/modules/auth/service';
 import { requestStatusSchema, setConsultingStatus } from '@/modules/consulting/service';
 import { notifyConsultingStatus } from '@/modules/notifications/service';
+import { sendSurvey } from '@/modules/surveys/service';
 
 export async function setConsultingStatusAction(id: string, formData: FormData) {
   const admin = await requireAdmin();
@@ -13,6 +14,9 @@ export async function setConsultingStatusAction(id: string, formData: FormData) 
   if (changed && formData.get('notify') === 'on') {
     // After the response: a slow SMS provider must not hold up the panel.
     after(() => notifyConsultingStatus(id, status));
+  }
+  if (changed && status === 'DONE' && formData.get('survey') === 'on') {
+    after(() => sendSurvey('CONSULTING', id));
   }
   revalidatePath('/admin/consulting');
 }

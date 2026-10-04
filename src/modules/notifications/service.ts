@@ -71,6 +71,20 @@ async function deliver(target: Target): Promise<boolean> {
 }
 
 /**
+ * The satisfaction survey link after a request, booking or course is done
+ * (surveys domain); true when the SMS went out.
+ */
+export function sendSurveyInvite(invite: {
+  entity: 'ConsultingRequest' | 'Booking' | 'Enrollment';
+  entityId: string;
+  phone: string | null;
+  email: string | null;
+  notice: Notice;
+}): Promise<boolean> {
+  return deliver({ ...invite, event: 'survey.invite' });
+}
+
+/**
  * A reminder before a booking or a course starts (reminders domain), with the
  * same logging as every other notice; true when the SMS went out.
  */

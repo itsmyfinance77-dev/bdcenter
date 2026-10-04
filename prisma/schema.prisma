@@ -604,6 +604,48 @@ model Reminder {
   @@map("reminders")
 }
 
+// ---------------------------------------------------------------------------
+// Satisfaction surveys (owner's request, 2026-10-04): after a consulting
+// request, a booking or a course enrollment is DONE, the person gets an SMS
+// with a personal link and answers a score from 1 to 5 plus a comment.
+// ---------------------------------------------------------------------------
+
+enum SurveyKind {
+  CONSULTING
+  BOOKING
+  COURSE
+}
+
+/// One survey per finished request, booking or enrollment. The link carries a
+/// random token; only its SHA-256 is stored. Answering is possible once,
+/// until `expiresAt`. Labels are copied at send time so results stay readable.
+model SurveyInvite {
+  id          String     @id @default(cuid())
+  kind        SurveyKind
+  /// Consulting request, booking or enrollment id (plain id, other domains).
+  targetId    String
+  /// What was surveyed, e.g. the course title or the consulting topic.
+  subject     String
+  /// Grouping for the results: course id, or the consultant's staff profile id.
+  groupId     String?
+  /// Course title or consultant name at send time.
+  groupLabel  String?
+  phone       String
+  tokenHash   String     @unique
+  expiresAt   DateTime
+  /// Whether the invitation SMS went out.
+  smsSent     Boolean?
+  score       Int?
+  comment     String?
+  answeredAt  DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@unique([kind, targetId])
+  @@index([kind, groupId])
+  @@index([answeredAt])
+  @@map("survey_invites")
+}
+
 /// Last run of each scheduled job (called by the scheduler), shown in the panel.
 model JobRun {
   name      String   @id

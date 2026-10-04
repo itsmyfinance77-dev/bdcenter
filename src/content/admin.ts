@@ -49,6 +49,7 @@ export const adminNav = [
   { href: '/admin/consulting', title: 'درخواست‌های مشاوره', adminOnly: false },
   { href: '/admin/messages', title: 'پیام‌های تماس', adminOnly: false },
   { href: '/admin/forms', title: 'فرم‌ها و درخواست‌ها', adminOnly: false },
+  { href: '/admin/surveys', title: 'نظرسنجی‌ها', adminOnly: false },
   { href: '/admin/members', title: 'اعضای سایت', adminOnly: true },
   { href: '/admin/broadcasts', title: 'پیامک گروهی', adminOnly: true },
   { href: '/admin/users', title: 'کاربران پنل', adminOnly: true },
