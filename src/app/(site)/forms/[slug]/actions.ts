@@ -14,7 +14,9 @@ import { submitForm } from '@/modules/forms/service';
 import { consume, LIMITS } from '@/modules/ratelimit/service';
 import { after } from 'next/server';
 import { staffAlertText } from '@/content/admin';
-import { alertStaff } from '@/modules/notifications/service';
+import { formClosedMessage, formReceivedNotice } from '@/content/forms';
+import { getCurrentMember } from '@/modules/members/service';
+import { alertStaff, sendFormConfirmation } from '@/modules/notifications/service';
 
 export async function submitDynamicForm(
   slug: string,
@@ -27,17 +29,42 @@ export async function submitDynamicForm(
   if (!(await consume(`form:ip:${await clientIp()}`, LIMITS.publicForm))) {
     return { status: 'error', message: RATE_LIMITED, errors: {}, values: formValues(formData) };
   }
-  const result = await submitForm(slug, answersFrom(formData));
+  const member = await getCurrentMember();
+  const result = await submitForm(
+    slug,
+    answersFrom(formData),
+    member ? { id: member.id, phone: member.phone, email: member.email } : null,
+  );
   if (result.ok) {
-    after(() => alertStaff('forms', staffAlertText.forms(result.formTitle), '/admin/forms'));
-    return { status: 'success', message: SUCCESS_MESSAGE };
+    after(async () => {
+      await alertStaff(
+        'forms',
+        staffAlertText.forms(result.formTitle),
+        '/admin/forms',
+        result.alertRecipients,
+      );
+      if (result.confirmTo) {
+        await sendFormConfirmation({
+          submissionId: result.submissionId,
+          ...result.confirmTo,
+          notice: formReceivedNotice(result.formTitle),
+        });
+      }
+    });
+    return { status: 'success', message: result.thankYouText || SUCCESS_MESSAGE };
   }
 
   const values = echo(formData);
-  if (result.reason === 'not-found') {
-    return { status: 'error', message: 'این فرم دیگر فعال نیست.', errors: {}, values };
+  if (result.reason === 'invalid') {
+    return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
   }
-  return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
+  const message =
+    result.reason === 'not-found'
+      ? 'این فرم دیگر فعال نیست.'
+      : result.reason === 'not-yet'
+        ? formClosedMessage['not-yet']('زمان تعیین‌شده')
+        : formClosedMessage[result.reason]();
+  return { status: 'error', message, errors: {}, values };
 }
 
 /**

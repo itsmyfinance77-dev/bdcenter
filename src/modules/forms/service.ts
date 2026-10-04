@@ -1,19 +1,24 @@
 import { countCreatedPerDay } from '@/lib/daily-counts';
 import { z } from 'zod';
-import { prisma, type Prisma } from '@/lib/prisma';
-import { fieldErrors, optionalText, requiredText } from '@/lib/validation';
+import { prisma, Prisma } from '@/lib/prisma';
+import { jalaliDateTime } from '@/lib/jalali';
+import { fieldErrors, optionalText, requiredText, toLatinDigits } from '@/lib/validation';
+import { parseRecipients } from '@/modules/settings/service';
 import { requestStatusLabel } from '@/content/admin';
 import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
 import { richInput } from '@/lib/rich-html';
 import { recordAudit } from '@/modules/audit/service';
+import { consume, LIMITS } from '@/modules/ratelimit/service';
 import {
   checkUpload,
   checkUploadContent,
+  deleteStoredFile,
   storedFileSchema,
   storeUpload,
   type StoredFile,
 } from '@/modules/files/service';
+import { formAvailability, type FormAvailability, type FormRules } from './availability';
 import {
   CHOICE_TYPES,
   displayAnswer,
@@ -24,6 +29,7 @@ import {
   settingsProblem,
   valueSchema,
   type FieldType,
+  type PrefillSource,
   type PublicFormField,
 } from './fields';
 
@@ -67,18 +73,27 @@ function publicField(field: {
 }
 
 export type PublicForm = {
+  id: string;
   slug: string;
   title: string;
   description: string | null;
   descriptionHtml: string | null;
   fields: PublicFormField[];
+  rules: FormRules;
+  thankYouText: string | null;
 };
+
+const recipientsSchema = z.object({
+  phones: z.array(z.string()),
+  emails: z.array(z.string()),
+});
+export type FormRecipients = z.infer<typeof recipientsSchema>;
 
 export async function listPublishedForms() {
   return prisma.formDefinition.findMany({
     where: { status: 'PUBLISHED' },
     orderBy: { title: 'asc' },
-    select: { slug: true, title: true, description: true },
+    select: { slug: true, title: true, description: true, closesAt: true, membersOnly: true },
   });
 }
 
@@ -86,36 +101,102 @@ export async function getPublishedForm(slug: string): Promise<PublicForm | null>
   const form = await prisma.formDefinition.findFirst({
     where: { slug, status: 'PUBLISHED' },
     select: {
+      id: true,
       slug: true,
       title: true,
       description: true,
       descriptionHtml: true,
+      opensAt: true,
+      closesAt: true,
+      maxSubmissions: true,
+      membersOnly: true,
+      onePerMember: true,
+      thankYouText: true,
       fields: { orderBy: { sortOrder: 'asc' }, select: fieldSelect },
     },
   });
   if (!form) return null;
-  return { ...form, fields: form.fields.map(publicField) };
+  const { opensAt, closesAt, maxSubmissions, membersOnly, onePerMember, fields, ...rest } = form;
+  return {
+    ...rest,
+    fields: fields.map(publicField),
+    rules: { opensAt, closesAt, maxSubmissions, membersOnly, onePerMember },
+  };
+}
+
+/** Whether the form takes an answer now, for this visitor (null = not signed in). */
+export async function getFormAvailability(
+  form: PublicForm,
+  memberId: string | null,
+  now = new Date(),
+): Promise<FormAvailability> {
+  const [submissions, mine] = await Promise.all([
+    form.rules.maxSubmissions === null
+      ? 0
+      : prisma.formSubmission.count({ where: { formId: form.id } }),
+    memberId && form.rules.onePerMember
+      ? prisma.formSubmission.count({ where: { formId: form.id, memberId } })
+      : 0,
+  ]);
+  return formAvailability(form.rules, {
+    now,
+    submissions,
+    signedIn: memberId !== null,
+    memberAnswered: mine > 0,
+  });
+}
+
+/** Starting values of a members-only form from the member's profile (field setting `prefill`). */
+export function prefillValues(
+  form: PublicForm,
+  profile: Partial<Record<PrefillSource, string | null>>,
+): Record<string, string> {
+  if (!form.rules.membersOnly) return {};
+  const values: Record<string, string> = {};
+  for (const field of form.fields) {
+    const value = field.settings.prefill ? profile[field.settings.prefill] : null;
+    if (value) values[field.key] = value;
+  }
+  return values;
 }
 
 export type SubmitResult =
-  | { ok: true; formTitle: string }
-  | { ok: false; reason: 'not-found' }
+  | {
+      ok: true;
+      formTitle: string;
+      thankYouText: string | null;
+      submissionId: string;
+      /** Where to send the "received" message, when the form asks for one. */
+      confirmTo: { phone: string | null; email: string | null } | null;
+      /** Staff to tell; null = the site-wide «فرم‌ها» recipients. */
+      alertRecipients: FormRecipients | null;
+    }
+  | { ok: false; reason: 'not-found' | Exclude<FormAvailability, 'open'> }
   | { ok: false; reason: 'invalid'; errors: Record<string, string> };
 
 /** What each stored submission remembers about the fields it was answered against. */
 export type FieldSnapshot = { key: string; label: string; type: FieldType };
 
+/** The person who answers a members-only form. */
+export type FormMember = { id: string; phone: string; email: string | null };
+
 /**
  * Validates raw answers (from FormData, see answersFrom) against the form's
  * current definition and stores the submission with a snapshot of the field
- * labels. Unknown keys are dropped; sections take no answer.
+ * labels. The form's rules (dates, total limit, members-only, one answer per
+ * member) are checked again with the form row locked, so two people cannot
+ * both take the last place. Unknown keys are dropped; sections take no answer.
  */
 export async function submitForm(
   slug: string,
   values: Record<string, FormDataEntryValue | FormDataEntryValue[] | undefined>,
+  member: FormMember | null = null,
+  now = new Date(),
 ): Promise<SubmitResult> {
   const form = await getPublishedForm(slug);
   if (!form) return { ok: false, reason: 'not-found' };
+  const before = await getFormAvailability(form, member?.id ?? null, now);
+  if (before !== 'open') return { ok: false, reason: before };
 
   const errors: Record<string, string> = {};
   const uploads: { key: string; file: File }[] = [];
@@ -147,19 +228,90 @@ export async function submitForm(
   const data: Record<string, unknown> = Object.fromEntries(
     Object.entries(parsed.data).filter(([, value]) => value !== undefined),
   );
-  for (const { key, file } of uploads) {
-    data[key] = (await storeUpload(`forms/${form.slug}`, file)) satisfies StoredFile;
-  }
   const snapshot: FieldSnapshot[] = inputs.map(({ key, label, type }) => ({ key, label, type }));
 
-  await prisma.formSubmission.create({
-    data: {
-      form: { connect: { slug: form.slug } },
-      data: data as Prisma.InputJsonObject,
-      fields: snapshot as Prisma.InputJsonArray,
-    },
+  // Files are written before the lock (a slow upload must not hold up other
+  // people sending this form) and removed again if no submission keeps them.
+  const stored: StoredFile[] = [];
+  const discard = () => Promise.allSettled(stored.map((file) => deleteStoredFile(file.storageKey)));
+  let outcome: { state: 'open'; id: string } | { state: Exclude<FormAvailability, 'open'> };
+  try {
+    for (const { key, file } of uploads) {
+      const saved = await storeUpload(`forms/${form.slug}`, file);
+      stored.push(saved);
+      data[key] = saved;
+    }
+    outcome = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM form_definitions WHERE id = ${form.id} FOR UPDATE`;
+      const [submissions, mine] = await Promise.all([
+        tx.formSubmission.count({ where: { formId: form.id } }),
+        member ? tx.formSubmission.count({ where: { formId: form.id, memberId: member.id } }) : 0,
+      ]);
+      const state = formAvailability(form.rules, {
+        now,
+        submissions,
+        signedIn: member !== null,
+        memberAnswered: mine > 0,
+      });
+      if (state !== 'open') return { state };
+      const created = await tx.formSubmission.create({
+        data: {
+          formId: form.id,
+          memberId: member?.id ?? null,
+          data: data as Prisma.InputJsonObject,
+          fields: snapshot as Prisma.InputJsonArray,
+        },
+        select: { id: true },
+      });
+      return { state, id: created.id };
+    });
+  } catch (error) {
+    await discard();
+    throw error;
+  }
+  if (outcome.state !== 'open') {
+    await discard();
+    return { ok: false, reason: outcome.state };
+  }
+
+  const definition = await prisma.formDefinition.findUniqueOrThrow({
+    where: { id: form.id },
+    select: { confirmToApplicant: true, alertRecipients: true },
   });
-  return { ok: true, formTitle: form.title };
+  const confirmTo = definition.confirmToApplicant
+    ? await confirmationContact(member, inputs, data)
+    : null;
+  const recipients = recipientsSchema.safeParse(definition.alertRecipients).data ?? null;
+  return {
+    ok: true,
+    formTitle: form.title,
+    thankYouText: form.thankYouText,
+    submissionId: outcome.id,
+    confirmTo,
+    alertRecipients:
+      recipients && recipients.phones.length + recipients.emails.length > 0 ? recipients : null,
+  };
+}
+
+/**
+ * Where the «your answer arrived» message goes. SMS only to a member's own
+ * number, proven with a code: a number typed into a form could be anyone's,
+ * and the site's SMS line must not be usable to pester strangers. Without a
+ * member, an email to the form's first email answer, at most a few a day per
+ * address.
+ */
+async function confirmationContact(
+  member: FormMember | null,
+  inputs: { key: string; type: FieldType }[],
+  data: Record<string, unknown>,
+): Promise<{ phone: string | null; email: string | null } | null> {
+  if (member) return { phone: member.phone, email: member.email };
+  const field = inputs.find((f) => f.type === 'EMAIL' && typeof data[f.key] === 'string');
+  const email = field ? (data[field.key] as string) : null;
+  if (!email || !(await consume(`form-confirm:${email.toLowerCase()}`, LIMITS.formConfirmEmail))) {
+    return null;
+  }
+  return { phone: null, email };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,8 +378,55 @@ export const formDefinitionInputSchema = z
     description: optionalText('توضیحات', 100_000),
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
     fields: z.array(formFieldInputSchema).min(1, 'فرم باید حداقل یک فیلد داشته باشد.').max(60),
+    // Form settings (package B).
+    opensAt: jalaliDateTime('شروع پذیرش'),
+    closesAt: jalaliDateTime('پایان پذیرش'),
+    maxSubmissions: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const text = toLatinDigits(value).trim();
+        return text === '' ? undefined : Number(text);
+      },
+      z
+        .number({ invalid_type_error: 'سقف پاسخ‌ها را به عدد بنویسید.' })
+        .int('سقف پاسخ‌ها باید عدد صحیح باشد.')
+        .min(1, 'سقف پاسخ‌ها دست‌کم ۱ است.')
+        .max(100_000, 'سقف پاسخ‌ها بیش از حد بزرگ است.')
+        .optional(),
+    ),
+    membersOnly: z.preprocess((value) => value === 'on', z.boolean()),
+    onePerMember: z.preprocess((value) => value === 'on', z.boolean()),
+    confirmToApplicant: z.preprocess((value) => value === 'on', z.boolean()),
+    thankYouText: optionalText('متن تشکر', 500),
+    alertRecipients: optionalText('گیرندگان خبر', 2000).transform((text, ctx) => {
+      const { phones, emails, invalid } = parseRecipients(text ?? '');
+      if (invalid.length > 0) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `این موارد شمارهٔ همراه یا ایمیل معتبر نیستند: ${invalid.join('، ')}`,
+        });
+      }
+      if (phones.length + emails.length > 20) {
+        ctx.addIssue({ code: 'custom', message: 'حداکثر ۲۰ گیرنده.' });
+      }
+      return phones.length + emails.length > 0 ? { phones, emails } : null;
+    }),
   })
   .superRefine((form, ctx) => {
+    if (form.opensAt && form.closesAt && form.closesAt <= form.opensAt) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['closesAt'],
+        message: 'پایان پذیرش باید بعد از شروع آن باشد.',
+      });
+    }
+    if (form.onePerMember && !form.membersOnly) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['onePerMember'],
+        message: '«یک پاسخ برای هر عضو» فقط برای فرم‌های ویژهٔ اعضا ممکن است.',
+      });
+    }
     const seen = new Set<string>();
     for (const field of form.fields) {
       if (seen.has(field.key)) {
@@ -275,6 +474,14 @@ export async function saveFormDefinition(
     description: description.text,
     descriptionHtml: description.html,
     status: input.status,
+    opensAt: input.opensAt,
+    closesAt: input.closesAt,
+    maxSubmissions: input.maxSubmissions ?? null,
+    membersOnly: input.membersOnly,
+    onePerMember: input.onePerMember,
+    confirmToApplicant: input.confirmToApplicant,
+    thankYouText: input.thankYouText ?? null,
+    alertRecipients: input.alertRecipients ?? Prisma.DbNull,
   };
 
   const form = await prisma.$transaction(async (tx) => {
@@ -296,6 +503,58 @@ export async function saveFormDefinition(
     metadata: { slug: form.slug, fields: fields.length },
   });
   return { ok: true, id: form.id };
+}
+
+/**
+ * Copies a form with its fields and settings as a new draft («کپی فرم»):
+ * title «… (کپی)», slug «…-copy» (or -copy-2, …). Answers are not copied.
+ */
+export async function duplicateForm(id: string, actorId: string): Promise<string | null> {
+  const form = await prisma.formDefinition.findUnique({ where: { id }, include: { fields: true } });
+  if (!form) return null;
+  const taken = new Set(
+    (
+      await prisma.formDefinition.findMany({
+        where: { slug: { startsWith: `${form.slug}-copy` } },
+        select: { slug: true },
+      })
+    ).map((row) => row.slug),
+  );
+  let slug = `${form.slug}-copy`;
+  for (let n = 2; taken.has(slug); n += 1) slug = `${form.slug}-copy-${n}`;
+
+  const { id: _id, createdAt: _c, updatedAt: _u, fields, ...rest } = form;
+  void _id;
+  void _c;
+  void _u;
+  const copy = await prisma.formDefinition.create({
+    data: {
+      ...rest,
+      alertRecipients: rest.alertRecipients ?? Prisma.DbNull,
+      slug,
+      title: `${form.title} (کپی)`,
+      status: 'DRAFT',
+      fields: {
+        create: fields.map((field) => ({
+          key: field.key,
+          label: field.label,
+          type: field.type,
+          isRequired: field.isRequired,
+          options: field.options ?? Prisma.DbNull,
+          settings: field.settings ?? Prisma.DbNull,
+          sortOrder: field.sortOrder,
+        })),
+      },
+    },
+  });
+  await recordAudit({
+    actorId,
+    action: 'form.duplicate',
+    entity: 'FormDefinition',
+    entityId: copy.id,
+    metadata: { from: form.id, slug },
+  });
+  return copy.id;
 }
 
 export async function listSubmissions(formId: string, page: number) {

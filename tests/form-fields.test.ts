@@ -100,6 +100,8 @@ describe('form field types', () => {
     expect(settingsProblem('RADIO', {}, [])).toContain('گزینه');
     expect(settingsProblem('TEXT', { minLength: 5, maxLength: 2 }, [])).toContain('طول');
     expect(settingsProblem('SELECT', { defaultValue: 'x' }, ['a'])).toContain('پیش‌فرض');
+    expect(settingsProblem('FILE', { prefill: 'fullName' }, [])).toContain('حساب عضو');
+    expect(settingsProblem('MOBILE', { prefill: 'phone' }, [])).toBeNull();
     expect(settingsProblem('SELECT', { defaultValue: 'a' }, ['a'])).toBeNull();
     expect(settingsProblem('MULTI_CHOICE', { defaultValue: 'a' }, ['a'])).toContain('پیش‌فرض');
   });

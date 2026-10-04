@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { db, state } from './helpers';
+import { db, signInMember, state, testPhone } from './helpers';
 
 /**
  * The form builder's newer field types in a real browser: several ticked
@@ -78,4 +78,53 @@ test('a visitor fills a form with the newer field types', async ({ page }) => {
     code: '0499370899',
     score: 4,
   });
+});
+
+test('a members-only form asks to sign in, fills in from the profile and takes one answer', async ({
+  page,
+}) => {
+  const slug = `e2e-members-${state().runId}`;
+  await db().formDefinition.create({
+    data: {
+      slug,
+      title: 'فرم ویژهٔ اعضا',
+      status: 'PUBLISHED',
+      membersOnly: true,
+      onePerMember: true,
+      thankYouText: 'سپاس؛ پاسخ شما به دست ما رسید.',
+      fields: {
+        create: [
+          {
+            key: 'mobile',
+            label: 'شمارهٔ همراه',
+            type: 'MOBILE',
+            isRequired: true,
+            sortOrder: 1,
+            settings: { prefill: 'phone' },
+          },
+          { key: 'note', label: 'توضیح', type: 'TEXTAREA', sortOrder: 2 },
+        ],
+      },
+    },
+  });
+
+  await page.goto(`/forms/${slug}`);
+  await expect(page.getByText('این فرم ویژهٔ اعضای سایت است')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ثبت درخواست' })).toHaveCount(0);
+
+  const phone = testPhone();
+  await signInMember(page, phone, `/forms/${slug}`);
+  // A new member lands on the profile page first.
+  await expect(page).toHaveURL(/\/account\?welcome=1/);
+  await page.goto(`/forms/${slug}`);
+  await expect(page.getByLabel('شمارهٔ همراه')).toHaveValue(phone);
+  await page.getByLabel('توضیح').fill('درخواست آزمایشی');
+  await page.getByRole('button', { name: 'ثبت درخواست' }).click();
+  await expect(page.getByText('سپاس؛ پاسخ شما به دست ما رسید.')).toBeVisible();
+
+  await page.goto(`/forms/${slug}`);
+  await expect(page.getByText('شما قبلاً این فرم را پر کرده‌اید')).toBeVisible();
+  const submission = await db().formSubmission.findFirstOrThrow({ where: { form: { slug } } });
+  expect(submission.memberId).not.toBeNull();
+  expect(submission.data).toMatchObject({ mobile: phone, note: 'درخواست آزمایشی' });
 });

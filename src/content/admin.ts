@@ -47,6 +47,17 @@ export const formFieldTypeLabel = {
   SECTION: 'عنوان بخش و توضیح (بدون پاسخ)',
 } as const;
 
+/** Profile values a members-only form can fill in (field setting «پر کردن از حساب عضو»). */
+export const formPrefillLabel = {
+  fullName: 'نام و نام خانوادگی',
+  phone: 'شمارهٔ همراه',
+  email: 'ایمیل',
+  nationalId: 'کد ملی',
+  postalCode: 'کد پستی',
+  companyName: 'نام شرکت',
+  legalNationalId: 'شناسه ملی شرکت',
+} as const;
+
 /** EDITOR handles content and incoming requests; ADMIN also manages forms, users, the audit log and system status. */
 export const adminNav = [
   { href: '/admin', title: 'داشبورد', adminOnly: false },

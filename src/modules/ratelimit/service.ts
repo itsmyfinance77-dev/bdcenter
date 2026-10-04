@@ -25,6 +25,9 @@ export const LIMITS = {
   pageViews: { max: 600, windowSeconds: 60 * 60 },
   // Error alert emails, all errors together: a broken deploy must not flood the inbox.
   errorAlerts: { max: 10, windowSeconds: 60 * 60 },
+  // «Your answer arrived» emails to an address typed into a public form, per address:
+  // anyone can type someone else's address.
+  formConfirmEmail: { max: 3, windowSeconds: 24 * 60 * 60 },
   // Wrong codes, per phone: stops guessing a 6-digit code.
   otpVerifyPerPhone: { max: 5, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, Limit>;

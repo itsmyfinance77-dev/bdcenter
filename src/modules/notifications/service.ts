@@ -28,7 +28,8 @@ import { getSetting, type AlertKind } from '@/modules/settings/service';
 type Notice = { subject: string; text: string };
 
 type Target = {
-  entity: 'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member' | 'StaffAlert';
+  entity:
+    'Enrollment' | 'ConsultingRequest' | 'Booking' | 'Member' | 'StaffAlert' | 'FormSubmission';
   entityId: string;
   event: string;
   phone: string | null;
@@ -68,6 +69,23 @@ async function deliver(target: Target): Promise<boolean> {
     await log('EMAIL', target.email, sent);
   }
   return smsSent;
+}
+
+/** «Your answer arrived» after a form that asks for it (form setting confirmToApplicant). */
+export function sendFormConfirmation(confirmation: {
+  submissionId: string;
+  phone: string | null;
+  email: string | null;
+  notice: Notice;
+}): Promise<boolean> {
+  return deliver({
+    entity: 'FormSubmission',
+    entityId: confirmation.submissionId,
+    event: 'form.received',
+    phone: confirmation.phone,
+    email: confirmation.email,
+    notice: confirmation.notice,
+  });
 }
 
 /**
@@ -218,8 +236,14 @@ export async function notifyMemberReview(memberId: string, decision: 'APPROVED' 
  * request, 2026-10-03), by SMS and/or email, with a link into the panel.
  * Runs after the response; every attempt is logged.
  */
-export async function alertStaff(kind: AlertKind, text: string, panelPath: string) {
-  const recipients = (await getSetting('alerts.recipients'))[kind];
+export async function alertStaff(
+  kind: AlertKind,
+  text: string,
+  panelPath: string,
+  /** Recipients of this one request (e.g. a form's own); else «تنظیمات سایت»'s for `kind`. */
+  only?: { phones: string[]; emails: string[] } | null,
+) {
+  const recipients = only ?? (await getSetting('alerts.recipients'))[kind];
   if (!recipients) return;
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010';
   const body = `${text}\n${new URL(panelPath, base).toString()}`;

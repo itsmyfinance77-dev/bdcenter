@@ -6,19 +6,22 @@ import {
   FormMessage,
   SelectField,
   SubmitButton,
+  TextareaField,
   TextField,
 } from '@/components/form-controls';
 import { RichEditor } from '@/components/admin/rich-editor';
-import { contentStatusLabel, formFieldTypeLabel } from '@/content/admin';
-import type { FormState } from '@/lib/form-state';
+import { contentStatusLabel, formFieldTypeLabel, formPrefillLabel } from '@/content/admin';
+import { actionResultKey, type FormState } from '@/lib/form-state';
 import {
   CHOICE_TYPES,
   FILE_KINDS,
   MAX_FILE_MB,
+  PREFILL_TYPES,
   TEXT_TYPES,
   type FieldSettings,
   type FieldType,
   type FileKind,
+  type PrefillSource,
 } from '@/modules/forms/fields';
 import { saveFormAction } from './actions';
 
@@ -55,13 +58,17 @@ function freeKey(keys: string[]): string {
 /** Settings that only make sense for some types are dropped when the type changes. */
 function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
   const keep: (keyof FieldSettings)[] = ['hint'];
-  if (TEXT_TYPES.has(type)) keep.push('placeholder', 'defaultValue', 'minLength', 'maxLength');
-  else if (type === 'NUMBER') keep.push('placeholder', 'defaultValue', 'min', 'max');
+  if (TEXT_TYPES.has(type)) {
+    keep.push('placeholder', 'defaultValue', 'minLength', 'maxLength');
+  } else if (type === 'NUMBER') keep.push('placeholder', 'defaultValue', 'min', 'max');
   else if (type === 'FILE') keep.push('fileKinds', 'maxSizeMb');
   else if (type === 'RATING') keep.push('scale');
   // A preset choice only for single-choice fields (multi-choice has no default control).
   else if (type === 'SELECT' || type === 'RADIO') keep.push('defaultValue');
-  else if (type !== 'SECTION' && type !== 'CHECKBOX') keep.push('placeholder', 'defaultValue');
+  else if (type !== 'SECTION' && type !== 'CHECKBOX') {
+    keep.push('placeholder', 'defaultValue');
+  }
+  if (PREFILL_TYPES.has(type)) keep.push('prefill');
   return Object.fromEntries(
     keep.filter((key) => settings[key] !== undefined).map((key) => [key, settings[key]]),
   ) as FieldSettings;
@@ -126,6 +133,7 @@ function FieldEditor({
   update,
   move,
   remove,
+  membersOnly,
 }: {
   field: BuilderField;
   index: number;
@@ -133,8 +141,11 @@ function FieldEditor({
   update: (patch: Partial<BuilderField>) => void;
   move: (offset: -1 | 1) => void;
   remove: () => void;
+  /** The form is members-only: fields may start from the member's profile. */
+  membersOnly: boolean;
 }) {
   const { type, settings } = field;
+  const canPrefill = membersOnly && PREFILL_TYPES.has(type);
   const set = (patch: Partial<FieldSettings>) => update({ settings: { ...settings, ...patch } });
   const isSection = type === 'SECTION';
   const hasSettings = Object.keys(settings).some(
@@ -201,6 +212,25 @@ function FieldEditor({
               onChange={(event) => set({ hint: event.target.value || undefined })}
             />
           </label>
+          {canPrefill ? (
+            <label className="text-xs text-ink-2 sm:col-span-2">
+              پر کردن از حساب عضو
+              <select
+                className={inputClass}
+                value={settings.prefill ?? ''}
+                onChange={(event) =>
+                  set({ prefill: (event.target.value || undefined) as PrefillSource | undefined })
+                }
+              >
+                <option value="">—</option>
+                {Object.entries(formPrefillLabel).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {TEXT_TYPES.has(type) ||
           (!isSection &&
             !CHOICE_TYPES.has(type) &&
@@ -340,6 +370,23 @@ export function FormBuilder({
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveFormAction.bind(null, id), initialState);
   const [fields, setFields] = useState<BuilderField[]>(initialFields);
+  const values = state.status === 'error' ? state.values : initial;
+  const [membersOnly, setMembersOnly] = useState(values.membersOnly === 'on');
+  // React resets the form after an action: remount the other boxes with what was sent.
+  const key = actionResultKey(state);
+  const box = (name: string, label: string, onChange?: (checked: boolean) => void) => (
+    <label className="flex items-center gap-2 text-sm text-ink">
+      <input
+        key={`${key}-${name}`}
+        type="checkbox"
+        name={name}
+        defaultChecked={values[name] === 'on'}
+        onChange={onChange ? (event) => onChange(event.target.checked) : undefined}
+        className="size-4 accent-primary"
+      />
+      {label}
+    </label>
+  );
   const field = (name: string) => fieldState(state, name);
 
   function update(index: number, patch: Partial<BuilderField>) {
@@ -394,6 +441,57 @@ export function FormBuilder({
         <SelectField label="وضعیت" options={contentStatusLabel} {...field('status')} />
       </section>
 
+      <section className="space-y-4 rounded-panel border border-line bg-white p-6">
+        <h2 className="font-semibold text-ink">تنظیمات فرم</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="شروع پذیرش"
+            hint="اختیاری؛ مثلاً ۱۴۰۵/۰۸/۰۱ ۰۸:۰۰. پیش از آن فرم پاسخ نمی‌گیرد."
+            {...field('opensAt')}
+          />
+          <TextField
+            label="پایان پذیرش"
+            hint="اختیاری؛ پس از آن فرم بسته می‌شود."
+            {...field('closesAt')}
+          />
+          <TextField
+            label="سقف تعداد پاسخ‌ها"
+            hint="اختیاری؛ با رسیدن به آن، فرم بسته می‌شود."
+            {...field('maxSubmissions')}
+          />
+        </div>
+        {box('membersOnly', 'ویژهٔ اعضای سایت (پر کردن فرم نیاز به ورود دارد)', setMembersOnly)}
+        {membersOnly ? (
+          <div className="ms-6 space-y-2">
+            {box('onePerMember', 'هر عضو فقط یک بار بتواند پاسخ دهد')}
+            <p className="text-xs leading-6 text-ink-2">
+              در «تنظیمات بیشتر» هر فیلد می‌توانید «پر کردن از حساب عضو» را انتخاب کنید.
+            </p>
+          </div>
+        ) : null}
+        {box(
+          'confirmToApplicant',
+          'پیامک (و ایمیل) «پاسخ شما دریافت شد» برای پرکنندهٔ فرم فرستاده شود',
+        )}
+        <p className="-mt-2 ms-6 text-xs leading-6 text-ink-2">
+          پیامک فقط به شمارهٔ عضوِ واردشده می‌رود (شماره‌ای که با کد تأیید شده است). کسی که بدون
+          ورود فرم را پر کند فقط ایمیل می‌گیرد، به اولین فیلد «ایمیل» فرم و حداکثر سه بار در روز
+          برای هر نشانی.
+        </p>
+        <TextareaField
+          label="متن تشکر پس از ارسال"
+          rows={2}
+          hint="اختیاری؛ خالی یعنی «درخواست شما با موفقیت ثبت شد.»"
+          {...field('thankYouText')}
+        />
+        <TextareaField
+          label="خبر دادن به کارمندان"
+          rows={2}
+          hint="شمارهٔ همراه یا ایمیل کسانی که از هر پاسخ تازه خبردار شوند؛ هر کدام در یک خط. خالی یعنی همان گیرندگان «درخواست تازه در فرم‌ها» در «تنظیمات سایت»."
+          {...field('alertRecipients')}
+        />
+      </section>
+
       <section className="space-y-3 rounded-panel border border-line bg-white p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-ink">فیلدها</h2>
@@ -425,6 +523,7 @@ export function FormBuilder({
               update={(patch) => update(index, patch)}
               move={(offset) => move(index, offset)}
               remove={() => setFields((current) => current.filter((_, i) => i !== index))}
+              membersOnly={membersOnly}
             />
           ))}
         </ol>

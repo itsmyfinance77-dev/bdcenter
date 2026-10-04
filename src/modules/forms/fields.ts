@@ -42,6 +42,17 @@ export type FieldType = (typeof FIELD_TYPES)[number];
 export const CHOICE_TYPES: ReadonlySet<FieldType> = new Set(['SELECT', 'RADIO', 'MULTI_CHOICE']);
 /** Types that hold text a person types (placeholder, default, length limits). */
 export const TEXT_TYPES: ReadonlySet<FieldType> = new Set(['TEXT', 'TEXTAREA']);
+/** Types a members-only form may fill in from the profile (setting `prefill`). */
+export const PREFILL_TYPES: ReadonlySet<FieldType> = new Set([
+  'TEXT',
+  'TEXTAREA',
+  'EMAIL',
+  'PHONE',
+  'MOBILE',
+  'NATIONAL_CODE',
+  'LEGAL_ID',
+  'POSTAL_CODE',
+]);
 
 /** Groups of upload types a FILE field can be limited to. */
 export const FILE_KINDS = {
@@ -65,6 +76,18 @@ export const FILE_KINDS = {
 export type FileKind = keyof typeof FILE_KINDS;
 const FILE_KIND_KEYS = Object.keys(FILE_KINDS) as [FileKind, ...FileKind[]];
 
+/** Profile values a members-only form can fill in (field setting `prefill`). */
+export const PREFILL_SOURCES = [
+  'fullName',
+  'phone',
+  'email',
+  'nationalId',
+  'postalCode',
+  'companyName',
+  'legalNationalId',
+] as const;
+export type PrefillSource = (typeof PREFILL_SOURCES)[number];
+
 /** The global upload cap; a field may only lower it. */
 export const MAX_FILE_MB = 10;
 
@@ -81,6 +104,8 @@ export const fieldSettingsSchema = z.object({
   maxSizeMb: z.number().int().min(1).max(MAX_FILE_MB).optional(),
   /** RATING: the highest score (default 5). */
   scale: z.number().int().min(3).max(10).optional(),
+  /** Members-only forms: start from this value of the member's profile. */
+  prefill: z.enum(PREFILL_SOURCES).optional(),
 });
 export type FieldSettings = z.infer<typeof fieldSettingsSchema>;
 
@@ -302,6 +327,9 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
   }
   if (settings.min !== undefined && settings.max !== undefined && settings.min > settings.max) {
     return 'حداقل عدد نباید از حداکثر عدد بیشتر باشد.';
+  }
+  if (settings.prefill && !PREFILL_TYPES.has(type)) {
+    return 'این نوع فیلد از حساب عضو پر نمی‌شود.';
   }
   if (settings.defaultValue && type === 'MULTI_CHOICE') {
     return 'چندگزینه‌ای گزینهٔ پیش‌فرض ندارد.';
