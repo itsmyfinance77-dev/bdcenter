@@ -457,13 +457,28 @@ enum FormFieldType {
   SELECT
   FILE
   CHECKBOX
+  // Added 2026-10-04 (owner: advanced form builder, package A).
+  RADIO
+  MULTI_CHOICE
+  JALALI_DATE
+  TIME
+  NATIONAL_CODE
+  LEGAL_ID
+  POSTAL_CODE
+  MOBILE
+  RATING
+  /// A heading with optional help text; takes no input.
+  SECTION
 }
 
 model FormDefinition {
   id          String        @id @default(cuid())
   slug        String        @unique
   title       String
+  /// Plain text of the description (listings, page header).
   description String?
+  /// Description from the rich editor, sanitized (ADR-0005), shown above the form.
+  descriptionHtml String?
   status      ContentStatus @default(DRAFT)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -482,7 +497,10 @@ model FormField {
   label        String
   type         FormFieldType
   isRequired   Boolean       @default(false)
-  options      Json? // for SELECT: string[]
+  options      Json? // for SELECT, RADIO, MULTI_CHOICE: string[]
+  /// Per-field settings (hint, placeholder, default, limits, file kinds, rating
+  /// scale), validated by fieldSettingsSchema in src/modules/forms/fields.ts.
+  settings     Json?
   sortOrder    Int           @default(0)
 
   @@unique([formId, key])
@@ -494,6 +512,9 @@ model FormSubmission {
   formId    String
   form      FormDefinition @relation(fields: [formId], references: [id])
   data      Json // { [fieldKey]: value }
+  /// The form's fields as they were when this was sent ([{ key, label, type }]),
+  /// so it stays readable after fields are renamed or removed.
+  fields    Json?
   status    RequestStatus  @default(NEW)
   createdAt DateTime       @default(now())
 

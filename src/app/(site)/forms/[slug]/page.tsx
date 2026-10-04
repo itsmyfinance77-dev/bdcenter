@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { FormCard, PageBody } from '@/components/site/page-body';
-import { ACCEPTED_UPLOAD_EXTENSIONS } from '@/modules/files/service';
+import { RichBody } from '@/components/rich-body';
 import { getPublishedForm } from '@/modules/forms/service';
 import { DynamicForm } from './dynamic-form';
 
@@ -32,8 +32,18 @@ export default async function FormPage({ params }: { params: Promise<Params> }) 
         crumbs={[{ title: 'فرم‌ها', href: '/forms' }, { title: form.title }]}
       />
       <PageBody narrow>
-        <FormCard id="form-heading" title={form.title}>
-          <DynamicForm form={form} acceptedExtensions={ACCEPTED_UPLOAD_EXTENSIONS} />
+        <FormCard
+          id="form-heading"
+          title={form.title}
+          note={
+            form.descriptionHtml ? (
+              <div className="text-sm">
+                <RichBody html={form.descriptionHtml} markdown={null} />
+              </div>
+            ) : null
+          }
+        >
+          <DynamicForm form={form} />
         </FormCard>
       </PageBody>
     </>

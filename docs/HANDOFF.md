@@ -245,7 +245,19 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   about kicker and title); empty = default. «متن‌های صفحهٔ اصلی» in
   «تنظیمات سایت» with the default under each field and a live "longer than
   the design" hint. Only the hero h1 changes — the site name elsewhere
-  (header, footer, metadata) stays `siteInfo.name`.
+  (header, footer, metadata) stays `siteInfo.name`. Merged as PR #8.
+  Follow-up for task 8: enforce the per-field max in `homeTextsSchema` too.
+- Task 6 — advanced form builder. **Owner (2026-10-04) chose all four
+  packages, in order: الف fields, ب form settings, ج submission management,
+  د conditions + multi-step.** Package الف (`feat/form-fields`): new types
+  RADIO, MULTI_CHOICE, JALALI_DATE, TIME, NATIONAL_CODE, LEGAL_ID,
+  POSTAL_CODE, MOBILE, RATING, SECTION; per-field `settings` JSON (hint,
+  placeholder, default, min/max length, min/max number, file kinds and size,
+  rating scale) — rules in `src/modules/forms/fields.ts`; rich description
+  (`FormDefinition.descriptionHtml`); every submission stores a snapshot of
+  its field labels (`FormSubmission.fields`) so renamed/removed fields stay
+  readable in the panel and CSV. The public action reads answers with
+  `answersFrom` (repeated names → arrays).
 
 ## Where things live
 
