@@ -65,6 +65,18 @@ export const FILE_KINDS = {
 export type FileKind = keyof typeof FILE_KINDS;
 const FILE_KIND_KEYS = Object.keys(FILE_KINDS) as [FileKind, ...FileKind[]];
 
+/** Profile values a members-only form can fill in (field setting `prefill`). */
+export const PREFILL_SOURCES = [
+  'fullName',
+  'phone',
+  'email',
+  'nationalId',
+  'postalCode',
+  'companyName',
+  'legalNationalId',
+] as const;
+export type PrefillSource = (typeof PREFILL_SOURCES)[number];
+
 /** The global upload cap; a field may only lower it. */
 export const MAX_FILE_MB = 10;
 
@@ -81,6 +93,8 @@ export const fieldSettingsSchema = z.object({
   maxSizeMb: z.number().int().min(1).max(MAX_FILE_MB).optional(),
   /** RATING: the highest score (default 5). */
   scale: z.number().int().min(3).max(10).optional(),
+  /** Members-only forms: start from this value of the member's profile. */
+  prefill: z.enum(PREFILL_SOURCES).optional(),
 });
 export type FieldSettings = z.infer<typeof fieldSettingsSchema>;
 

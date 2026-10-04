@@ -49,8 +49,13 @@ const wide = new Set([
 const digits = new Intl.NumberFormat('fa-IR');
 
 /** What the field shows: what was sent (after an error), else its default. */
-function shownValue(state: FormState, field: PublicFormField): string | undefined {
+function shownValue(
+  state: FormState,
+  field: PublicFormField,
+  prefill: Record<string, string> = {},
+): string | undefined {
   if (state.status === 'error') return state.values[field.key];
+  if (prefill[field.key]) return prefill[field.key];
   // Multi-choice has no preset (the builder offers none).
   return field.type === 'MULTI_CHOICE' ? undefined : field.settings.defaultValue;
 }
@@ -175,7 +180,14 @@ function FileDrop({
   );
 }
 
-export function DynamicForm({ form }: { form: PublicForm }) {
+export function DynamicForm({
+  form,
+  prefill = {},
+}: {
+  form: PublicForm;
+  /** Starting values from the member's profile (members-only forms). */
+  prefill?: Record<string, string>;
+}) {
   const [state, action] = useActionState(submitDynamicForm.bind(null, form.slug), initialFormState);
 
   function renderField(field: PublicFormField) {
@@ -185,7 +197,7 @@ export function DynamicForm({ form }: { form: PublicForm }) {
       label: field.label,
       required: field.isRequired,
       error: state.status === 'error' ? state.errors[field.key] : undefined,
-      defaultValue: shownValue(state, field),
+      defaultValue: shownValue(state, field, prefill),
     };
 
     switch (field.type) {
