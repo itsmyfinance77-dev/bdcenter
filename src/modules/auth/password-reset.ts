@@ -63,11 +63,12 @@ export async function requestPasswordReset(
       }),
     ]);
     const link = new URL(`/admin/login/reset?token=${token}`, siteUrl).toString();
-    await sendEmail({
+    const sent = await sendEmail({
       to: user.email,
       subject: 'بازیابی رمز عبور پنل مدیریت',
       text: `${user.fullName} عزیز،\n\nبرای انتخاب رمز تازهٔ پنل مدیریت سایت مرکز توسعه کسب‌وکار، پیوند زیر را تا ۳۰ دقیقهٔ دیگر باز کنید:\n${link}\n\nاگر شما درخواست نداده‌اید، این نامه را نادیده بگیرید؛ رمز فعلی شما تغییری نمی‌کند.`,
     });
+    if (!sent) throw new Error('The password-reset email could not be sent.');
     await recordAudit({
       actorId: user.id,
       action: 'admin.password.reset-requested',
