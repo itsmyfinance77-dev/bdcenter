@@ -68,7 +68,7 @@ function revalidateSubmission(formId: string, id: string) {
 export async function setSubmissionStatusAction(id: string, formId: string, formData: FormData) {
   const admin = await requireAdmin();
   const status = z.enum(SUBMISSION_STATUSES).parse(formData.get('status'));
-  const changed = await setSubmissionStatus(id, status, admin.id);
+  const changed = await setSubmissionStatus(formId, id, status, admin.id);
   if (changed && formData.get('notify') === 'on') {
     // After the response: a slow SMS provider must not hold up the panel.
     after(() => notifyFormStatus(id, status));
@@ -85,7 +85,7 @@ export async function assignSubmissionAction(
   const admin = await requireAdmin();
   const parsed = assigneeSchema.safeParse(formData.get('assignee') ?? '');
   const result = parsed.success
-    ? await assignSubmission(id, parsed.data || null, admin.id)
+    ? await assignSubmission(formId, id, parsed.data || null, admin.id)
     : { ok: false as const, error: 'مسئول پیگیری معتبر نیست.' };
   if (!result.ok) return { status: 'error', message: result.error, errors: {}, values: {} };
   revalidateSubmission(formId, id);
@@ -104,7 +104,7 @@ export async function addSubmissionNoteAction(
   if (!parsed.success) {
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
-  if (!(await addSubmissionNote(id, parsed.data.body, admin.id))) {
+  if (!(await addSubmissionNote(formId, id, parsed.data.body, admin.id))) {
     return { status: 'error', message: 'درخواست پیدا نشد.', errors: {}, values };
   }
   revalidateSubmission(formId, id);

@@ -97,13 +97,23 @@ describe('form submissions for staff', () => {
   });
 
   it('assigns, notes and searches answers and notes in either digit script', async () => {
-    expect(await assignSubmission(ids[0]!, other.id, actor.id)).toEqual({ ok: true });
-    expect(await assignSubmission(ids[1]!, actor.id, actor.id)).toEqual({ ok: true });
-    expect(await assignSubmission(ids[1]!, 'c0000000000000000000000', actor.id)).toMatchObject({
+    expect(await assignSubmission(formId, ids[0]!, other.id, actor.id)).toEqual({ ok: true });
+    expect(await assignSubmission(formId, ids[1]!, actor.id, actor.id)).toEqual({ ok: true });
+    expect(
+      await assignSubmission(formId, ids[1]!, 'c0000000000000000000000', actor.id),
+    ).toMatchObject({
       ok: false,
     });
-    expect(await addSubmissionNote(ids[2]!, 'تماس گرفته شد؛ پیگیری 100%', actor.id)).toBe(true);
-    expect(await addSubmissionNote('missing', 'x', actor.id)).toBe(false);
+    expect(await addSubmissionNote(formId, ids[2]!, 'تماس گرفته شد؛ پیگیری 100%', actor.id)).toBe(
+      true,
+    );
+    expect(await addSubmissionNote(formId, 'missing', 'x', actor.id)).toBe(false);
+    // A submission is only reached through its own form.
+    expect(await addSubmissionNote('another-form', ids[2]!, 'x', actor.id)).toBe(false);
+    expect(await assignSubmission('another-form', ids[2]!, null, actor.id)).toMatchObject({
+      ok: false,
+    });
+    expect(await setSubmissionStatus('another-form', ids[2]!, 'DONE', actor.id)).toBe(false);
 
     expect(await names({ q: 'رضایی' })).toEqual(['سارا رضایی']);
     expect(await names({ q: '123' })).toEqual(['علی ۱۲۳']);
@@ -121,8 +131,8 @@ describe('form submissions for staff', () => {
   });
 
   it('filters by status and Jalali days', async () => {
-    expect(await setSubmissionStatus(ids[0]!, 'ACCEPTED', actor.id)).toBe(true);
-    expect(await setSubmissionStatus(ids[0]!, 'ACCEPTED', actor.id)).toBe(false);
+    expect(await setSubmissionStatus(formId, ids[0]!, 'ACCEPTED', actor.id)).toBe(true);
+    expect(await setSubmissionStatus(formId, ids[0]!, 'ACCEPTED', actor.id)).toBe(false);
     expect(await names({ status: 'ACCEPTED' })).toEqual(['سارا رضایی']);
     expect(await names({ status: 'NEW' })).toHaveLength(2);
     expect(await names({ to: '1400/01/01' })).toEqual([]);
@@ -150,6 +160,9 @@ describe('form submissions for staff', () => {
     expect(byKey.score).toMatchObject({ answered: 2 });
     expect(byKey.score!.rows.map((row) => row.count)).toEqual([1, 0, 1]);
     expect(byKey.name).toBeUndefined();
+
+    // Read two at a time: the same counts.
+    expect(await countAnswers(form, {}, actor.id, 2)).toEqual(all);
 
     const accepted = await countAnswers(form, { status: 'ACCEPTED' }, actor.id);
     expect(accepted.total).toBe(1);

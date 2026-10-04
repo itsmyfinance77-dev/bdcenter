@@ -18,6 +18,7 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
 const SUBMISSIONS_PAGE_SIZE = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const COUNT_BATCH = 1000;
 
 const optionalQuery = (max: number) =>
   z
@@ -168,10 +169,18 @@ export async function listStaff() {
   return admins.map(({ id, fullName, isActive }) => ({ id, fullName, isActive }));
 }
 
-/** Changes the status; false when it already had it (nothing to tell anyone). */
-export async function setSubmissionStatus(id: string, status: SubmissionStatus, actorId: string) {
+/**
+ * Changes the status of a submission of this form; false when it already had
+ * it (nothing to tell anyone) or is not this form's.
+ */
+export async function setSubmissionStatus(
+  formId: string,
+  id: string,
+  status: SubmissionStatus,
+  actorId: string,
+) {
   const { count } = await prisma.formSubmission.updateMany({
-    where: { id, status: { not: status } },
+    where: { id, formId, status: { not: status } },
     data: { status },
   });
   if (count === 0) return false;
@@ -189,8 +198,9 @@ export const assigneeSchema = z.union([z.literal(''), z.string().regex(/^[a-z0-9
 
 export type AssignResult = { ok: true } | { ok: false; error: string };
 
-/** Sets (or, with null, clears) the staff member following a submission up. */
+/** Sets (or, with null, clears) the staff member following a submission of this form up. */
 export async function assignSubmission(
+  formId: string,
   id: string,
   assigneeId: string | null,
   actorId: string,
@@ -200,7 +210,7 @@ export async function assignSubmission(
     if (!staff?.isActive) return { ok: false, error: 'این کاربر پیدا نشد یا غیرفعال است.' };
   }
   const { count } = await prisma.formSubmission.updateMany({
-    where: { id },
+    where: { id, formId },
     data: { assigneeId },
   });
   if (count === 0) return { ok: false, error: 'درخواست پیدا نشد.' };
@@ -222,9 +232,12 @@ export const noteSchema = z.object({
     .max(2000, 'یادداشت حداکثر ۲۰۰۰ نویسه است.'),
 });
 
-/** Adds a staff note; false when the submission does not exist. */
-export async function addSubmissionNote(id: string, body: string, actorId: string) {
-  const exists = await prisma.formSubmission.findUnique({ where: { id }, select: { id: true } });
+/** Adds a staff note; false when this form has no such submission. */
+export async function addSubmissionNote(formId: string, id: string, body: string, actorId: string) {
+  const exists = await prisma.formSubmission.findFirst({
+    where: { id, formId },
+    select: { id: true },
+  });
   if (!exists) return false;
   await prisma.formSubmissionNote.create({ data: { submissionId: id, authorId: actorId, body } });
   // The text stays out of the audit log: notes may hold personal details.
@@ -291,9 +304,28 @@ export async function countAnswers(
   },
   filter: SubmissionFilter,
   meId: string,
+  batchSize = COUNT_BATCH,
 ): Promise<{ total: number; fields: AnswerCount[] }> {
   const where = await submissionWhere(form.id, filter, meId);
-  const submissions = await prisma.formSubmission.findMany({ where, select: { data: true } });
+  // Read in batches so a form with many answers never sits in memory at once.
+  const submissions: { data: unknown }[] = [];
+  const counted = form.fields.filter((field) => COUNTED_TYPES.has(field.type));
+  for (let cursor: string | undefined; ;) {
+    const batch = await prisma.formSubmission.findMany({
+      where,
+      select: { id: true, data: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    for (const { data } of batch) {
+      // Keep only the counted answers of each submission.
+      const all = data as Record<string, unknown>;
+      submissions.push({ data: Object.fromEntries(counted.map((f) => [f.key, all[f.key]])) });
+    }
+    if (batch.length < batchSize) break;
+    cursor = batch.at(-1)!.id;
+  }
   const fields = form.fields
     .filter((field) => COUNTED_TYPES.has(field.type))
     .map((field) => {
