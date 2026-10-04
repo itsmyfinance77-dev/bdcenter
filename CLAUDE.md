@@ -50,6 +50,9 @@ Record every unknown in `docs/product/open-questions.md` with an `OQ-BD-*` id.
 
 Before a large architectural change, add or amend an ADR in `docs/decisions`.
 
+Every PR names its backlog story (`ST-BD-*`, `docs/product/backlog/`) and
+updates that story's status, PR and commit; new work gets a story first.
+
 Every change to the admin panel, or any related site change staff would notice,
 must update the staff guide (`src/content/admin-guide.ts`, shown at `/admin/help`)
 in the same commit: plain Persian, the panel's own button and menu names,

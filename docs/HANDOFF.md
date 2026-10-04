@@ -283,7 +283,7 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `?view=1` on the file route, inline only for checked JPEG/PNG/WebP under
   `CSP sandbox`), charts `/admin/forms/[id]/stats`.
 
-- Package د (`feat/form-steps`): field settings `showIf: { field, value }`
+- Package د, merged as PR #12 (`e0bbdc1`); task 6 is complete: field settings `showIf: { field, value }`
   (an earlier SELECT/RADIO/MULTI_CHOICE/CHECKBOX field; CHECKBOX uses
   `CHECKED`) and `newPage` on SECTION. Pure helpers in
   `src/modules/forms/fields.ts`: `visibleFieldKeys` (shared by the browser
@@ -293,6 +293,15 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   (not sent) and other steps' fields with `hidden` (still sent), checks the
   step's required fields before «مرحلهٔ بعد», jumps to the first step with a
   server error, and skips steps whose questions are all hidden. No migration.
+
+- Task 7 (`docs/backlog`): the development backlog in
+  `docs/product/backlog/` — README (IDs `EP-BD-nn` / `ST-BD-nn-nn`,
+  statuses, priority, definition of ready and done incl. the PR/review gate
+  and the staff-guide rule) and nine epic files with every story built so
+  far (commits / PRs), planned (tasks 8, 9, go-live list, letter to the
+  center, test-data cleanup) and waiting on the center (`OQ-BD-*`). New
+  `OQ-BD-23` (SMTP account). `CLAUDE.md` now asks every PR to name its
+  story and update it.
 
 ## Where things live
 
