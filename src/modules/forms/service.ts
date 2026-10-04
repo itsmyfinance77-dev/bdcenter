@@ -671,7 +671,8 @@ export async function exportSubmissionsCsv(
     action: 'form.submission.export',
     entity: 'FormDefinition',
     entityId: form.id,
-    metadata: { rows: rows.length, filter },
+    // The typed search stays out of the log, like note texts.
+    metadata: { rows: rows.length, filter: { ...filter, q: filter.q ? '…' : undefined } },
   });
   return { filename: `${form.slug}-submissions.csv`, content: toCsv([header, ...rows]) };
 }
