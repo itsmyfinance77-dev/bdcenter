@@ -339,6 +339,26 @@ test('the admin creates and publishes a course from the panel', async ({ page })
   expect((await ics.text()).match(/BEGIN:VEVENT/g)).toHaveLength(2);
 });
 
+test('an ADMIN changes a home-page text and clears it again', async ({ page }) => {
+  await signInAdmin(page);
+  await page.goto('/admin/settings');
+  const lead = page.getByLabel('جملهٔ معرفی');
+  const original = await lead.inputValue();
+  await lead.fill(`جملهٔ آزمایشی صفحهٔ اصلی ${run}`);
+  await page.getByRole('button', { name: 'ذخیرهٔ متن‌ها' }).click();
+  await expect(page.getByText('متن‌های صفحهٔ اصلی ذخیره شد.')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByText(`جملهٔ آزمایشی صفحهٔ اصلی ${run}`)).toBeVisible();
+
+  // An empty field brings back the design's own text.
+  await page.goto('/admin/settings');
+  await page.getByLabel('جملهٔ معرفی').fill('');
+  await page.getByRole('button', { name: 'ذخیرهٔ متن‌ها' }).click();
+  await expect(page.getByText('متن‌های صفحهٔ اصلی ذخیره شد.')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByText(original).first()).toBeVisible();
+});
+
 test('admin pages load', async ({ page }) => {
   await signInAdmin(page);
   for (const [path, heading] of [

@@ -235,7 +235,17 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   (`session-rows.tsx`) adds/removes rows. Course page lists the sessions,
   course list shows «n جلسه», the events calendar / course `.ics` / member
   feed have one entry per session (UID = course id + session start), and
-  reminders go per session («جلسهٔ ۲ از ۵»).
+  reminders go per session («جلسهٔ ۲ از ۵»). Merged as PR #7, with
+  `unexplainedEnd`: a pre-session course whose end was on another day shows
+  that end in the form so staff add the missing sessions. Follow-up for task
+  8: note a dropped legacy end in the course's audit entry.
+- Task 5 — editable home-page texts (`feat/home-texts`): setting
+  `home.texts` (`src/modules/settings/home-texts.ts`) holds only the texts
+  that differ from the built-in copy (hero badge, title, subtitle, lead;
+  about kicker and title); empty = default. «متن‌های صفحهٔ اصلی» in
+  «تنظیمات سایت» with the default under each field and a live "longer than
+  the design" hint. Only the hero h1 changes — the site name elsewhere
+  (header, footer, metadata) stays `siteInfo.name`.
 
 ## Where things live
 

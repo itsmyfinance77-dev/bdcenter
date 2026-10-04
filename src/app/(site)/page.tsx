@@ -13,7 +13,12 @@ import { formatDate } from '@/lib/format';
 import { plainText } from '@/lib/text';
 import { listPublishedArticles, type ArticleSummary } from '@/modules/content/service';
 import { getSystemPageContent } from '@/modules/pages/service';
-import { getContactInfo, getHomeStats, type ContactInfo } from '@/modules/settings/service';
+import {
+  getContactInfo,
+  getHomeStats,
+  getHomeTexts,
+  type ContactInfo,
+} from '@/modules/settings/service';
 import { AtAGlance } from '@/components/home/at-a-glance';
 
 export const dynamic = 'force-dynamic';
@@ -78,11 +83,12 @@ function toCard(article: ArticleSummary): NewsCard {
 const sectionTitle = 'text-[clamp(28px,3.4vw,40px)] leading-[1.35] font-extrabold text-brand-900';
 
 export default async function HomePage() {
-  const [articles, about, contact, stats] = await Promise.all([
+  const [articles, about, contact, stats, texts] = await Promise.all([
     latestArticles(),
     aboutSummary(),
     getContactInfo(),
     getHomeStats(),
+    getHomeTexts(),
   ]);
 
   return (
@@ -117,19 +123,19 @@ export default async function HomePage() {
               <span className="relative size-2 rounded-full bg-accent-light">
                 <span className="absolute inset-0 animate-pulse-ring rounded-full bg-accent-light" />
               </span>
-              {homeCopy.heroBadge}
+              {texts.heroBadge}
             </span>
             <h1
               id="hero-title"
               className="bg-[linear-gradient(180deg,#ffffff_30%,#b9d4f7)] bg-clip-text text-[clamp(32px,4.2vw,54px)] leading-[1.3] font-black tracking-[-.01em] text-balance text-transparent"
             >
-              {siteInfo.name}
+              {texts.heroTitle}
             </h1>
             <p className="text-[clamp(16px,1.6vw,19px)] font-semibold text-on-dark">
-              {siteInfo.parentOrg}
+              {texts.heroSubtitle}
             </p>
             <p className="max-w-[560px] text-[clamp(17px,1.7vw,20px)] leading-loose text-pretty text-on-dark-2">
-              {homeCopy.heroLead}
+              {texts.heroLead}
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
               <a
@@ -166,9 +172,9 @@ export default async function HomePage() {
                 className="size-[60px] flex-none"
               />
               <div className="flex flex-col gap-2.5">
-                <span className="text-sm font-bold text-accent-ink">{homeCopy.aboutKicker}</span>
+                <span className="text-sm font-bold text-accent-ink">{texts.aboutKicker}</span>
                 <h2 id="about-title" className={sectionTitle}>
-                  {homeCopy.aboutTitle}
+                  {texts.aboutTitle}
                 </h2>
               </div>
             </div>
@@ -178,7 +184,12 @@ export default async function HomePage() {
             </p>
           </div>
           <div data-reveal="" data-reveal-delay="100">
-            <AboutReveal text={about} address={contact.address} />
+            <AboutReveal
+              text={about}
+              address={contact.address}
+              kicker={texts.aboutKicker}
+              title={texts.aboutTitle}
+            />
           </div>
         </div>
       </section>

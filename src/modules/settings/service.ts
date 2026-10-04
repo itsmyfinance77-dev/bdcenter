@@ -4,6 +4,7 @@ import { mainNav, servicesMenu, siteInfo } from '@/content/site';
 import { formatNumber } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { isSafeHref } from '@/lib/safe-href';
+import { homeTextsSchema, resolveHomeTexts, type HomeTexts } from './home-texts';
 import { toLatinDigits } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import {
@@ -79,6 +80,8 @@ const definitions = {
   'home.stats': { schema: statsSchema, fallback: [] as HomeStat[] },
   /** Notice above the header of every public page (owner's request, 2026-10-04). */
   'site.announcement': { schema: announcementSchema, fallback: noAnnouncement },
+  /** The home page's hero and about texts; empty = the built-in copy (owner's request, 2026-10-04). */
+  'home.texts': { schema: homeTextsSchema, fallback: {} },
   /** The header: the «خدمات» dropdown and the top-level links (owner's request, 2026-10-03). */
   'site.menu': { schema: menuSchema, fallback: defaultMenu },
   /**
@@ -315,3 +318,13 @@ export const reminderInputSchema = z
     quietFrom: input.quietFrom,
     quietUntil: input.quietUntil,
   }));
+
+/** The home page texts; the built-in ones when the database is unreachable. */
+export async function getHomeTexts(): Promise<HomeTexts> {
+  try {
+    return resolveHomeTexts(await getSetting('home.texts'));
+  } catch (error) {
+    console.error('getHomeTexts: using the built-in texts', error);
+    return resolveHomeTexts({});
+  }
+}
