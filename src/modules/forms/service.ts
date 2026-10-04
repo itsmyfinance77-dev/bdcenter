@@ -9,9 +9,11 @@ import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
 import { richInput } from '@/lib/rich-html';
 import { recordAudit } from '@/modules/audit/service';
+import { consume, LIMITS } from '@/modules/ratelimit/service';
 import {
   checkUpload,
   checkUploadContent,
+  deleteStoredFile,
   storedFileSchema,
   storeUpload,
   type StoredFile,
@@ -228,8 +230,18 @@ export async function submitForm(
   );
   const snapshot: FieldSnapshot[] = inputs.map(({ key, label, type }) => ({ key, label, type }));
 
-  const outcome = await prisma.$transaction(
-    async (tx) => {
+  // Files are written before the lock (a slow upload must not hold up other
+  // people sending this form) and removed again if no submission keeps them.
+  const stored: StoredFile[] = [];
+  const discard = () => Promise.allSettled(stored.map((file) => deleteStoredFile(file.storageKey)));
+  let outcome: { state: 'open'; id: string } | { state: Exclude<FormAvailability, 'open'> };
+  try {
+    for (const { key, file } of uploads) {
+      const saved = await storeUpload(`forms/${form.slug}`, file);
+      stored.push(saved);
+      data[key] = saved;
+    }
+    outcome = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM form_definitions WHERE id = ${form.id} FOR UPDATE`;
       const [submissions, mine] = await Promise.all([
         tx.formSubmission.count({ where: { formId: form.id } }),
@@ -241,10 +253,7 @@ export async function submitForm(
         signedIn: member !== null,
         memberAnswered: mine > 0,
       });
-      if (state !== 'open') return { state } as const;
-      for (const { key, file } of uploads) {
-        data[key] = (await storeUpload(`forms/${form.slug}`, file)) satisfies StoredFile;
-      }
+      if (state !== 'open') return { state };
       const created = await tx.formSubmission.create({
         data: {
           formId: form.id,
@@ -254,24 +263,23 @@ export async function submitForm(
         },
         select: { id: true },
       });
-      return { state, id: created.id } as const;
-    },
-    // Uploads are written inside the lock; give them time.
-    { timeout: 20_000 },
-  );
-  if (outcome.state !== 'open') return { ok: false, reason: outcome.state };
+      return { state, id: created.id };
+    });
+  } catch (error) {
+    await discard();
+    throw error;
+  }
+  if (outcome.state !== 'open') {
+    await discard();
+    return { ok: false, reason: outcome.state };
+  }
 
   const definition = await prisma.formDefinition.findUniqueOrThrow({
     where: { id: form.id },
     select: { confirmToApplicant: true, alertRecipients: true },
   });
-  const mobileAnswer = inputs.find((f) => f.type === 'MOBILE' && typeof data[f.key] === 'string');
-  const emailAnswer = inputs.find((f) => f.type === 'EMAIL' && typeof data[f.key] === 'string');
   const confirmTo = definition.confirmToApplicant
-    ? {
-        phone: member?.phone ?? (mobileAnswer ? (data[mobileAnswer.key] as string) : null),
-        email: member?.email ?? (emailAnswer ? (data[emailAnswer.key] as string) : null),
-      }
+    ? await confirmationContact(member, inputs, data)
     : null;
   const recipients = recipientsSchema.safeParse(definition.alertRecipients).data ?? null;
   return {
@@ -283,6 +291,27 @@ export async function submitForm(
     alertRecipients:
       recipients && recipients.phones.length + recipients.emails.length > 0 ? recipients : null,
   };
+}
+
+/**
+ * Where the «your answer arrived» message goes. SMS only to a member's own
+ * number, proven with a code: a number typed into a form could be anyone's,
+ * and the site's SMS line must not be usable to pester strangers. Without a
+ * member, an email to the form's first email answer, at most a few a day per
+ * address.
+ */
+async function confirmationContact(
+  member: FormMember | null,
+  inputs: { key: string; type: FieldType }[],
+  data: Record<string, unknown>,
+): Promise<{ phone: string | null; email: string | null } | null> {
+  if (member) return { phone: member.phone, email: member.email };
+  const field = inputs.find((f) => f.type === 'EMAIL' && typeof data[f.key] === 'string');
+  const email = field ? (data[field.key] as string) : null;
+  if (!email || !(await consume(`form-confirm:${email.toLowerCase()}`, LIMITS.formConfirmEmail))) {
+    return null;
+  }
+  return { phone: null, email };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readdir, rm } from 'node:fs/promises';
+import { basename, dirname } from 'node:path';
 import { prisma } from '@/lib/prisma';
+import { storedFilePath } from '@/modules/files/service';
 import {
   duplicateForm,
   formDefinitionInputSchema,
@@ -106,6 +109,31 @@ describe('form settings', () => {
     expect(await prisma.formSubmission.count({ where: { formId: id } })).toBe(1);
   });
 
+  it('keeps no file from an answer that lost the last place', async () => {
+    const input = formDefinitionInputSchema.parse({
+      title: 'فرم پیوست',
+      slug: `${PREFIX}upload`,
+      status: 'PUBLISHED',
+      maxSubmissions: '1',
+      fields: [{ key: 'doc', label: 'پیوست', type: 'FILE', isRequired: true, options: [] }],
+    });
+    await saveFormDefinition(null, input, actor.id);
+    const pdf = () =>
+      new File([Buffer.from('%PDF-1.4\n%test\n')], 'a.pdf', { type: 'application/pdf' });
+    const results = await Promise.all([
+      submitForm(`${PREFIX}upload`, { doc: pdf() }),
+      submitForm(`${PREFIX}upload`, { doc: pdf() }),
+    ]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    const kept = await prisma.formSubmission.findFirstOrThrow({
+      where: { form: { slug: `${PREFIX}upload` } },
+    });
+    const file = (kept.data as { doc: { storageKey: string } }).doc;
+    const folder = dirname(storedFilePath(file.storageKey)!);
+    expect(await readdir(folder)).toEqual([basename(file.storageKey)]);
+    await rm(folder, { recursive: true, force: true });
+  });
+
   it('is for signed-in members only, once each, and fills in from the profile', async () => {
     await form('members', {
       membersOnly: 'on',
@@ -134,13 +162,52 @@ describe('form settings', () => {
     });
   });
 
-  it('confirms to the form’s own mobile answer when it is not members-only', async () => {
+  it('never texts a typed-in number; emails a typed address a few times a day', async () => {
     await form('confirm', { confirmToApplicant: 'on' });
     expect(await submitForm(`${PREFIX}confirm`, answer)).toMatchObject({
       ok: true,
-      confirmTo: { phone: '09880000301' },
+      confirmTo: null,
       alertRecipients: null,
     });
+
+    const email = `fset-${Date.now()}@bdcenter.test`;
+    await saveFormDefinition(
+      null,
+      formDefinitionInputSchema.parse({
+        title: 'فرم ایمیل',
+        slug: `${PREFIX}email`,
+        status: 'PUBLISHED',
+        confirmToApplicant: 'on',
+        fields: [
+          ...fields,
+          { key: 'mail', label: 'ایمیل', type: 'EMAIL', isRequired: false, options: [] },
+        ],
+      }),
+      actor.id,
+    );
+    const sent = [];
+    for (let i = 0; i < 4; i++) {
+      const result = await submitForm(`${PREFIX}email`, { ...answer, mail: email });
+      sent.push(result.ok ? result.confirmTo : 'failed');
+    }
+    expect(sent).toEqual([
+      { phone: null, email },
+      { phone: null, email },
+      { phone: null, email },
+      null,
+    ]);
+  });
+
+  it('takes one answer per member even when the same member sends twice at once', async () => {
+    const id = await form('twice', { membersOnly: 'on', onePerMember: 'on' });
+    const slug = `${PREFIX}twice`;
+    const results = await Promise.all([
+      submitForm(slug, answer, member(3)),
+      submitForm(slug, answer, member(3)),
+    ]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.find((r) => !r.ok)).toMatchObject({ reason: 'already' });
+    expect(await prisma.formSubmission.count({ where: { formId: id } })).toBe(1);
   });
 
   it('copies a form as a draft with its fields and settings', async () => {
