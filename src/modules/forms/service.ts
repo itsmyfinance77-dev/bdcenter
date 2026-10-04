@@ -28,7 +28,9 @@ import {
   fileProblem,
   readSettings,
   settingsProblem,
+  conditionProblem,
   valueSchema,
+  visibleFieldKeys,
   type FieldType,
   type PrefillSource,
   type PublicFormField,
@@ -221,8 +223,11 @@ export async function submitForm(
   const errors: Record<string, string> = {};
   const uploads: { key: string; file: File }[] = [];
   const inputs = form.fields.filter((field) => field.type !== 'SECTION');
+  // Fields hidden by a condition are neither required nor stored.
+  const shown = visibleFieldKeys(form.fields, values);
+  const answered = inputs.filter((field) => shown.has(field.key));
 
-  for (const field of inputs.filter((f) => f.type === 'FILE')) {
+  for (const field of answered.filter((f) => f.type === 'FILE')) {
     const value = values[field.key];
     const file = value instanceof File && value.size > 0 ? value : null;
     if (!file) {
@@ -236,7 +241,9 @@ export async function submitForm(
   }
 
   const schema = z.object(
-    Object.fromEntries(inputs.filter((f) => f.type !== 'FILE').map((f) => [f.key, valueSchema(f)])),
+    Object.fromEntries(
+      answered.filter((f) => f.type !== 'FILE').map((f) => [f.key, valueSchema(f)]),
+    ),
   );
   const parsed = schema.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
@@ -446,7 +453,7 @@ export const formDefinitionInputSchema = z
       });
     }
     const seen = new Set<string>();
-    for (const field of form.fields) {
+    form.fields.forEach((field, index) => {
       if (seen.has(field.key)) {
         ctx.addIssue({
           code: 'custom',
@@ -455,7 +462,11 @@ export const formDefinitionInputSchema = z
         });
       }
       seen.add(field.key);
-    }
+      const problem = conditionProblem(field, form.fields.slice(0, index));
+      if (problem) {
+        ctx.addIssue({ code: 'custom', path: ['fields'], message: `«${field.label}»: ${problem}` });
+      }
+    });
   });
 
 export type FormDefinitionInput = z.infer<typeof formDefinitionInputSchema>;

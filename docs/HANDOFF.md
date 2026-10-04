@@ -270,7 +270,7 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   verified phone; anonymous applicants get an email to the first EMAIL
   answer, max 3/day per address (`LIMITS.formConfirmEmail`). Per-form staff
   recipients via `alertStaff(..., only)`. «کپی فرم» = `duplicateForm`.
-- Package ج (`feat/form-submissions`): `FormSubmission.assigneeId` and
+- Package ج, merged as PR #11 (`7059faf`): `FormSubmission.assigneeId` and
   `FormSubmissionNote` (migration `form_submission_management`). Logic in
   `src/modules/forms/submissions.ts` (re-exported by the forms service):
   filters from the query string (`parseSubmissionFilter`: status, assignee
@@ -282,6 +282,17 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `/admin/forms/[id]/submissions/[submissionId]` (image previews via
   `?view=1` on the file route, inline only for checked JPEG/PNG/WebP under
   `CSP sandbox`), charts `/admin/forms/[id]/stats`.
+
+- Package د (`feat/form-steps`): field settings `showIf: { field, value }`
+  (an earlier SELECT/RADIO/MULTI_CHOICE/CHECKBOX field; CHECKBOX uses
+  `CHECKED`) and `newPage` on SECTION. Pure helpers in
+  `src/modules/forms/fields.ts`: `visibleFieldKeys` (shared by the browser
+  and `submitForm`, which validates and stores only shown fields),
+  `conditionProblem` (checked in `formDefinitionInputSchema`), `formSteps`.
+  The public `DynamicForm` hides conditional fields in disabled fieldsets
+  (not sent) and other steps' fields with `hidden` (still sent), checks the
+  step's required fields before «مرحلهٔ بعد», jumps to the first step with a
+  server error, and skips steps whose questions are all hidden. No migration.
 
 ## Where things live
 

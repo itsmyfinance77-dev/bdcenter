@@ -13,7 +13,9 @@ import { RichEditor } from '@/components/admin/rich-editor';
 import { contentStatusLabel, formFieldTypeLabel, formPrefillLabel } from '@/content/admin';
 import { actionResultKey, type FormState } from '@/lib/form-state';
 import {
+  CHECKED,
   CHOICE_TYPES,
+  CONDITION_TYPES,
   FILE_KINDS,
   MAX_FILE_MB,
   PREFILL_TYPES,
@@ -69,6 +71,8 @@ function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
     keep.push('placeholder', 'defaultValue');
   }
   if (PREFILL_TYPES.has(type)) keep.push('prefill');
+  if (type === 'SECTION') keep.push('newPage');
+  else keep.push('showIf');
   return Object.fromEntries(
     keep.filter((key) => settings[key] !== undefined).map((key) => [key, settings[key]]),
   ) as FieldSettings;
@@ -125,6 +129,77 @@ function NumberInput({
   );
 }
 
+/**
+ * «نمایش فقط وقتی…»: an earlier choice or tick field and the answer that
+ * shows this field. Empty = always shown.
+ */
+function ConditionEditor({
+  value,
+  earlier,
+  onChange,
+}: {
+  value: FieldSettings['showIf'];
+  earlier: BuilderField[];
+  onChange: (value: FieldSettings['showIf']) => void;
+}) {
+  const controllers = earlier.filter((f) => CONDITION_TYPES.has(f.type) && f.key);
+  const controller = controllers.find((f) => f.key === value?.field);
+  const answers = controller
+    ? controller.type === 'CHECKBOX'
+      ? [{ value: CHECKED, label: 'تیک خورده باشد' }]
+      : controller.options
+          .map((option) => option.trim())
+          .filter(Boolean)
+          .map((option) => ({ value: option, label: option }))
+    : [];
+  if (controllers.length === 0 && !value) return null;
+  return (
+    <fieldset className="grid gap-2 sm:col-span-2 sm:grid-cols-2">
+      <legend className="mb-1 text-xs font-semibold text-ink">نمایش فقط وقتی…</legend>
+      <label className="text-xs text-ink-2">
+        فیلد
+        <select
+          className={inputClass}
+          value={value?.field ?? ''}
+          onChange={(event) => {
+            const next = controllers.find((f) => f.key === event.target.value);
+            if (!next) return onChange(undefined);
+            const first =
+              next.type === 'CHECKBOX' ? CHECKED : next.options.map((o) => o.trim()).find(Boolean);
+            onChange(first ? { field: next.key, value: first } : undefined);
+          }}
+        >
+          <option value="">همیشه نمایش داده شود</option>
+          {controllers.map((f) => (
+            <option key={f.key} value={f.key}>
+              {f.label || f.key}
+            </option>
+          ))}
+          {value && !controller ? (
+            <option value={value.field}>{value.field} (پیدا نشد)</option>
+          ) : null}
+        </select>
+      </label>
+      {value && controller ? (
+        <label className="text-xs text-ink-2">
+          پاسخ
+          <select
+            className={inputClass}
+            value={value.value}
+            onChange={(event) => onChange({ field: value.field, value: event.target.value })}
+          >
+            {answers.map((answer) => (
+              <option key={answer.value} value={answer.value}>
+                {answer.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+    </fieldset>
+  );
+}
+
 /** One field's row: label, key, type, options, settings and the order buttons. */
 function FieldEditor({
   field,
@@ -134,6 +209,7 @@ function FieldEditor({
   move,
   remove,
   membersOnly,
+  earlier,
 }: {
   field: BuilderField;
   index: number;
@@ -143,6 +219,8 @@ function FieldEditor({
   remove: () => void;
   /** The form is members-only: fields may start from the member's profile. */
   membersOnly: boolean;
+  /** The fields above this one: a condition may only look back. */
+  earlier: BuilderField[];
 }) {
   const { type, settings } = field;
   const canPrefill = membersOnly && PREFILL_TYPES.has(type);
@@ -212,6 +290,24 @@ function FieldEditor({
               onChange={(event) => set({ hint: event.target.value || undefined })}
             />
           </label>
+          {isSection ? (
+            <label className="flex items-center gap-2 text-xs text-ink sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={settings.newPage === true}
+                onChange={(event) => set({ newPage: event.target.checked || undefined })}
+                className="size-4 accent-primary"
+              />
+              این عنوان یک مرحلهٔ تازه را شروع کند (فرم چندمرحله‌ای)
+            </label>
+          ) : null}
+          {isSection ? null : (
+            <ConditionEditor
+              value={settings.showIf}
+              earlier={earlier}
+              onChange={(showIf) => set({ showIf })}
+            />
+          )}
           {canPrefill ? (
             <label className="text-xs text-ink-2 sm:col-span-2">
               پر کردن از حساب عضو
@@ -362,13 +458,18 @@ export function FormBuilder({
   id,
   initial,
   initialFields,
+  saved = false,
 }: {
   id: string | null;
   initial: Record<string, string>;
   initialFields: BuilderField[];
+  /** Just saved (`?saved=1`): say so until the next attempt. */
+  saved?: boolean;
 }) {
   const initialState: FormState = { status: 'error', message: '', errors: {}, values: initial };
   const [state, action] = useActionState(saveFormAction.bind(null, id), initialState);
+  // The first state object: any later one means a save was tried since.
+  const [firstState] = useState(state);
   const [fields, setFields] = useState<BuilderField[]>(initialFields);
   const values = state.status === 'error' ? state.values : initial;
   const [membersOnly, setMembersOnly] = useState(values.membersOnly === 'on');
@@ -419,6 +520,14 @@ export function FormBuilder({
   return (
     <form action={action} className="space-y-6">
       {state.status === 'error' && state.message ? <FormMessage state={state} /> : null}
+      {saved && state === firstState ? (
+        <p
+          role="status"
+          className="rounded-control border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
+        >
+          ذخیره شد.
+        </p>
+      ) : null}
 
       <section className="space-y-4 rounded-panel border border-line bg-white p-6">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -524,6 +633,7 @@ export function FormBuilder({
               move={(offset) => move(index, offset)}
               remove={() => setFields((current) => current.filter((_, i) => i !== index))}
               membersOnly={membersOnly}
+              earlier={fields.slice(0, index)}
             />
           ))}
         </ol>

@@ -195,3 +195,82 @@ test('staff search the answers, take one on, note it and tell the applicant', as
   await expect(page.getByText('بر پایهٔ ۱ درخواست')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'زمینه' })).toBeVisible();
 });
+
+test('a multi-step form shows a question only when it applies', async ({ page }) => {
+  const slug = `e2e-steps-${state().runId}`;
+  await db().formDefinition.create({
+    data: {
+      slug,
+      title: 'فرم چندمرحله‌ای',
+      status: 'PUBLISHED',
+      fields: {
+        create: [
+          {
+            key: 'who',
+            label: 'مشخصات',
+            type: 'SECTION',
+            sortOrder: 1,
+            settings: { newPage: true },
+          },
+          {
+            key: 'kind',
+            label: 'نوع متقاضی',
+            type: 'RADIO',
+            isRequired: true,
+            sortOrder: 2,
+            options: ['حقیقی', 'حقوقی'],
+          },
+          {
+            key: 'company',
+            label: 'نام شرکت',
+            type: 'TEXT',
+            isRequired: true,
+            sortOrder: 3,
+            settings: { showIf: { field: 'kind', value: 'حقوقی' } },
+          },
+          {
+            key: 'more',
+            label: 'توضیحات',
+            type: 'SECTION',
+            sortOrder: 4,
+            settings: { newPage: true },
+          },
+          { key: 'note', label: 'توضیح', type: 'TEXTAREA', isRequired: true, sortOrder: 5 },
+        ],
+      },
+    },
+  });
+
+  await page.goto(`/forms/${slug}`);
+  await expect(page.getByText('مرحلهٔ ۱ از ۲: مشخصات')).toBeVisible();
+  await expect(page.getByLabel('نام شرکت')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'ثبت درخواست' })).toHaveCount(0);
+
+  // Moving on without the required answers is refused on the spot (retried
+  // until the page has hydrated: before that the button does nothing).
+  await expect(async () => {
+    await page.getByRole('button', { name: 'مرحلهٔ بعد' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'نوع متقاضی' })).toBeVisible({
+      timeout: 1_000,
+    });
+  }).toPass({ timeout: 20_000 });
+
+  await page.getByLabel('حقوقی').check();
+  await expect(page.getByLabel('نام شرکت')).toBeVisible();
+  await page.getByLabel('حقیقی').check();
+  await expect(page.getByLabel('نام شرکت')).toBeHidden();
+  await page.getByLabel('حقوقی').check();
+  await page.getByLabel('نام شرکت').fill('شرکت آزمون');
+  await page.getByRole('button', { name: 'مرحلهٔ بعد' }).click();
+
+  await expect(page.getByText('مرحلهٔ ۲ از ۲: توضیحات')).toBeVisible();
+  await page.getByLabel('توضیح').fill('متن آزمایشی');
+  await page.getByRole('button', { name: 'مرحلهٔ قبل' }).click();
+  await expect(page.getByLabel('نام شرکت')).toHaveValue('شرکت آزمون');
+  await page.getByRole('button', { name: 'مرحلهٔ بعد' }).click();
+  await page.getByRole('button', { name: 'ثبت درخواست' }).click();
+  await expect(page.getByText('درخواست شما با موفقیت ثبت شد.')).toBeVisible();
+
+  const submission = await db().formSubmission.findFirstOrThrow({ where: { form: { slug } } });
+  expect(submission.data).toEqual({ kind: 'حقوقی', company: 'شرکت آزمون', note: 'متن آزمایشی' });
+});
