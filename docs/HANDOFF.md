@@ -303,7 +303,7 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `OQ-BD-23` (SMTP account). `CLAUDE.md` now asks every PR to name its
   story and update it.
 
-- Task 8, part 1 (`fix/audit-hardening`, ST-BD-08-05): every admin page
+- Task 8, part 1, merged as PR #14 (`caf8cda`, ST-BD-08-05): every admin page
   calls `requireAdmin()` itself (the layout is not re-run on client-side
   navigation and middleware does not see revocation;
   `tests/admin-guards.test.ts` keeps it so); the panel fits phone width
@@ -314,7 +314,7 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `max` in `homeTextsSchema`). The written review and QA report follow in
   their own PR.
 
-- Task 8, part 2 (`docs/audit-report`, ST-BD-08-05):
+- Task 8, part 2 (PR #15, `docs/audit-report`, ST-BD-08-05):
   `docs/security-review-2026-10-04.md` (method, findings, checked areas,
   hardening verdicts) and the owner's Persian `docs/qa-report-2026-10-04.fa.md`.
   Least-privilege database role: the site connects as `bdcenter_app`
