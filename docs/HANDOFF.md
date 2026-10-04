@@ -1,13 +1,39 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-04 (end of the fifth session; next steps in «START HERE»). Read this first in a new session,
+Last updated: 2026-10-04 (end of the sixth session; next steps in «START HERE — seventh session»). Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
 The owner communicates in Persian and prefers short, concrete Persian
 explanations; code, commits and technical docs stay in English (see `CLAUDE.md`).
 
-## START HERE — sixth session (written 2026-10-04 before a context clear)
+## START HERE — seventh session
+
+The sixth session finished every task the owner listed (0–9 below), each as
+its own reviewed PR: #2 CI, #3 reminders, #4/#5 announcement bar, #6 surveys,
+#7 course sessions, #8 home texts, #9–#12 form builder (الف–د), #13 backlog,
+#14/#15 audit fixes, security review, QA report and the restricted database
+role, #16 research report. The way of working in section 1 stays. Plan work
+from the backlog (`docs/product/backlog/`, every PR names its `ST-BD-*`).
+
+Next, in this order:
+
+1. **Owner decisions** (ask in Persian, see `docs/qa-report-2026-10-04.fa.md`
+   and `docs/product/research-2026-10-04.fa.md`): mandatory two-step login for
+   ADMIN; a daily cap for group SMS; permission to download ZAP/Semgrep for a
+   scan of our own local build (ST-BD-08-07); which research proposals to
+   build (each becomes a story first).
+2. **No center needed:** plain go-live checklist (ST-BD-01-11), Persian letter
+   of open questions to the center (ST-BD-09-05), test-data cleanup with the
+   owner's OK (ST-BD-08-06 — includes the local test admin
+   `claude-dev@bdcenter.test` in the dev DB).
+3. **Waiting on the center** (`منتظر مرکز` stories): VPS + DNS (OQ-BD-08), SMS
+   provider (OQ-BD-11), sending email account (OQ-BD-23), content and rules.
+
+Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
+(see `deploy/env.production.example` and `docs/operations/deploy.md`).
+
+## Sixth session — the owner's task list (written 2026-10-04 before a context clear)
 
 ### 1. New way of working (owner's decision, 2026-10-04)
 
@@ -325,6 +351,12 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   local scan. Note: `tests/db/members.test.ts` «other representatives» fails
   on the local `bdcenter_e2e` database because of leftover e2e members (not
   on the dev DB or in CI).
+
+- Task 8 merged: PR #14 (`caf8cda`) and PR #15 (`e2a2ebc`).
+- Task 9 (`docs/research`, ST-BD-09-04): `docs/product/research-2026-10-04.fa.md`
+  — 15 proposals not built or proposed before (priority, effort, why), with
+  sources (SBDC, EEN, Iranian chamber/park/incubator sites, booking and QR
+  attendance practice, Bale's messaging API). No code.
 
 ## Where things live
 
