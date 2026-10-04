@@ -6,6 +6,7 @@ import { clientIp } from '@/lib/client-ip';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { servedOverHttps } from '@/lib/https';
 import { fieldErrors } from '@/lib/validation';
+import { recordServerError } from '@/modules/errors/service';
 import {
   completePasswordReset,
   forgotSchema,
@@ -32,7 +33,19 @@ export async function forgotAction(_prev: FormState, formData: FormData): Promis
     await clientIp(),
     await siteUrl(),
     // The link is made and mailed after the answer, so timing reveals nothing.
-    (task) => after(task),
+    // A failure there cannot reach the person any more: it goes to «وضعیت سامانه».
+    (task) =>
+      after(async () => {
+        try {
+          await task();
+        } catch (error) {
+          await recordServerError(error, {
+            path: '/admin/login/forgot',
+            route: '/admin/login/forgot',
+            routeType: 'action',
+          });
+        }
+      }),
   );
   if (result === 'throttled') {
     return {

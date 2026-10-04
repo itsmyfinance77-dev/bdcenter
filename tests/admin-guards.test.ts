@@ -28,7 +28,15 @@ describe('admin pages', () => {
     expect(files.length).toBeGreaterThan(30);
   });
 
-  it.each(files)('%s calls requireAdmin', (file) => {
-    expect(readFileSync(file, 'utf8')).toMatch(/requireAdmin\(/);
+  it.each(files)('%s calls requireAdmin in the page itself', (file) => {
+    const page = readFileSync(file, 'utf8').split('export default')[1] ?? '';
+    // The first statements of the page's body, before any branch could skip it.
+    const start = page.slice(
+      page.indexOf('{', page.indexOf(')')),
+      page.indexOf('{', page.indexOf(')')) + 400,
+    );
+    expect(start).toMatch(
+      /^\{\s*(?:(?:const \w+ = )?await requireAdmin\(|const \[[^\]]*\] = await Promise\.all\(\[[^\]]*requireAdmin\()/,
+    );
   });
 });
