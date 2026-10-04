@@ -49,7 +49,7 @@
   - پیگیری‌های باز: ثبت در گزارش فعالیت هنگام حذف پایان قدیمی دوره (PR #7)، سقف طول هر فیلد در متن‌های صفحهٔ اول (PR #8).
   - تحویل: `docs/security-review-<تاریخ>.md` تازه و گزارش QA فارسی؛ هر رفع در PR جدا با آزمون.
 - **اولویت:** بالا · **وضعیت:** در حال انجام
-- **پیوندها:** HANDOFF «START HERE» کار ۸ · رفع‌های بخش اول: PR «Audit fixes» (شاخهٔ `fix/audit-hardening`)
+- **پیوندها:** HANDOFF «START HERE» کار ۸ · [PR #14](https://github.com/itsmyfinance77-dev/bdcenter/pull/14) (رفع‌ها)، PR گزارش و نقش محدود پایگاه داده (شاخهٔ `docs/audit-report`) · `docs/security-review-2026-10-04.md` · `docs/qa-report-2026-10-04.fa.md`
 - **پرسش‌های باز:** —
 
 ### ST-BD-08-06 · پاک‌سازی دادهٔ آزمایشی

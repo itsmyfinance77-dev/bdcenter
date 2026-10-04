@@ -314,6 +314,18 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `max` in `homeTextsSchema`). The written review and QA report follow in
   their own PR.
 
+- Task 8, part 2 (`docs/audit-report`, ST-BD-08-05):
+  `docs/security-review-2026-10-04.md` (method, findings, checked areas,
+  hardening verdicts) and the owner's Persian `docs/qa-report-2026-10-04.fa.md`.
+  Least-privilege database role: the site connects as `bdcenter_app`
+  (`APP_DB_PASSWORD`, rows only), created/updated by `migrate` with
+  `scripts/db-app-role.mjs`; the app container gets `POSTGRES_PASSWORD=''`;
+  CI runs the DB tests as that role. Open for the owner: mandatory 2FA for
+  ADMIN, a daily cap for group SMS, approval to download ZAP/Semgrep for a
+  local scan. Note: `tests/db/members.test.ts` «other representatives» fails
+  on the local `bdcenter_e2e` database because of leftover e2e members (not
+  on the dev DB or in CI).
+
 ## Where things live
 
 | What                            | Where                                                                                                                                                    |

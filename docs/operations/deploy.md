@@ -29,6 +29,14 @@ On the first start `migrate` creates the schema, `app` starts, and Caddy asks
 for a certificate (it retries on its own if DNS is not ready yet; see
 `docker compose ... logs caddy`).
 
+Two database roles are used. `bdcenter` (`POSTGRES_PASSWORD`) owns the
+database; only `migrate`, `backup` and admin scripts connect with it. The site
+connects as `bdcenter_app` (`APP_DB_PASSWORD`), which may only read and write
+rows: no schema changes, no access to the migration table, no server-side
+file or program access. `migrate` creates or updates that role after every
+migration (`scripts/db-app-role.mjs`), so new tables are covered too. The
+site's container does not receive `POSTGRES_PASSWORD`.
+
 Create the first admin account. Without `ADMIN_PASSWORD` a password is
 generated and printed once; note it down:
 

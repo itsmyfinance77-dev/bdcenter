@@ -60,7 +60,16 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm run typecheck
       - run: pnpm run test
+      # The site connects with a role that can only read and write rows
+      # (scripts/db-app-role.mjs); the DB tests run as that role too, so code
+      # needing more rights fails here, not in production.
+      - name: Prepare the site's restricted database role
+        run: node scripts/db-app-role.mjs
+        env:
+          APP_DB_PASSWORD: ci-only-app-role-password
       - run: pnpm run test:db
+        env:
+          DATABASE_URL: postgresql://bdcenter_app:ci-only-app-role-password@127.0.0.1:5434/bdcenter_dev?schema=public
       - name: Production build
         run: pnpm run build
         env:

@@ -10,7 +10,11 @@
 #
 # Every secret comes from .env.production (template: deploy/env.production.example).
 
+# The owner role (a superuser in the postgres image) runs migrations and
+# backups; the site connects as bdcenter_app, which may only read and write
+# rows (scripts/db-app-role.mjs, run by `migrate` after every migration).
 x-database-url: &database-url postgresql://bdcenter:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/bdcenter?schema=public
+x-app-database-url: &app-database-url postgresql://bdcenter_app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@db:5432/bdcenter?schema=public
 
 services:
   db:
@@ -35,8 +39,13 @@ services:
       args:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL}
     image: bdcenter-tools
+    command:
+      - sh
+      - -c
+      - node_modules/.bin/prisma migrate deploy && node scripts/db-app-role.mjs
     environment:
       DATABASE_URL: *database-url
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +61,10 @@ services:
     restart: unless-stopped
     env_file: .env.production
     environment:
-      DATABASE_URL: *database-url
+      DATABASE_URL: *app-database-url
+      # The owner's password stays out of the site's environment (env_file
+      # would otherwise pass it on).
+      POSTGRES_PASSWORD: ''
       STORAGE_DIR: /app/storage
       BACKUP_DIR: /backups
       CLIENT_IP_HEADER: x-real-ip
