@@ -1,9 +1,11 @@
 import { AdminHeading } from '@/components/admin/ui';
 import { ArticleForm } from '../article-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'مطلب جدید' };
 
-export default function NewArticlePage() {
+export default async function NewArticlePage() {
+  await requireAdmin();
   return (
     <>
       <AdminHeading title="مطلب جدید" />

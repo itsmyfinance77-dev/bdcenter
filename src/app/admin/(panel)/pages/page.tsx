@@ -3,10 +3,12 @@ import { AdminHeading, Badge, ButtonLink, Table, Td } from '@/components/admin/u
 import { contentStatusLabel } from '@/content/admin';
 import { formatDateTime } from '@/lib/format';
 import { listPagesForAdmin } from '@/modules/pages/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'صفحه‌ها' };
 
 export default async function PagesAdminPage() {
+  await requireAdmin();
   const pages = await listPagesForAdmin();
   return (
     <>

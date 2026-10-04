@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { defaultHomeTexts, parseHomeTexts, resolveHomeTexts } from '@/modules/settings/home-texts';
+import {
+  defaultHomeTexts,
+  homeTextsSchema,
+  parseHomeTexts,
+  resolveHomeTexts,
+} from '@/modules/settings/home-texts';
 
 describe('home page texts', () => {
   it('falls back to the built-in text for anything not saved', () => {
@@ -20,5 +25,11 @@ describe('home page texts', () => {
     expect(stored).toEqual({ heroLead: 'جملهٔ تازه' });
     expect(Object.keys(errors)).toEqual(['heroBadge']);
     expect(errors.heroBadge).toContain('۶۰');
+  });
+
+  it('ignores a stored text over its limit, showing the built-in one', () => {
+    const stored = homeTextsSchema.parse({ heroTitle: 'ب'.repeat(61), heroBadge: 'نشان' });
+    expect(stored).toEqual({ heroTitle: undefined, heroBadge: 'نشان' });
+    expect(resolveHomeTexts(stored).heroTitle).toBe(defaultHomeTexts.heroTitle);
   });
 });

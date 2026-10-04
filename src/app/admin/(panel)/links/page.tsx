@@ -4,10 +4,12 @@ import { linkSections } from '@/content/pages';
 import { listAllLinksForAdmin } from '@/modules/links/service';
 import { deleteLinkAction } from './actions';
 import { LinkForm } from './link-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'پیوندها' };
 
 export default async function LinksAdminPage() {
+  await requireAdmin();
   const sections = await listAllLinksForAdmin();
   return (
     <>

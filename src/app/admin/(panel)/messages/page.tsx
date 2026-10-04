@@ -2,6 +2,7 @@ import { AdminHeading, EmptyState, Pager } from '@/components/admin/ui';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { pageParam } from '@/lib/params';
 import { listContactMessages } from '@/modules/contact/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'پیام‌های تماس' };
 
@@ -10,6 +11,7 @@ export default async function MessagesPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requireAdmin();
   const page = pageParam((await searchParams).page);
   const { items, pageCount } = await listContactMessages(page);
 

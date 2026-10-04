@@ -16,6 +16,7 @@ import {
   requestStatusSchema,
   type RequestStatus,
 } from '@/modules/consulting/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'درخواست‌های مشاوره' };
 
@@ -24,6 +25,7 @@ export default async function ConsultingListPage({
 }: {
   searchParams: Promise<{ page?: string; status?: string }>;
 }) {
+  await requireAdmin();
   const query = await searchParams;
   const page = pageParam(query.page);
   const status = requestStatusSchema.safeParse(query.status).data;

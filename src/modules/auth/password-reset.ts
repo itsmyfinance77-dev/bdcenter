@@ -30,12 +30,15 @@ export type ForgotResult = 'sent' | 'throttled' | 'unavailable';
 
 /**
  * Emails a reset link when the address belongs to an active panel user.
- * Returns 'sent' for unknown addresses too, so the form reveals nothing.
+ * Returns 'sent' for unknown addresses too, so the form reveals nothing. The
+ * link is made and mailed through `later` (the action passes `after`), so a
+ * known address does not answer more slowly than an unknown one.
  */
 export async function requestPasswordReset(
   email: string,
   clientIp: string,
   siteUrl: string,
+  later: (task: () => Promise<void>) => unknown = (task) => task(),
 ): Promise<ForgotResult> {
   const withinLimits =
     (await consume(`admin-reset:email:${email}`, LIMITS.adminPasswordReset)) &&
@@ -46,29 +49,31 @@ export async function requestPasswordReset(
   const user = await prisma.adminUser.findUnique({ where: { email } });
   if (!user?.isActive) return 'sent';
 
-  const token = randomBytes(32).toString('base64url');
-  await prisma.$transaction([
-    // Only the newest link works.
-    prisma.adminPasswordReset.deleteMany({ where: { adminId: user.id, usedAt: null } }),
-    prisma.adminPasswordReset.create({
-      data: {
-        adminId: user.id,
-        tokenHash: hash(token),
-        expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
-      },
-    }),
-  ]);
-  const link = new URL(`/admin/login/reset?token=${token}`, siteUrl).toString();
-  await sendEmail({
-    to: user.email,
-    subject: 'بازیابی رمز عبور پنل مدیریت',
-    text: `${user.fullName} عزیز،\n\nبرای انتخاب رمز تازهٔ پنل مدیریت سایت مرکز توسعه کسب‌وکار، پیوند زیر را تا ۳۰ دقیقهٔ دیگر باز کنید:\n${link}\n\nاگر شما درخواست نداده‌اید، این نامه را نادیده بگیرید؛ رمز فعلی شما تغییری نمی‌کند.`,
-  });
-  await recordAudit({
-    actorId: user.id,
-    action: 'admin.password.reset-requested',
-    entity: 'AdminUser',
-    entityId: user.id,
+  await later(async () => {
+    const token = randomBytes(32).toString('base64url');
+    await prisma.$transaction([
+      // Only the newest link works.
+      prisma.adminPasswordReset.deleteMany({ where: { adminId: user.id, usedAt: null } }),
+      prisma.adminPasswordReset.create({
+        data: {
+          adminId: user.id,
+          tokenHash: hash(token),
+          expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+        },
+      }),
+    ]);
+    const link = new URL(`/admin/login/reset?token=${token}`, siteUrl).toString();
+    await sendEmail({
+      to: user.email,
+      subject: 'بازیابی رمز عبور پنل مدیریت',
+      text: `${user.fullName} عزیز،\n\nبرای انتخاب رمز تازهٔ پنل مدیریت سایت مرکز توسعه کسب‌وکار، پیوند زیر را تا ۳۰ دقیقهٔ دیگر باز کنید:\n${link}\n\nاگر شما درخواست نداده‌اید، این نامه را نادیده بگیرید؛ رمز فعلی شما تغییری نمی‌کند.`,
+    });
+    await recordAudit({
+      actorId: user.id,
+      action: 'admin.password.reset-requested',
+      entity: 'AdminUser',
+      entityId: user.id,
+    });
   });
   return 'sent';
 }

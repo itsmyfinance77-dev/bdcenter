@@ -5,10 +5,12 @@ import { decodeParam } from '@/lib/params';
 import { editorHtml } from '@/lib/rich-html';
 import { getServiceTile } from '@/modules/services/service';
 import { ServiceForm } from '../service-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'ویرایش خدمت' };
 
 export default async function ServiceEditPage({ params }: { params: Promise<{ slug: string }> }) {
+  await requireAdmin();
   const tile = await getServiceTile(decodeParam((await params).slug));
   if (!tile) notFound();
   return (

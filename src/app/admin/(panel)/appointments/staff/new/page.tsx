@@ -1,9 +1,11 @@
 import { AdminHeading } from '@/components/admin/ui';
 import { StaffForm } from '../../staff-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'پروفایل جدید' };
 
-export default function NewStaffPage() {
+export default async function NewStaffPage() {
+  await requireAdmin();
   return (
     <>
       <AdminHeading title="پروفایل جدید مشاور / کارشناس" />

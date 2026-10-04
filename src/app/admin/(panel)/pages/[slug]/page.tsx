@@ -9,6 +9,7 @@ import { listAdmins } from '@/modules/auth/users';
 import { getPageForAdmin, listPageRevisions, pagePath } from '@/modules/pages/service';
 import { deletePageAction, restoreRevisionAction } from '../actions';
 import { PageForm } from '../page-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'ویرایش صفحه' };
 
@@ -19,6 +20,7 @@ export default async function EditPagePage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ saved?: string; restored?: string }>;
 }) {
+  await requireAdmin();
   const [{ slug: rawSlug }, { saved, restored }] = await Promise.all([params, searchParams]);
   const page = await getPageForAdmin(decodeParam(rawSlug));
   if (!page) notFound();

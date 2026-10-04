@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { clientIp } from '@/lib/client-ip';
 import { formValues, GENERIC_ERROR, type FormState } from '@/lib/form-state';
 import { servedOverHttps } from '@/lib/https';
@@ -26,7 +27,13 @@ export async function forgotAction(_prev: FormState, formData: FormData): Promis
   if (!parsed.success) {
     return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
   }
-  const result = await requestPasswordReset(parsed.data.email, await clientIp(), await siteUrl());
+  const result = await requestPasswordReset(
+    parsed.data.email,
+    await clientIp(),
+    await siteUrl(),
+    // The link is made and mailed after the answer, so timing reveals nothing.
+    (task) => after(task),
+  );
   if (result === 'throttled') {
     return {
       status: 'error',

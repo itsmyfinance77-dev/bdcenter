@@ -8,6 +8,7 @@ import { editorHtml } from '@/lib/rich-html';
 import { getArticleForAdmin } from '@/modules/content/service';
 import { deleteArticleAction } from '../actions';
 import { ArticleForm } from '../article-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'ویرایش مطلب' };
 
@@ -18,6 +19,7 @@ export default async function EditArticlePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string }>;
 }) {
+  await requireAdmin();
   const [{ id }, { saved }] = await Promise.all([params, searchParams]);
   const article = await getArticleForAdmin(id);
   if (!article) notFound();

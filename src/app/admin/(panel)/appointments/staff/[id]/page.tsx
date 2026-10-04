@@ -14,6 +14,7 @@ import {
 import { BookingStatusForm } from '../../booking-status-form';
 import { SingleSlotForm, SlotSeriesForm } from '../../slot-forms';
 import { StaffForm } from '../../staff-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'پروفایل و نوبت‌ها' };
 
@@ -24,6 +25,7 @@ export default async function StaffPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string; inUse?: string }>;
 }) {
+  await requireAdmin();
   const [{ id }, { saved, inUse }] = await Promise.all([params, searchParams]);
   const staff = await getStaffForAdmin(id);
   if (!staff) notFound();
