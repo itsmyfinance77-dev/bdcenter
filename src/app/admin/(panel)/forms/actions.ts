@@ -8,6 +8,7 @@ import { fieldErrors } from '@/lib/validation';
 import { requireAdmin } from '@/modules/auth/service';
 import { requestStatusSchema } from '@/modules/consulting/service';
 import {
+  duplicateForm,
   formDefinitionInputSchema,
   saveFormDefinition,
   setSubmissionStatus,
@@ -57,4 +58,11 @@ export async function setSubmissionStatusAction(id: string, formId: string, form
   const status = requestStatusSchema.parse(formData.get('status'));
   await setSubmissionStatus(id, status, admin.id);
   revalidatePath(`/admin/forms/${formId}`);
+}
+
+export async function duplicateFormAction(id: string) {
+  const admin = await requireAdmin('ADMIN');
+  const copyId = await duplicateForm(id, admin.id);
+  revalidatePath('/admin/forms');
+  redirect(copyId ? `/admin/forms/${copyId}/edit?saved=1` : '/admin/forms');
 }
