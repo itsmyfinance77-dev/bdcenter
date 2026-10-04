@@ -8,6 +8,7 @@ import {
   type DayValue,
   type StatRange,
 } from '@/modules/stats/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'آمار' };
 
@@ -40,6 +41,7 @@ export default async function StatsPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
+  await requireAdmin();
   const requested = Number((await searchParams).range);
   const range: StatRange = (STAT_RANGES as readonly number[]).includes(requested)
     ? (requested as StatRange)

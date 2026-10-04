@@ -16,6 +16,7 @@ import {
   setEnrollmentStatusAction,
 } from '../actions';
 import { CourseForm } from '../course-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'ویرایش دوره' };
 
@@ -76,6 +77,7 @@ export default async function EditCoursePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string }>;
 }) {
+  await requireAdmin();
   const [{ id }, { saved }] = await Promise.all([params, searchParams]);
   const course = await getCourseForAdmin(id);
   if (!course) notFound();

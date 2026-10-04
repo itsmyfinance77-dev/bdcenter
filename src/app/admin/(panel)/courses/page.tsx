@@ -3,10 +3,12 @@ import { AdminHeading, Badge, ButtonLink, EmptyState, Table, Td } from '@/compon
 import { contentStatusLabel } from '@/content/admin';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { listCoursesForAdmin } from '@/modules/training/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'دوره‌های آموزشی' };
 
 export default async function CoursesAdminPage() {
+  await requireAdmin();
   const courses = await listCoursesForAdmin();
 
   return (

@@ -61,4 +61,34 @@ describe('course sessions', () => {
     await deleteCourse(id, actor.id);
     expect(await prisma.courseSession.count({ where: { courseId: id } })).toBe(0);
   });
+
+  it('notes in the audit log a legacy end that a save drops', async () => {
+    const { sessions } = parseSessions({ s0date: '1406/03/01', s0start: '10:00', s0end: '12:00' });
+    const result = await saveCourse(
+      null,
+      { ...input, slug: `${PREFIX}legacy` },
+      sessions,
+      actor.id,
+    );
+    const id = (result as { id: string }).id;
+    // A course from before sessions: its end was on a later day.
+    const legacyEnd = new Date('2027-06-01T08:30:00Z');
+    await prisma.course.update({ where: { id }, data: { endsAt: legacyEnd } });
+
+    await saveCourse(id, { ...input, slug: `${PREFIX}legacy` }, sessions, actor.id);
+    const entry = await prisma.auditLog.findFirstOrThrow({
+      where: { entity: 'Course', entityId: id, action: 'course.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(entry.metadata).toMatchObject({ droppedEnd: legacyEnd.toISOString() });
+
+    // Nothing left to drop on the next save.
+    await saveCourse(id, { ...input, slug: `${PREFIX}legacy` }, sessions, actor.id);
+    const next = await prisma.auditLog.findFirstOrThrow({
+      where: { entity: 'Course', entityId: id, action: 'course.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(next.metadata).not.toHaveProperty('droppedEnd');
+    await deleteCourse(id, actor.id);
+  });
 });

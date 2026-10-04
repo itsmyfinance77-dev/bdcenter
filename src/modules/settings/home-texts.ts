@@ -51,12 +51,17 @@ export const homeTextLabels: Record<HomeTextKey, string> = {
   aboutTitle: 'عنوان بخش «درباره مرکز»',
 };
 
-/** Stored value: only the fields that differ from the built-in text. */
+/**
+ * Stored value: only the fields that differ from the built-in text. A stored
+ * value longer than its limit is ignored, so the built-in text shows.
+ */
 export const homeTextsSchema = z.object(
-  Object.fromEntries(HOME_TEXT_KEYS.map((key) => [key, z.string().optional()])) as Record<
-    HomeTextKey,
-    z.ZodOptional<z.ZodString>
-  >,
+  Object.fromEntries(
+    HOME_TEXT_KEYS.map((key) => [
+      key,
+      z.string().max(homeTextLimits[key].max).optional().catch(undefined),
+    ]),
+  ) as Record<HomeTextKey, z.ZodCatch<z.ZodOptional<z.ZodString>>>,
 );
 export type StoredHomeTexts = z.infer<typeof homeTextsSchema>;
 

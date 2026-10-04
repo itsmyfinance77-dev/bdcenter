@@ -11,7 +11,7 @@ import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
 import { richInput } from '@/lib/rich-html';
 import { certificateAvailable, syncCertificate } from './certificates';
-import { courseSpan, type SessionInput } from './sessions';
+import { courseSpan, unexplainedEnd, type SessionInput } from './sessions';
 import type { MemberAccess } from '@/modules/members/access';
 import {
   checkImageUpload,
@@ -408,12 +408,12 @@ export async function getPublicCourseCoverKey(coverId: string): Promise<string |
 }
 
 /**
- * Creates (no id) or updates a course. `coverFile` (an empty file input counts
- * as none) replaces the cover; `input.removeCover` drops it.
- */
-/**
  * Creates or updates a course with its sessions (replaced as a whole); the
- * course's startsAt/endsAt follow the first and last session.
+ * course's startsAt/endsAt follow the first and last session. `coverFile`
+ * (an empty file input counts as none) replaces the cover;
+ * `input.removeCover` drops it. A stored end the old sessions did not
+ * explain (see unexplainedEnd) and the new ones no longer keep is written to
+ * the audit log, so the date can still be found.
  */
 export async function saveCourse(
   id: string | null,
@@ -451,8 +451,17 @@ export async function saveCourse(
     coverAlt: input.coverAlt ?? null,
   };
   const existing = id
-    ? await prisma.course.findUnique({ where: { id }, select: { coverKey: true } })
+    ? await prisma.course.findUnique({
+        where: { id },
+        select: {
+          coverKey: true,
+          endsAt: true,
+          sessions: { select: { startsAt: true, endsAt: true, location: true, topic: true } },
+        },
+      })
     : null;
+  const legacyEnd = existing ? unexplainedEnd(existing, existing.sessions) : null;
+  const droppedEnd = legacyEnd && data.endsAt?.getTime() !== legacyEnd.getTime() ? legacyEnd : null;
   if (id && !existing) return { ok: false, errors: { _form: 'این دوره پیدا نشد.' } };
 
   const oldCover = existing?.coverKey ?? null;
@@ -479,7 +488,12 @@ export async function saveCourse(
     action: id ? 'course.update' : 'course.create',
     entity: 'Course',
     entityId: course.id,
-    metadata: { title: course.title, status: course.status, sessions: sessions.length },
+    metadata: {
+      title: course.title,
+      status: course.status,
+      sessions: sessions.length,
+      ...(droppedEnd ? { droppedEnd: droppedEnd.toISOString() } : {}),
+    },
   });
   return { ok: true, id: course.id };
 }

@@ -35,7 +35,13 @@ async function store(phone: string, text: string, code: string | null): Promise<
     if (old.length > 0) {
       await prisma.sandboxSms.deleteMany({ where: { id: { in: old.map((row) => row.id) } } });
     }
-    console.info(`[sms:sandbox] to ${phone}: ${text}`);
+    // In production the text (it may hold a sign-in code) stays in the panel's
+    // inbox, out of the server logs.
+    console.info(
+      process.env.NODE_ENV === 'production'
+        ? `[sms:sandbox] stored a message to ${phone}`
+        : `[sms:sandbox] to ${phone}: ${text}`,
+    );
     return true;
   } catch (error) {
     console.error('[sms:sandbox] could not store the message', error);

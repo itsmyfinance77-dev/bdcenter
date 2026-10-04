@@ -303,6 +303,17 @@ alertRecipients`, `FormSubmission.memberId`. Rules in
   `OQ-BD-23` (SMTP account). `CLAUDE.md` now asks every PR to name its
   story and update it.
 
+- Task 8, part 1 (`fix/audit-hardening`, ST-BD-08-05): every admin page
+  calls `requireAdmin()` itself (the layout is not re-run on client-side
+  navigation and middleware does not see revocation;
+  `tests/admin-guards.test.ts` keeps it so); the panel fits phone width
+  (`<aside className="min-w-0">`); «رمز را فراموش کرده‌ام» makes and mails
+  the link in `after()` so timing does not reveal accounts; the SMS sandbox
+  logs no message text in production; follow-ups from PR #7 (audit
+  `droppedEnd` when a save drops a legacy course end) and PR #8 (per-field
+  `max` in `homeTextsSchema`). The written review and QA report follow in
+  their own PR.
+
 ## Where things live
 
 | What                            | Where                                                                                                                                                    |

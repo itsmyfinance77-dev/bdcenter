@@ -7,6 +7,7 @@ import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { getConsultingRequest } from '@/modules/consulting/service';
 import { listNotifications } from '@/modules/notifications/service';
 import { setConsultingStatusAction } from '../actions';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'درخواست مشاوره' };
 
@@ -15,6 +16,7 @@ export default async function ConsultingDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdmin();
   const request = await getConsultingRequest((await params).id);
   const notifications = request ? await listNotifications('ConsultingRequest', [request.id]) : {};
   if (!request) notFound();

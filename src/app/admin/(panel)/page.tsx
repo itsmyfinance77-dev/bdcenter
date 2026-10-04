@@ -6,6 +6,7 @@ import { countNewConsultingRequests } from '@/modules/consulting/service';
 import { countRecentContactMessages } from '@/modules/contact/service';
 import { countArticlesByStatus } from '@/modules/content/service';
 import { countNewSubmissions } from '@/modules/forms/service';
+import { requireAdmin } from '@/modules/auth/service';
 import { countMembers, countPendingMembers } from '@/modules/members/service';
 import { countNewEnrollments } from '@/modules/training/service';
 
@@ -17,6 +18,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ denied?: string }>;
 }) {
+  await requireAdmin();
   const { denied } = await searchParams;
   const [consulting, messages, submissions, articles, enrollments, members, bookings, pending] =
     await Promise.all([

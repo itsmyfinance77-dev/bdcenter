@@ -14,6 +14,7 @@ import {
 } from '../../../actions';
 import { SubmissionAnswers } from '../../submission-answers';
 import { AssignForm, NoteForm } from './submission-forms';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'جزئیات درخواست فرم' };
 
@@ -22,6 +23,7 @@ export default async function SubmissionPage({
 }: {
   params: Promise<{ id: string; submissionId: string }>;
 }) {
+  await requireAdmin();
   const { id, submissionId } = await params;
   const [form, submission, staff, notifications] = await Promise.all([
     getFormForAdmin(id),

@@ -4,6 +4,7 @@ import { decodeParam } from '@/lib/params';
 import { richHtmlToText } from '@/lib/rich-html';
 import { getPageForAdmin, getPageRevision } from '@/modules/pages/service';
 import { getContactInfo } from '@/modules/settings/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 /** A page of any status (or a built-in page's unsaved draft) as the site would show it. */
 export default async function PagePreview({
@@ -13,6 +14,7 @@ export default async function PagePreview({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ revision?: string }>;
 }) {
+  await requireAdmin();
   const slug = decodeParam((await params).slug);
   const { revision: revisionId } = await searchParams;
   const [current, contact] = await Promise.all([getPageForAdmin(slug), getContactInfo()]);

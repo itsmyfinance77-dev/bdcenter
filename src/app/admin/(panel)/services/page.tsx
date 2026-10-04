@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { AdminHeading, Badge, Table, Td } from '@/components/admin/ui';
 import { formatDateTime } from '@/lib/format';
 import { listServiceTiles } from '@/modules/services/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'خدمات مرکز' };
 
 export default async function ServicesPage() {
+  await requireAdmin();
   const tiles = await listServiceTiles();
   return (
     <>

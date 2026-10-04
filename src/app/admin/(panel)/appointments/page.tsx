@@ -5,6 +5,7 @@ import { formatDateTime, formatNumber, formatTime, toPersianDigits } from '@/lib
 import { listStaffForAdmin, listUpcomingBookings } from '@/modules/appointments/service';
 import { setBookingStatusAction } from './actions';
 import { BookingStatusForm } from './booking-status-form';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'نوبت‌دهی' };
 
@@ -13,6 +14,7 @@ export default async function AppointmentsAdminPage({
 }: {
   searchParams: Promise<{ taken?: string }>;
 }) {
+  await requireAdmin();
   const [{ taken }, staff, bookings] = await Promise.all([
     searchParams,
     listStaffForAdmin(),

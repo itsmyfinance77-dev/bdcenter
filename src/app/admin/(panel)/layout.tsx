@@ -46,7 +46,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[220px_1fr]">
-        <aside>
+        <aside className="min-w-0">
           <AdminNav items={items.map(({ href, title }) => ({ href, title }))} />
         </aside>
         <div className="min-w-0">

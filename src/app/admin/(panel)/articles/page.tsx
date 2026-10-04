@@ -12,6 +12,7 @@ import { articleKindLabel, contentStatusLabel } from '@/content/admin';
 import { formatDate } from '@/lib/format';
 import { pageParam } from '@/lib/params';
 import { listArticlesForAdmin } from '@/modules/content/service';
+import { requireAdmin } from '@/modules/auth/service';
 
 export const metadata = { title: 'اخبار و رویدادها' };
 
@@ -20,6 +21,7 @@ export default async function ArticlesPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requireAdmin();
   const page = pageParam((await searchParams).page);
   const { items, pageCount } = await listArticlesForAdmin(page);
 
