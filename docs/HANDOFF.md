@@ -257,7 +257,17 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   (`FormDefinition.descriptionHtml`); every submission stores a snapshot of
   its field labels (`FormSubmission.fields`) so renamed/removed fields stay
   readable in the panel and CSV. The public action reads answers with
-  `answersFrom` (repeated names → arrays).
+  `answersFrom` (repeated names → arrays). Merged as PR #9 (number fields
+  refuse ambiguous separators: «,»/«٬» only between groups of three).
+- Package ب (`feat/form-settings`): `FormDefinition.opensAt/closesAt/
+maxSubmissions/membersOnly/onePerMember/thankYouText/confirmToApplicant/
+alertRecipients`, `FormSubmission.memberId`. Rules in
+  `src/modules/forms/availability.ts`, re-checked in `submitForm` with the
+  form row locked (`FOR UPDATE`). Field setting `prefill` fills members-only
+  forms from the profile (`prefillValues`). Confirmation SMS/email
+  (`sendFormConfirmation`, event `form.received`) to the member's phone or
+  the form's first MOBILE answer; per-form staff recipients passed to
+  `alertStaff(..., only)`. «کپی فرم» = `duplicateForm` (DRAFT, `-copy[-n]`).
 
 ## Where things live
 

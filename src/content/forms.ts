@@ -17,7 +17,8 @@ export const formCopy = {
   signIn: 'ورود / ثبت‌نام',
   membersBadge: 'ویژهٔ اعضا',
   closedBadge: 'بسته شده',
-  prefillNote: 'برخی فیلدها از اطلاعات حساب کاربری شما پر شده‌اند؛ در صورت نیاز آن‌ها را اصلاح کنید.',
+  prefillNote:
+    'برخی فیلدها از اطلاعات حساب کاربری شما پر شده‌اند؛ در صورت نیاز آن‌ها را اصلاح کنید.',
 } as const;
 
 /** «Your answer arrived», when the form asks for it. */

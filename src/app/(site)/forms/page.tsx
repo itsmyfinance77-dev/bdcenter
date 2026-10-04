@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { Icon } from '@/components/site/icons';
 import { PageBody } from '@/components/site/page-body';
+import { formCopy } from '@/content/forms';
 import { listPublishedForms } from '@/modules/forms/service';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 
 export default async function FormsPage() {
   const forms = await listPublishedForms();
+  const now = new Date();
   return (
     <>
       <PageHeader title="فرم‌ها" crumbs={[{ title: 'فرم‌ها' }]} />
@@ -38,8 +40,22 @@ export default async function FormsPage() {
                     <Icon name="clipboard" size={24} strokeWidth={1.7} />
                   </span>
                   <h2 className="text-xl font-extrabold text-brand-900">{form.title}</h2>
+                  {form.membersOnly || (form.closesAt && form.closesAt <= now) ? (
+                    <span className="flex flex-wrap gap-2 text-xs">
+                      {form.membersOnly ? (
+                        <span className="rounded-chip bg-primary-tint px-2 py-0.5 text-primary">
+                          {formCopy.membersBadge}
+                        </span>
+                      ) : null}
+                      {form.closesAt && form.closesAt <= now ? (
+                        <span className="rounded-chip bg-surface-2 px-2 py-0.5 text-ink-2">
+                          {formCopy.closedBadge}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                   {form.description ? (
-                    <p className="text-[15px] leading-[1.95] text-pretty text-ink-2">
+                    <p className="line-clamp-3 text-[15px] leading-[1.95] text-pretty text-ink-2">
                       {form.description}
                     </p>
                   ) : null}

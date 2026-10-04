@@ -105,7 +105,7 @@ describe('form builder', () => {
       score: '4',
       intro: 'ignored',
     });
-    expect(ok).toEqual({ ok: true, formTitle: 'درخواست آزمایشی' });
+    expect(ok).toMatchObject({ ok: true, formTitle: 'درخواست آزمایشی', confirmTo: null });
     const submission = await prisma.formSubmission.findFirstOrThrow({ where: { formId: id } });
     expect(submission.data).toEqual({
       name: 'سارا',

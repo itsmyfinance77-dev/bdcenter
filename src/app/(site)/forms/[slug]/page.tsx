@@ -53,6 +53,7 @@ export default async function FormPage({ params }: { params: Promise<Params> }) 
         <FormCard
           id="form-heading"
           title={form.title}
+          requiredNote={availability === 'open'}
           note={
             form.descriptionHtml ? (
               <div className="text-sm">
