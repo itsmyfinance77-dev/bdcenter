@@ -42,6 +42,17 @@ export type FieldType = (typeof FIELD_TYPES)[number];
 export const CHOICE_TYPES: ReadonlySet<FieldType> = new Set(['SELECT', 'RADIO', 'MULTI_CHOICE']);
 /** Types that hold text a person types (placeholder, default, length limits). */
 export const TEXT_TYPES: ReadonlySet<FieldType> = new Set(['TEXT', 'TEXTAREA']);
+/** Types a members-only form may fill in from the profile (setting `prefill`). */
+export const PREFILL_TYPES: ReadonlySet<FieldType> = new Set([
+  'TEXT',
+  'TEXTAREA',
+  'EMAIL',
+  'PHONE',
+  'MOBILE',
+  'NATIONAL_CODE',
+  'LEGAL_ID',
+  'POSTAL_CODE',
+]);
 
 /** Groups of upload types a FILE field can be limited to. */
 export const FILE_KINDS = {
@@ -316,6 +327,9 @@ export function settingsProblem(type: FieldType, settings: FieldSettings, option
   }
   if (settings.min !== undefined && settings.max !== undefined && settings.min > settings.max) {
     return 'حداقل عدد نباید از حداکثر عدد بیشتر باشد.';
+  }
+  if (settings.prefill && !PREFILL_TYPES.has(type)) {
+    return 'این نوع فیلد از حساب عضو پر نمی‌شود.';
   }
   if (settings.defaultValue && type === 'MULTI_CHOICE') {
     return 'چندگزینه‌ای گزینهٔ پیش‌فرض ندارد.';

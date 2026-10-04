@@ -16,6 +16,7 @@ import {
   CHOICE_TYPES,
   FILE_KINDS,
   MAX_FILE_MB,
+  PREFILL_TYPES,
   TEXT_TYPES,
   type FieldSettings,
   type FieldType,
@@ -58,15 +59,16 @@ function freeKey(keys: string[]): string {
 function settingsFor(type: FieldType, settings: FieldSettings): FieldSettings {
   const keep: (keyof FieldSettings)[] = ['hint'];
   if (TEXT_TYPES.has(type)) {
-    keep.push('placeholder', 'defaultValue', 'minLength', 'maxLength', 'prefill');
+    keep.push('placeholder', 'defaultValue', 'minLength', 'maxLength');
   } else if (type === 'NUMBER') keep.push('placeholder', 'defaultValue', 'min', 'max');
   else if (type === 'FILE') keep.push('fileKinds', 'maxSizeMb');
   else if (type === 'RATING') keep.push('scale');
   // A preset choice only for single-choice fields (multi-choice has no default control).
   else if (type === 'SELECT' || type === 'RADIO') keep.push('defaultValue');
   else if (type !== 'SECTION' && type !== 'CHECKBOX') {
-    keep.push('placeholder', 'defaultValue', 'prefill');
+    keep.push('placeholder', 'defaultValue');
   }
+  if (PREFILL_TYPES.has(type)) keep.push('prefill');
   return Object.fromEntries(
     keep.filter((key) => settings[key] !== undefined).map((key) => [key, settings[key]]),
   ) as FieldSettings;
@@ -143,8 +145,7 @@ function FieldEditor({
   membersOnly: boolean;
 }) {
   const { type, settings } = field;
-  const canPrefill =
-    membersOnly && settingsFor(type, { prefill: 'fullName' }).prefill !== undefined;
+  const canPrefill = membersOnly && PREFILL_TYPES.has(type);
   const set = (patch: Partial<FieldSettings>) => update({ settings: { ...settings, ...patch } });
   const isSection = type === 'SECTION';
   const hasSettings = Object.keys(settings).some(
@@ -473,7 +474,9 @@ export function FormBuilder({
           'پیامک (و ایمیل) «پاسخ شما دریافت شد» برای پرکنندهٔ فرم فرستاده شود',
         )}
         <p className="-mt-2 ms-6 text-xs leading-6 text-ink-2">
-          به شمارهٔ عضو، یا اگر فرم ویژهٔ اعضا نیست به اولین فیلد «شمارهٔ همراه» فرم.
+          پیامک فقط به شمارهٔ عضوِ واردشده می‌رود (شماره‌ای که با کد تأیید شده است). کسی که بدون
+          ورود فرم را پر کند فقط ایمیل می‌گیرد، به اولین فیلد «ایمیل» فرم و حداکثر سه بار در روز
+          برای هر نشانی.
         </p>
         <TextareaField
           label="متن تشکر پس از ارسال"
