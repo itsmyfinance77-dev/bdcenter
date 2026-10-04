@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { toPersianDigits } from '@/lib/format';
-import { courseSpan, parseSessions, sessionFormValues } from '@/modules/training/sessions';
+import {
+  courseSpan,
+  parseSessions,
+  sessionFormValues,
+  unexplainedEnd,
+} from '@/modules/training/sessions';
 
 /** `hh:mm` Tehran on a Jalali day of Aban 1405 (1 Aban = 23 October 2026). */
 const aban = (day: number, hh: number, mm = 0) =>
@@ -25,6 +30,18 @@ describe('course sessions', () => {
     ]);
     expect(courseSpan(sessions)).toEqual({ startsAt: aban(1, 9, 30), endsAt: aban(8, 18, 30) });
     expect(courseSpan([])).toEqual({ startsAt: null, endsAt: null });
+    // No end time on the last session: no course end, not a copy of its start.
+    expect(courseSpan(sessions.slice(0, 1))).toEqual({ startsAt: aban(1, 9, 30), endsAt: null });
+  });
+
+  it('flags a stored course end its sessions do not explain', () => {
+    const one = [{ startsAt: aban(1, 9), endsAt: aban(1, 12), location: null, topic: null }];
+    expect(unexplainedEnd({ endsAt: aban(1, 12) }, one)).toBeNull();
+    expect(unexplainedEnd({ endsAt: null }, one)).toBeNull();
+    // A course from before sessions: 1 to 5 Aban, migrated as one session on the 1st.
+    expect(unexplainedEnd({ endsAt: aban(5, 12) }, [{ ...one[0]!, endsAt: null }])).toEqual(
+      aban(5, 12),
+    );
   });
 
   it('points at the wrong field', () => {

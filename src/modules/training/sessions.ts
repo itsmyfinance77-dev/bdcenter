@@ -73,12 +73,33 @@ export function parseSessions(values: Record<string, string>) {
   return { sessions, errors };
 }
 
-/** The course's own start and end, derived from its sessions (null without sessions). */
+/**
+ * The course's own start and end, derived from its (sorted) sessions: the
+ * first start, and the last session's end time when it has one (else none,
+ * so the course page shows no «زمان پایان» rather than a made-up one).
+ */
 export function courseSpan(sessions: SessionInput[]) {
   if (sessions.length === 0) return { startsAt: null, endsAt: null };
-  const first = sessions[0]!;
-  const last = sessions[sessions.length - 1]!;
-  return { startsAt: first.startsAt, endsAt: last.endsAt ?? last.startsAt };
+  return {
+    startsAt: sessions[0]!.startsAt,
+    endsAt: sessions[sessions.length - 1]!.endsAt,
+  };
+}
+
+/**
+ * The course's stored end when its sessions no longer explain it: a course
+ * from before sessions existed whose end was on another day (the migration
+ * keeps such an end on the course but cannot put it on the session). The
+ * course form shows it so staff add the missing sessions instead of the
+ * date silently disappearing on the next save.
+ */
+export function unexplainedEnd(
+  course: { endsAt: Date | null },
+  sessions: SessionInput[],
+): Date | null {
+  if (!course.endsAt) return null;
+  const derived = courseSpan(sessions).endsAt;
+  return derived && derived.getTime() === course.endsAt.getTime() ? null : course.endsAt;
 }
 
 /** Form values for stored sessions, in Persian digits like the rest of the form. */

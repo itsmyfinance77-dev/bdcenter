@@ -34,7 +34,13 @@ function rowsFrom(state: FormState): Row[] {
  * rows are rebuilt from what was sent. The server sorts sessions by start, so
  * the order here does not matter.
  */
-export function SessionRows({ state }: { state: FormState }) {
+export function SessionRows({
+  state,
+  legacyEnd = null,
+}: {
+  state: FormState;
+  legacyEnd?: string | null;
+}) {
   const [rows, setRows] = useState(() => rowsFrom(state));
   const [shown, setShown] = useState(state);
   if (shown !== state) {
@@ -52,6 +58,13 @@ export function SessionRows({ state }: { state: FormState }) {
         موضوع اختیاری‌اند؛ مکان خالی یعنی همان مکان دوره. زمان شروع و پایان دوره از اولین و آخرین
         جلسه گرفته می‌شود.
       </p>
+      {legacyEnd ? (
+        <p className="rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-sm leading-7 text-ink">
+          زمان پایان ثبت‌شدهٔ این دوره «{legacyEnd}» است، ولی در جلسه‌های زیر نیامده است (این دوره
+          پیش از امکان جلسه‌ها ساخته شده). اگر دوره چندروزه است، جلسه‌های روزهای دیگر را اضافه کنید؛
+          با «ذخیره» زمان پایان دوره از جلسه‌ها گرفته می‌شود.
+        </p>
+      ) : null}
       {general ? <p className="text-sm font-semibold text-danger">{general}</p> : null}
       {rows.map((row, i) => {
         const field = (name: (typeof FIELDS)[number]) => ({
@@ -60,9 +73,16 @@ export function SessionRows({ state }: { state: FormState }) {
           error: row.errors[name] || undefined,
         });
         return (
-          <div key={row.key} className="space-y-3 rounded-card border border-line bg-surface p-3">
+          // A fieldset per session: screen readers announce «جلسهٔ ۲» with each field.
+          <fieldset
+            key={row.key}
+            className="space-y-3 rounded-card border border-line bg-surface p-3"
+          >
+            <legend className="sr-only">جلسهٔ {digits.format(i + 1)}</legend>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">جلسهٔ {digits.format(i + 1)}</p>
+              <p aria-hidden="true" className="text-sm font-semibold text-ink">
+                جلسهٔ {digits.format(i + 1)}
+              </p>
               {rows.length > 1 ? (
                 <button
                   type="button"
@@ -82,7 +102,7 @@ export function SessionRows({ state }: { state: FormState }) {
               <TextField label="مکان این جلسه" hint="اختیاری" {...field('location')} />
               <TextField label="موضوع این جلسه" hint="اختیاری" {...field('topic')} />
             </div>
-          </div>
+          </fieldset>
         );
       })}
       {rows.length < MAX_SESSIONS ? (
