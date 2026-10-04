@@ -19,8 +19,16 @@ export default async function NewFormPage() {
             type: 'TEXT',
             isRequired: true,
             options: [],
+            settings: {},
           },
-          { key: 'phone', label: 'شماره تماس', type: 'PHONE', isRequired: true, options: [] },
+          {
+            key: 'mobile',
+            label: 'شمارهٔ همراه',
+            type: 'MOBILE',
+            isRequired: true,
+            options: [],
+            settings: {},
+          },
         ]}
       />
     </>

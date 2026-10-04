@@ -1,17 +1,11 @@
 import { countCreatedPerDay } from '@/lib/daily-counts';
 import { z } from 'zod';
-import { prisma, type FormFieldType, type Prisma } from '@/lib/prisma';
-import {
-  email,
-  fieldErrors,
-  optionalText,
-  phone,
-  requiredText,
-  toLatinDigits,
-} from '@/lib/validation';
+import { prisma, type Prisma } from '@/lib/prisma';
+import { fieldErrors, optionalText, requiredText } from '@/lib/validation';
 import { requestStatusLabel } from '@/content/admin';
 import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
+import { richInput } from '@/lib/rich-html';
 import { recordAudit } from '@/modules/audit/service';
 import {
   checkUpload,
@@ -20,11 +14,26 @@ import {
   storeUpload,
   type StoredFile,
 } from '@/modules/files/service';
+import {
+  CHOICE_TYPES,
+  displayAnswer,
+  FIELD_TYPES,
+  fieldSettingsSchema,
+  fileProblem,
+  readSettings,
+  settingsProblem,
+  valueSchema,
+  type FieldType,
+  type PublicFormField,
+} from './fields';
+
+export type { PublicFormField } from './fields';
 
 /**
  * Dynamic form builder ("فرم‌ساز" / "میز خدمت"). Staff define fields in the
  * admin panel; this module renders their definition publicly and validates
- * submissions against it at request time.
+ * submissions against it at request time. Field types and their rules live
+ * in ./fields.ts.
  */
 
 const fieldSelect = {
@@ -33,22 +42,35 @@ const fieldSelect = {
   type: true,
   isRequired: true,
   options: true,
+  settings: true,
 } as const;
 
-const selectOptionsSchema = z.array(z.string().min(1));
+const choiceOptionsSchema = z.array(z.string().min(1));
 
-export type PublicFormField = {
+/** A stored field row as the renderer and validators need it. */
+function publicField(field: {
   key: string;
   label: string;
-  type: FormFieldType;
+  type: FieldType;
   isRequired: boolean;
-  options: string[];
-};
+  options: unknown;
+  settings: unknown;
+}): PublicFormField {
+  return {
+    key: field.key,
+    label: field.label,
+    type: field.type,
+    isRequired: field.isRequired,
+    options: choiceOptionsSchema.safeParse(field.options).data ?? [],
+    settings: readSettings(field.settings),
+  };
+}
 
 export type PublicForm = {
   slug: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   fields: PublicFormField[];
 };
 
@@ -67,57 +89,12 @@ export async function getPublishedForm(slug: string): Promise<PublicForm | null>
       slug: true,
       title: true,
       description: true,
+      descriptionHtml: true,
       fields: { orderBy: { sortOrder: 'asc' }, select: fieldSelect },
     },
   });
   if (!form) return null;
-  return {
-    ...form,
-    fields: form.fields.map((field) => ({
-      ...field,
-      options: selectOptionsSchema.safeParse(field.options).data ?? [],
-    })),
-  };
-}
-
-function valueSchema(field: PublicFormField): z.ZodTypeAny {
-  const { label, isRequired: required } = field;
-  const text = (max: number) => (required ? requiredText(label, max) : optionalText(label, max));
-
-  switch (field.type) {
-    case 'TEXT':
-      return text(500);
-    case 'TEXTAREA':
-      return text(4000);
-    case 'EMAIL':
-      return email(required);
-    case 'PHONE':
-      return phone(required);
-    case 'NUMBER':
-      return text(30)
-        .transform((value) => (value === undefined ? undefined : Number(toLatinDigits(value))))
-        .refine(
-          (value) => value === undefined || Number.isFinite(value),
-          `${label} باید عدد باشد.`,
-        );
-    case 'DATE':
-      return text(10).refine(
-        (value) => value === undefined || /^\d{4}-\d{2}-\d{2}$/.test(value),
-        `${label} معتبر نیست.`,
-      );
-    case 'SELECT':
-      return text(200).refine(
-        (value) => value === undefined || field.options.includes(value),
-        `یکی از گزینه‌های ${label} را انتخاب کنید.`,
-      );
-    case 'CHECKBOX':
-      return z
-        .preprocess((value) => value === 'on', z.boolean())
-        .refine((checked) => !required || checked, `تأیید «${label}» الزامی است.`);
-    case 'FILE':
-      // Files are validated separately in `submitForm`, not through Zod.
-      return z.any();
-  }
+  return { ...form, fields: form.fields.map(publicField) };
 }
 
 export type SubmitResult =
@@ -125,36 +102,40 @@ export type SubmitResult =
   | { ok: false; reason: 'not-found' }
   | { ok: false; reason: 'invalid'; errors: Record<string, string> };
 
+/** What each stored submission remembers about the fields it was answered against. */
+export type FieldSnapshot = { key: string; label: string; type: FieldType };
+
 /**
- * Validates raw values (from FormData) against the form's current definition
- * and stores the submission. Unknown keys are dropped.
+ * Validates raw answers (from FormData, see answersFrom) against the form's
+ * current definition and stores the submission with a snapshot of the field
+ * labels. Unknown keys are dropped; sections take no answer.
  */
 export async function submitForm(
   slug: string,
-  values: Record<string, FormDataEntryValue | undefined>,
+  values: Record<string, FormDataEntryValue | FormDataEntryValue[] | undefined>,
 ): Promise<SubmitResult> {
   const form = await getPublishedForm(slug);
   if (!form) return { ok: false, reason: 'not-found' };
 
   const errors: Record<string, string> = {};
   const uploads: { key: string; file: File }[] = [];
+  const inputs = form.fields.filter((field) => field.type !== 'SECTION');
 
-  for (const field of form.fields.filter((f) => f.type === 'FILE')) {
+  for (const field of inputs.filter((f) => f.type === 'FILE')) {
     const value = values[field.key];
     const file = value instanceof File && value.size > 0 ? value : null;
     if (!file) {
       if (field.isRequired) errors[field.key] = `${field.label} را بارگذاری کنید.`;
       continue;
     }
-    const problem = checkUpload(file) ?? (await checkUploadContent(file));
+    const problem =
+      checkUpload(file) ?? fileProblem(file, field.settings) ?? (await checkUploadContent(file));
     if (problem) errors[field.key] = problem;
     else uploads.push({ key: field.key, file });
   }
 
   const schema = z.object(
-    Object.fromEntries(
-      form.fields.filter((f) => f.type !== 'FILE').map((f) => [f.key, valueSchema(f)]),
-    ),
+    Object.fromEntries(inputs.filter((f) => f.type !== 'FILE').map((f) => [f.key, valueSchema(f)])),
   );
   const parsed = schema.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
@@ -169,11 +150,13 @@ export async function submitForm(
   for (const { key, file } of uploads) {
     data[key] = (await storeUpload(`forms/${form.slug}`, file)) satisfies StoredFile;
   }
+  const snapshot: FieldSnapshot[] = inputs.map(({ key, label, type }) => ({ key, label, type }));
 
   await prisma.formSubmission.create({
     data: {
       form: { connect: { slug: form.slug } },
       data: data as Prisma.InputJsonObject,
+      fields: snapshot as Prisma.InputJsonArray,
     },
   });
   return { ok: true, formTitle: form.title };
@@ -212,18 +195,6 @@ export async function getFormForAdmin(id: string) {
   });
 }
 
-const fieldTypes = [
-  'TEXT',
-  'TEXTAREA',
-  'NUMBER',
-  'EMAIL',
-  'PHONE',
-  'DATE',
-  'SELECT',
-  'FILE',
-  'CHECKBOX',
-] as const;
-
 const formFieldInputSchema = z
   .object({
     key: z
@@ -234,13 +205,14 @@ const formFieldInputSchema = z
         'کلید فیلد باید با حرف انگلیسی کوچک شروع شود (a-z، 0-9، _).',
       ),
     label: z.string().trim().min(1, 'برچسب فیلد را وارد کنید.').max(200),
-    type: z.enum(fieldTypes),
+    type: z.enum(FIELD_TYPES),
     isRequired: z.boolean(),
     options: z.array(z.string().trim().min(1).max(200)).max(50),
+    settings: fieldSettingsSchema.default({}),
   })
-  .refine((field) => field.type !== 'SELECT' || field.options.length > 0, {
-    message: 'فیلد انتخابی باید حداقل یک گزینه داشته باشد.',
-    path: ['options'],
+  .superRefine((field, ctx) => {
+    const problem = settingsProblem(field.type, field.settings, field.options);
+    if (problem) ctx.addIssue({ code: 'custom', path: ['settings'], message: problem });
   });
 
 export const formDefinitionInputSchema = z
@@ -250,7 +222,8 @@ export const formDefinitionInputSchema = z
       .string()
       .trim()
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'نامک فقط حروف انگلیسی کوچک، عدد و خط تیره.'),
-    description: optionalText('توضیحات', 1000),
+    // HTML from the rich editor (ADR-0005).
+    description: optionalText('توضیحات', 100_000),
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
     fields: z.array(formFieldInputSchema).min(1, 'فرم باید حداقل یک فیلد داشته باشد.').max(60),
   })
@@ -289,14 +262,18 @@ export async function saveFormDefinition(
     key: field.key,
     label: field.label,
     type: field.type,
-    isRequired: field.isRequired,
-    options: field.type === 'SELECT' ? field.options : undefined,
+    // A heading is never required; only choice fields keep options.
+    isRequired: field.type === 'SECTION' ? false : field.isRequired,
+    options: CHOICE_TYPES.has(field.type) ? field.options : undefined,
+    settings: field.settings as Prisma.InputJsonObject,
     sortOrder: index + 1,
   }));
+  const description = richInput(input.description);
   const definition = {
     title: input.title,
     slug: input.slug,
-    description: input.description ?? null,
+    description: description.text,
+    descriptionHtml: description.html,
     status: input.status,
   };
 
@@ -364,12 +341,30 @@ export async function getSubmissionFile(submissionId: string, fieldKey: string) 
 }
 
 /** Human-readable value of one submitted field, for tables and CSV. */
-export function displayValue(value: unknown): string {
-  if (value === undefined || value === null) return '';
-  if (typeof value === 'boolean') return value ? 'بله' : 'خیر';
+export function displayValue(value: unknown, field?: { type: string; settings?: unknown }): string {
   const file = storedFileSchema.safeParse(value);
   if (file.success) return file.data.originalName;
-  return String(value);
+  return displayAnswer(value, field?.type, field ? readSettings(field.settings) : undefined);
+}
+
+const snapshotSchema = z.array(
+  z.object({ key: z.string(), label: z.string(), type: z.enum(FIELD_TYPES) }),
+);
+
+/**
+ * The fields to show for one submission: the ones it was answered against
+ * (its snapshot, with the labels of that time), or, for submissions from
+ * before snapshots, the form's current fields. Sections are left out.
+ */
+export function submissionFields(
+  submission: { fields: unknown },
+  current: { key: string; label: string; type: FieldType; settings?: unknown }[],
+) {
+  const snapshot = snapshotSchema.safeParse(submission.fields).data;
+  const settingsOf = new Map(current.map((field) => [field.key, field.settings]));
+  return (snapshot ?? current)
+    .filter((field) => field.type !== 'SECTION')
+    .map((field) => ({ ...field, settings: settingsOf.get(field.key) }));
 }
 
 /** All submissions of a form as CSV (UTF-8 with BOM so Excel shows Persian correctly). */
@@ -381,13 +376,25 @@ export async function exportSubmissionsCsv(formId: string, actorId: string) {
     orderBy: { createdAt: 'asc' },
   });
 
-  const header = ['تاریخ ثبت', 'وضعیت', ...form.fields.map((field) => field.label)];
+  // Columns: today's fields, then any field only older submissions have.
+  const columns = new Map<
+    string,
+    { key: string; label: string; type: FieldType; settings?: unknown }
+  >();
+  for (const field of form.fields.filter((f) => f.type !== 'SECTION'))
+    columns.set(field.key, field);
+  for (const submission of submissions) {
+    for (const field of submissionFields(submission, [])) {
+      if (!columns.has(field.key)) columns.set(field.key, field);
+    }
+  }
+  const header = ['تاریخ ثبت', 'وضعیت', ...[...columns.values()].map((field) => field.label)];
   const rows = submissions.map((submission) => {
     const data = submission.data as Record<string, unknown>;
     return [
       formatDateTime(submission.createdAt),
       requestStatusLabel[submission.status],
-      ...form.fields.map((field) => displayValue(data[field.key])),
+      ...[...columns.values()].map((field) => displayValue(data[field.key], field)),
     ];
   });
   await recordAudit({

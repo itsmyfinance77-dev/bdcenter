@@ -12,10 +12,26 @@ import { requestStatusLabel } from '@/content/admin';
 import { formatDateTime, toPersianDigits } from '@/lib/format';
 import { pageParam } from '@/lib/params';
 import { storedFileSchema } from '@/modules/files/service';
-import { displayValue, getFormForAdmin, listSubmissions } from '@/modules/forms/service';
+import {
+  displayValue,
+  getFormForAdmin,
+  listSubmissions,
+  submissionFields,
+} from '@/modules/forms/service';
 import { setSubmissionStatusAction } from '../actions';
 
 export const metadata = { title: 'درخواست‌های فرم' };
+
+/** Answers shown left to right (numbers and codes). */
+const LTR_TYPES = new Set([
+  'PHONE',
+  'MOBILE',
+  'NUMBER',
+  'NATIONAL_CODE',
+  'LEGAL_ID',
+  'POSTAL_CODE',
+  'TIME',
+]);
 
 export default async function SubmissionsPage({
   params,
@@ -56,7 +72,7 @@ export default async function SubmissionsPage({
                   <Badge tone={submission.status}>{requestStatusLabel[submission.status]}</Badge>
                 </div>
                 <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[200px_1fr]">
-                  {form.fields.map((field) => {
+                  {submissionFields(submission, form.fields).map((field) => {
                     const value = data[field.key];
                     const file = storedFileSchema.safeParse(value);
                     return (
@@ -70,10 +86,14 @@ export default async function SubmissionsPage({
                             >
                               دانلود {file.data.originalName}
                             </a>
-                          ) : field.type === 'PHONE' || field.type === 'NUMBER' ? (
-                            <span dir="ltr">{toPersianDigits(displayValue(value)) || '—'}</span>
+                          ) : field.type === 'EMAIL' ? (
+                            <span dir="ltr">{displayValue(value, field) || '—'}</span>
+                          ) : LTR_TYPES.has(field.type) ? (
+                            <span dir="ltr">
+                              {toPersianDigits(displayValue(value, field)) || '—'}
+                            </span>
                           ) : (
-                            displayValue(value) || '—'
+                            toPersianDigits(displayValue(value, field)) || '—'
                           )}
                         </dd>
                       </div>

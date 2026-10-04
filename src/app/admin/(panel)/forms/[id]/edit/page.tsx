@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { AdminHeading, secondaryButtonClass } from '@/components/admin/ui';
+import { editorHtml } from '@/lib/rich-html';
 import { requireAdmin } from '@/modules/auth/service';
+import { readSettings } from '@/modules/forms/fields';
 import { getFormForAdmin } from '@/modules/forms/service';
 import { FormBuilder } from '../../form-builder';
 
@@ -48,7 +50,7 @@ export default async function EditFormPage({
         initial={{
           title: form.title,
           slug: form.slug,
-          description: form.description ?? '',
+          description: editorHtml(form.descriptionHtml, form.description),
           status: form.status,
         }}
         initialFields={form.fields.map((field) => ({
@@ -57,6 +59,7 @@ export default async function EditFormPage({
           type: field.type,
           isRequired: field.isRequired,
           options: optionsSchema.safeParse(field.options).data ?? [],
+          settings: readSettings(field.settings),
         }))}
       />
     </>

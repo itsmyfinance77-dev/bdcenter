@@ -24,16 +24,27 @@ export const membershipTierLabel = {
 
 export const adminRoleLabel = { ADMIN: 'مدیر کل', EDITOR: 'ویراستار' } as const;
 
+/** Field types in the order the builder lists them (see src/modules/forms/fields.ts). */
 export const formFieldTypeLabel = {
   TEXT: 'متن کوتاه',
   TEXTAREA: 'متن بلند',
   NUMBER: 'عدد',
   EMAIL: 'ایمیل',
   PHONE: 'تلفن',
-  DATE: 'تاریخ',
-  SELECT: 'انتخابی',
-  FILE: 'فایل',
+  MOBILE: 'شمارهٔ همراه',
+  NATIONAL_CODE: 'کد ملی',
+  LEGAL_ID: 'شناسه ملی شخص حقوقی',
+  POSTAL_CODE: 'کد پستی',
+  JALALI_DATE: 'تاریخ شمسی',
+  TIME: 'ساعت',
+  DATE: 'تاریخ میلادی (تقویم مرورگر)',
+  SELECT: 'فهرست کشویی (یک گزینه)',
+  RADIO: 'دکمه‌های گزینه (یک گزینه)',
+  MULTI_CHOICE: 'چندگزینه‌ای (چند گزینه)',
+  RATING: 'امتیاز',
   CHECKBOX: 'تیک تأیید',
+  FILE: 'فایل',
+  SECTION: 'عنوان بخش و توضیح (بدون پاسخ)',
 } as const;
 
 /** EDITOR handles content and incoming requests; ADMIN also manages forms, users, the audit log and system status. */
