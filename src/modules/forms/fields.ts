@@ -135,14 +135,20 @@ function checked(
 
 // Built from code points: the editing tools turn \u escapes into look-alike characters.
 const ARABIC_DECIMAL = new RegExp(String.fromCharCode(0x066b), 'g');
-const THOUSANDS = new RegExp(`[${String.fromCharCode(0x066c)},\\s]`, 'g');
+const SEPARATOR = `[${String.fromCharCode(0x066c)},]`;
+const GROUPED = new RegExp(`^-?\\d{1,3}(${SEPARATOR}\\d{3})+(\\.\\d+)?$`);
+const SEPARATORS = new RegExp(SEPARATOR, 'g');
 
 /**
- * A number as typed on a Persian keyboard: Persian/Arabic digits, «٫» as the
- * decimal mark, «٬» or «,» between thousands.
+ * A number as typed on a Persian keyboard — Persian/Arabic digits, «٫» as the
+ * decimal mark, «٬» or «,» between groups of three — in plain form ("1200.5"),
+ * or null when it is not a number. A comma anywhere else ("12,5") is refused
+ * rather than guessed: it may be meant as a decimal mark.
  */
-export function latinNumber(text: string): string {
-  return toLatinDigits(text).replace(ARABIC_DECIMAL, '.').replace(THOUSANDS, '');
+export function latinNumber(text: string): string | null {
+  const plain = toLatinDigits(text).replace(ARABIC_DECIMAL, '.').replace(/\s/g, '');
+  const ungrouped = GROUPED.test(plain) ? plain.replace(SEPARATORS, '') : plain;
+  return /^-?\d+(\.\d+)?$/.test(ungrouped) ? ungrouped : null;
 }
 
 const trimmed = (value: unknown) =>
@@ -169,9 +175,10 @@ export function valueSchema(field: PublicFormField): z.ZodTypeAny {
       return phone(required);
     case 'NUMBER':
       return checked(label, required, 30, trimmed, (text) => {
-        const value = Number(latinNumber(text));
-        if (text.trim() === '' || !Number.isFinite(value)) {
-          return { error: `${label} باید عدد باشد.` };
+        const plain = latinNumber(text);
+        const value = Number(plain);
+        if (plain === null || !Number.isFinite(value)) {
+          return { error: `${label} باید عدد باشد (برای اعشار از «٫» یا «.» استفاده کنید).` };
         }
         if (settings.min !== undefined && value < settings.min) {
           return { error: `${label} نباید کمتر از ${n(settings.min)} باشد.` };
