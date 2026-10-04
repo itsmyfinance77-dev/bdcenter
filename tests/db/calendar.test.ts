@@ -25,6 +25,8 @@ async function cleanup() {
 // 15 Mehr 1405, 18:00 Tehran — and a course on the last day of the month, 23:30 Tehran.
 const eventStart = new Date(jalaliDayStart(1405, 7, 15)!.getTime() + 18 * 3600_000);
 const courseStart = new Date(jalaliDayStart(1405, 7, 30)!.getTime() + 23.5 * 3600_000);
+// Its second session, a week later (7 Aban, 16:00 Tehran).
+const secondSession = new Date(jalaliDayStart(1405, 8, 7)!.getTime() + 16 * 3600_000);
 
 beforeAll(async () => {
   await cleanup();
@@ -64,7 +66,18 @@ beforeAll(async () => {
       title: 'دوره تقویم',
       status: 'PUBLISHED',
       startsAt: courseStart,
-      endsAt: new Date(courseStart.getTime() + 7200_000),
+      endsAt: new Date(secondSession.getTime() + 7200_000),
+      sessions: {
+        create: [
+          { startsAt: courseStart, endsAt: new Date(courseStart.getTime() + 1800_000) },
+          {
+            startsAt: secondSession,
+            endsAt: new Date(secondSession.getTime() + 7200_000),
+            location: 'سالن ۲',
+            topic: 'کارگاه',
+          },
+        ],
+      },
     },
   });
 });
@@ -82,7 +95,10 @@ describe('events calendar', () => {
     expect(grid.leadingBlanks).toBe(4);
     expect(mine(15)).toContain('رویداد تقویم');
     expect(mine(15)).not.toContain('پیش‌نویس');
-    expect(mine(30)).toContain('دوره تقویم');
+    expect(mine(30)).toContain('دوره تقویم — جلسهٔ ۱ از ۲');
+    const aban = await getMonthGrid({ year: 1405, month: 8 }, new Date(eventStart));
+    expect(aban.days[6]!.items.map((item) => item.title)).toContain('دوره تقویم — جلسهٔ ۲ از ۲');
+    expect(aban.days[6]!.items[0]).toMatchObject({ location: 'سالن ۲', description: 'کارگاه' });
     expect(grid.days[14]!.isToday).toBe(true);
     expect(grid.previous).toEqual({ year: 1405, month: 6 });
   });
@@ -96,6 +112,9 @@ describe('events calendar', () => {
 
     const course = await courseIcs(`${PREFIX}course`);
     expect(course?.body).toMatch(/DTEND:\d{8}T\d{6}Z/);
+    // One entry per session, with ids that survive saving the course again.
+    expect(course?.body.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(course?.body).toContain(`UID:course-${course!.id}-${secondSession.getTime()}@`);
 
     const feed = await calendarFeed(new Date(eventStart.getTime() - 86_400_000));
     expect(feed).toContain('رویداد تقویم');
@@ -114,7 +133,8 @@ describe('events calendar', () => {
     const now = new Date(courseStart.getTime() - 24 * 3600_000);
 
     const feed = await memberCalendarFeed(member.id, token, now);
-    expect(feed).toContain('دوره تقویم');
+    expect(feed).toContain('دوره تقویم — جلسهٔ ۱ از ۲');
+    expect(feed).toContain('دوره تقویم — جلسهٔ ۲ از ۲');
     expect(feed).not.toContain('رویداد تقویم');
     expect(await memberCalendarFeed(member.id, `${token.slice(0, -1)}x`, now)).toBeNull();
 

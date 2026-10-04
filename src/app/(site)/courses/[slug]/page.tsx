@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { requestStatusLabel } from '@/content/admin';
 import { memberCopy } from '@/content/members';
 import { availabilityLabel, enrollErrorMessage, trainingCopy } from '@/content/training';
-import { formatDateTime, formatNumber } from '@/lib/format';
+import { formatDateTime, formatNumber, formatTime, formatWeekdayDate } from '@/lib/format';
 import { decodeParam } from '@/lib/params';
 import { getCurrentMember } from '@/modules/members/service';
 import {
@@ -60,6 +60,9 @@ export default async function CoursePage({
   if (course.instructor) facts.push(['مدرس', course.instructor]);
   if (course.startsAt) facts.push(['زمان شروع', formatDateTime(course.startsAt)]);
   if (course.endsAt) facts.push(['زمان پایان', formatDateTime(course.endsAt)]);
+  if (course.sessions.length > 1) {
+    facts.push(['تعداد جلسه‌ها', formatNumber(course.sessions.length)]);
+  }
   if (course.location) facts.push(['مکان', course.location]);
   if (course.capacity !== null) facts.push(['ظرفیت', formatNumber(course.capacity)]);
   if (course.seatsLeft !== null && course.availability === 'open') {
@@ -91,6 +94,32 @@ export default async function CoursePage({
           ) : (
             <p className="text-sm text-ink-2">توضیحات این دوره به‌زودی اضافه می‌شود.</p>
           )}
+          {course.sessions.length > 1 ? (
+            <section aria-labelledby="sessions-heading" className="mt-8">
+              <h2 id="sessions-heading" className="mb-3 text-lg font-bold text-brand-900">
+                جلسه‌های دوره
+              </h2>
+              <ol className="divide-y divide-line rounded-card border border-line">
+                {course.sessions.map((session, index) => (
+                  <li key={session.id} className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                    <span className="font-semibold text-brand-900">
+                      جلسهٔ {formatNumber(index + 1)}
+                    </span>
+                    <time dateTime={session.startsAt.toISOString()} className="text-ink">
+                      {formatWeekdayDate(session.startsAt)}، ساعت {formatTime(session.startsAt)}
+                      {session.endsAt ? ` تا ${formatTime(session.endsAt)}` : null}
+                    </time>
+                    {session.location ? (
+                      <span className="text-ink-2">{session.location}</span>
+                    ) : null}
+                    {session.topic ? (
+                      <span className="basis-full text-ink-2">{session.topic}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
         </article>
 
         <aside className="space-y-4 rounded-panel border border-line bg-white p-6 lg:self-start">

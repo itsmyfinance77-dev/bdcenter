@@ -6,9 +6,9 @@ import { StatusForm } from '@/components/admin/status-form';
 import { AdminHeading, EmptyState, secondaryButtonClass, Table, Td } from '@/components/admin/ui';
 import { membershipTierLabel } from '@/content/admin';
 import { formatDateTime, formatNumber, toPersianDigits } from '@/lib/format';
-import { formatJalaliInput } from '@/lib/jalali';
 import { editorHtml } from '@/lib/rich-html';
 import { listNotifications } from '@/modules/notifications/service';
+import { sessionFormValues } from '@/modules/training/sessions';
 import { getCourseForAdmin, listEnrollments } from '@/modules/training/service';
 import {
   deleteCourseAction,
@@ -94,8 +94,7 @@ export default async function EditCoursePage({
     coverAlt: course.coverAlt ?? '',
     instructor: course.instructor ?? '',
     location: course.location ?? '',
-    startsAt: course.startsAt ? formatJalaliInput(course.startsAt) : '',
-    endsAt: course.endsAt ? formatJalaliInput(course.endsAt) : '',
+    ...sessionFormValues(course.sessions, toPersianDigits),
     capacity: course.capacity === null ? '' : String(course.capacity),
     certificateEnabled: course.certificateEnabled ? 'on' : '',
     certificateSignatory: course.certificateSignatory ?? '',

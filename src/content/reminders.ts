@@ -22,10 +22,23 @@ export const reminderNotice = {
     subject: `یادآوری نوبت ${service}`,
     text: `یادآوری: نوبت شما با ${staff} (${service})، ${when}${at(location)}.\n${link}\n${signature}`,
   }),
-  course: (course: string, when: string, location: string | null, link: string): Notice => ({
-    subject: `یادآوری شروع دوره «${course}»`,
-    text: `یادآوری: دوره «${course}» ${when}${at(location)} شروع می‌شود.\n${link}\n${signature}`,
-  }),
+  /** `session` is «۲ از ۵» for a course with several sessions, null for a single one. */
+  course: (
+    course: string,
+    when: string,
+    location: string | null,
+    link: string,
+    session: string | null = null,
+  ): Notice =>
+    session
+      ? {
+          subject: `یادآوری جلسهٔ ${session} دوره «${course}»`,
+          text: `یادآوری: جلسهٔ ${session} دوره «${course}» ${when}${at(location)} برگزار می‌شود.\n${link}\n${signature}`,
+        }
+      : {
+          subject: `یادآوری شروع دوره «${course}»`,
+          text: `یادآوری: دوره «${course}» ${when}${at(location)} شروع می‌شود.\n${link}\n${signature}`,
+        },
 };
 
 /** Label of reminder messages in the panel's message history. */

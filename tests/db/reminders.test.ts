@@ -96,7 +96,12 @@ async function booking(startsAt: Date, options: { createdAt?: Date; phone?: stri
 
 async function enrollment(
   startsAt: Date,
-  options: { status?: 'NEW' | 'ACCEPTED'; course?: 'PUBLISHED' | 'DRAFT' } = {},
+  options: {
+    status?: 'NEW' | 'ACCEPTED';
+    course?: 'PUBLISHED' | 'DRAFT';
+    /** More sessions after the first one. */
+    later?: Date[];
+  } = {},
 ) {
   seq += 1;
   const course = await prisma.course.create({
@@ -105,6 +110,9 @@ async function enrollment(
       title: 'دورهٔ آزمایشی',
       status: options.course ?? 'PUBLISHED',
       startsAt,
+      sessions: {
+        create: [startsAt, ...(options.later ?? [])].map((at) => ({ startsAt: at })),
+      },
     },
   });
   return prisma.enrollment.create({
@@ -207,6 +215,21 @@ describe('reminder SMS', () => {
     await runReminders(new Date(NOW.getTime() + 8.5 * HOUR));
     expect(await reminderRows(b.id)).toHaveLength(0);
     expect(await reminderRows(e.id)).toHaveLength(1);
+  });
+
+  it('reminds every session of a course, each once, naming the session', async () => {
+    const e = await enrollment(new Date(NOW.getTime() + 10 * HOUR), {
+      later: [new Date(NOW.getTime() + 34 * HOUR)],
+    });
+    await runReminders(NOW);
+    expect(await reminderRows(e.id)).toHaveLength(1);
+    await runReminders(new Date(NOW.getTime() + 24 * HOUR));
+    await runReminders(new Date(NOW.getTime() + 24.25 * HOUR));
+    const rows = await reminderRows(e.id);
+    expect(rows.map((row) => row.occurrenceAt.getTime()).sort()).toEqual([
+      NOW.getTime() + 10 * HOUR,
+      NOW.getTime() + 34 * HOUR,
+    ]);
   });
 
   it('ignores cancelled slots, unaccepted enrollments and unpublished courses', async () => {

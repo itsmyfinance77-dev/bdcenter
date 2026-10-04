@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { membershipTierLabel, requestStatusLabel } from '@/content/admin';
 import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/format';
-import { jalaliDateTime } from '@/lib/jalali';
 import { prisma, Prisma } from '@/lib/prisma';
 import { allTermsIn, matchesAllTerms, SqlParams } from '@/lib/search-text';
 import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
@@ -12,6 +11,7 @@ import { getMembershipTier } from '@/modules/membership/service';
 import { countCreatedPerDay } from '@/lib/daily-counts';
 import { richInput } from '@/lib/rich-html';
 import { certificateAvailable, syncCertificate } from './certificates';
+import { courseSpan, type SessionInput } from './sessions';
 import type { MemberAccess } from '@/modules/members/access';
 import {
   checkImageUpload,
@@ -48,11 +48,12 @@ export async function listPublishedCourses() {
       coverKey: true,
       capacity: true,
       enrollmentOpen: true,
-      _count: { select: { enrollments: { where: seatHolding } } },
+      _count: { select: { enrollments: { where: seatHolding }, sessions: true } },
     },
   });
   return courses.map(({ _count, ...course }) => ({
     ...course,
+    sessionCount: _count.sessions,
     availability: availability(course, _count.enrollments),
   }));
 }
@@ -72,7 +73,10 @@ function availability(
 export async function getPublishedCourse(slug: string) {
   const course = await prisma.course.findFirst({
     where: { slug, status: 'PUBLISHED' },
-    include: { _count: { select: { enrollments: { where: seatHolding } } } },
+    include: {
+      _count: { select: { enrollments: { where: seatHolding } } },
+      sessions: { orderBy: { startsAt: 'asc' } },
+    },
   });
   if (!course) return null;
   const { _count, ...rest } = course;
@@ -100,23 +104,55 @@ export async function searchPublishedCourses(terms: string[], limit = 20) {
   );
 }
 
-/** Published courses starting in [from, to), soonest first (calendar and feed). */
-export async function listPublishedCoursesBetween(from: Date, to: Date, limit = 500) {
-  return prisma.course.findMany({
-    where: { status: 'PUBLISHED', startsAt: { gte: from, lt: to } },
+/**
+ * Numbers sessions within their course ("جلسهٔ ۲ از ۵"): for each session id,
+ * its 1-based position and the course's session count.
+ */
+async function sessionNumbers(courseIds: string[]) {
+  const all = await prisma.courseSession.findMany({
+    where: { courseId: { in: [...new Set(courseIds)] } },
+    orderBy: [{ courseId: 'asc' }, { startsAt: 'asc' }],
+    select: { id: true, courseId: true },
+  });
+  const totals = new Map<string, number>();
+  const numbers = new Map<string, number>();
+  for (const session of all) {
+    const position = (totals.get(session.courseId) ?? 0) + 1;
+    totals.set(session.courseId, position);
+    numbers.set(session.id, position);
+  }
+  return (sessionId: string, courseId: string) => ({
+    number: numbers.get(sessionId) ?? 1,
+    total: totals.get(courseId) ?? 1,
+  });
+}
+
+/** Sessions of published courses starting in [from, to), soonest first (calendar and feed). */
+export async function listPublishedCourseSessionsBetween(from: Date, to: Date, limit = 1000) {
+  const sessions = await prisma.courseSession.findMany({
+    where: { startsAt: { gte: from, lt: to }, course: { status: 'PUBLISHED' } },
     orderBy: { startsAt: 'asc' },
     take: limit,
     select: {
       id: true,
-      slug: true,
-      title: true,
-      description: true,
       startsAt: true,
       endsAt: true,
       location: true,
-      updatedAt: true,
+      topic: true,
+      course: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          description: true,
+          location: true,
+          updatedAt: true,
+        },
+      },
     },
   });
+  const numberOf = await sessionNumbers(sessions.map((session) => session.course.id));
+  return sessions.map((session) => ({ ...session, ...numberOf(session.id, session.course.id) }));
 }
 
 export async function listPublishedCourseUrls() {
@@ -224,6 +260,10 @@ export async function listMemberEnrollments(memberId: string) {
           location: true,
           status: true,
           certificateEnabled: true,
+          sessions: {
+            orderBy: { startsAt: 'asc' },
+            select: { id: true, startsAt: true, endsAt: true, location: true, topic: true },
+          },
         },
       },
       certificate: { select: { revokedAt: true } },
@@ -269,8 +309,6 @@ export const courseInputSchema = z
     description: optionalText('توضیحات', 500_000),
     instructor: optionalText('مدرس', 200),
     location: optionalText('مکان', 200),
-    startsAt: jalaliDateTime('زمان شروع'),
-    endsAt: jalaliDateTime('زمان پایان'),
     capacity: optionalCapacity,
     enrollmentOpen: z.preprocess((value) => value === 'on', z.boolean()),
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
@@ -287,13 +325,6 @@ export const courseInputSchema = z
   .superRefine((value, ctx) => {
     if (!slugPattern.test(value.slug)) {
       ctx.addIssue({ code: 'custom', path: ['slug'], message: SLUG_ERROR });
-    }
-    if (value.startsAt && value.endsAt && value.endsAt < value.startsAt) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['endsAt'],
-        message: 'زمان پایان باید بعد از زمان شروع باشد.',
-      });
     }
   });
 
@@ -346,8 +377,10 @@ export async function listCourseEnrollmentPhones(courseId: string, scope: 'accep
   return { title: course.title, phones: course.enrollments.map((e) => e.phone) };
 }
 
+const sessionOrder = { orderBy: { startsAt: 'asc' as const } };
+
 export async function getCourseForAdmin(id: string) {
-  return prisma.course.findUnique({ where: { id } });
+  return prisma.course.findUnique({ where: { id }, include: { sessions: sessionOrder } });
 }
 
 // ---------------------------------------------------------------------------
@@ -378,9 +411,14 @@ export async function getPublicCourseCoverKey(coverId: string): Promise<string |
  * Creates (no id) or updates a course. `coverFile` (an empty file input counts
  * as none) replaces the cover; `input.removeCover` drops it.
  */
+/**
+ * Creates or updates a course with its sessions (replaced as a whole); the
+ * course's startsAt/endsAt follow the first and last session.
+ */
 export async function saveCourse(
   id: string | null,
   input: CourseInput,
+  sessions: SessionInput[],
   actorId: string,
   coverFile: File | null = null,
 ): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
@@ -403,8 +441,7 @@ export async function saveCourse(
     descriptionHtml: description.html,
     instructor: input.instructor ?? null,
     location: input.location ?? null,
-    startsAt: input.startsAt,
-    endsAt: input.endsAt,
+    ...courseSpan(sessions),
     capacity: input.capacity ?? null,
     enrollmentOpen: input.enrollmentOpen,
     status: input.status,
@@ -425,9 +462,16 @@ export async function saveCourse(
     if (!stored) return { ok: false, errors: { coverImage: 'فایل تصویر معتبر نیست.' } };
     coverKey = stored.storageKey;
   }
-  const course = id
-    ? await prisma.course.update({ where: { id }, data: { ...data, coverKey } })
-    : await prisma.course.create({ data: { ...data, coverKey } });
+  const course = await prisma.$transaction(async (tx) => {
+    const saved = id
+      ? await tx.course.update({ where: { id }, data: { ...data, coverKey } })
+      : await tx.course.create({ data: { ...data, coverKey } });
+    await tx.courseSession.deleteMany({ where: { courseId: saved.id } });
+    await tx.courseSession.createMany({
+      data: sessions.map((session) => ({ ...session, courseId: saved.id })),
+    });
+    return saved;
+  });
   if (oldCover && oldCover !== coverKey) await deleteStoredImage(oldCover);
 
   await recordAudit({
@@ -435,7 +479,7 @@ export async function saveCourse(
     action: id ? 'course.update' : 'course.create',
     entity: 'Course',
     entityId: course.id,
-    metadata: { title: course.title, status: course.status },
+    metadata: { title: course.title, status: course.status, sessions: sessions.length },
   });
   return { ok: true, id: course.id };
 }
@@ -523,24 +567,44 @@ export async function getEnrollmentSurveyTarget(enrollmentId: string) {
 }
 
 /**
- * Accepted enrollments in published courses that start between `from` and
- * `to`, for the reminders domain.
+ * Every (accepted enrollment, session) pair of published courses whose
+ * session starts between `from` and `to`, for the reminders domain: one
+ * reminder per session.
  */
-export async function listAcceptedEnrollmentsStartingBetween(from: Date, to: Date, limit = 3000) {
-  return prisma.enrollment.findMany({
-    where: {
-      status: 'ACCEPTED',
-      course: { status: 'PUBLISHED', startsAt: { gte: from, lte: to } },
-    },
-    orderBy: { createdAt: 'asc' },
+export async function listAcceptedEnrollmentSessionsBetween(from: Date, to: Date, limit = 3000) {
+  const sessions = await prisma.courseSession.findMany({
+    where: { startsAt: { gte: from, lte: to }, course: { status: 'PUBLISHED' } },
+    orderBy: { startsAt: 'asc' },
     take: limit,
     select: {
       id: true,
-      phone: true,
-      email: true,
-      course: { select: { title: true, startsAt: true, location: true } },
+      startsAt: true,
+      location: true,
+      course: {
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          enrollments: {
+            where: { status: 'ACCEPTED' },
+            select: { id: true, phone: true, email: true },
+          },
+        },
+      },
     },
   });
+  const numberOf = await sessionNumbers(sessions.map((session) => session.course.id));
+  return sessions
+    .flatMap((session) =>
+      session.course.enrollments.map((enrollment) => ({
+        enrollment,
+        courseTitle: session.course.title,
+        startsAt: session.startsAt,
+        location: session.location ?? session.course.location,
+        ...numberOf(session.id, session.course.id),
+      })),
+    )
+    .slice(0, limit);
 }
 
 export async function exportEnrollmentsCsv(courseId: string, actorId: string) {

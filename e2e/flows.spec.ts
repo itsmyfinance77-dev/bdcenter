@@ -310,12 +310,33 @@ test('the admin creates and publishes a course from the panel', async ({ page })
   await page.getByLabel('وضعیت').selectOption('PUBLISHED');
   await page.getByLabel('عنوان').fill(`دوره ساخته‌شده در آزمون ${run}`);
   await page.getByLabel('مدرس').fill('مدرس آزمون');
+  // Two sessions; the second one first with an end before its start.
+  await page.getByLabel('تاریخ').first().fill('۱۴۰۶/۰۲/۱۰');
+  await page.getByLabel('ساعت شروع').first().fill('۱۶:۰۰');
+  await page.getByLabel('ساعت پایان').first().fill('۱۸:۰۰');
+  await page.getByRole('button', { name: 'افزودن جلسه' }).click();
+  await page.getByLabel('تاریخ').nth(1).fill('1406/02/17');
+  await page.getByLabel('ساعت شروع').nth(1).fill('16:00');
+  await page.getByLabel('ساعت پایان').nth(1).fill('15:00');
+  await page.getByLabel('موضوع این جلسه').nth(1).fill('کارگاه عملی');
+  await page.getByRole('button', { name: 'ذخیره' }).click();
+  await expect(page.getByText('ساعت پایان باید بعد از ساعت شروع باشد.')).toBeVisible();
+  await expect(page.getByLabel('موضوع این جلسه').nth(1)).toHaveValue('کارگاه عملی');
+  await page.getByLabel('ساعت پایان').nth(1).fill('18:30');
   await page.getByRole('button', { name: 'ذخیره' }).click();
   await expect(page).toHaveURL(/\/admin\/courses\/[^/]+\?saved=1/);
   await expect(page.getByRole('status')).toContainText('ذخیره شد');
+  await expect(page.getByLabel('موضوع این جلسه').nth(1)).toHaveValue('کارگاه عملی');
 
   await page.goto('/courses');
-  await expect(page.getByText(`دوره ساخته‌شده در آزمون ${run}`)).toBeVisible();
+  const card = page.getByRole('link', { name: new RegExp(`دوره ساخته‌شده در آزمون ${run}`) });
+  await expect(card).toContainText('۲ جلسه');
+  await card.click();
+  const sessions = page.getByRole('region', { name: 'جلسه‌های دوره' }).getByRole('listitem');
+  await expect(sessions).toHaveCount(2);
+  await expect(sessions.nth(1)).toContainText('کارگاه عملی');
+  const ics = await page.request.get(`${new URL(page.url()).pathname}/ics`);
+  expect((await ics.text()).match(/BEGIN:VEVENT/g)).toHaveLength(2);
 });
 
 test('admin pages load', async ({ page }) => {

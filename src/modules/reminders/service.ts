@@ -1,12 +1,12 @@
 import { serviceLabel } from '@/content/appointments';
 import { reminderNotice } from '@/content/reminders';
-import { formatTime, formatWeekdayDate } from '@/lib/format';
+import { formatNumber, formatTime, formatWeekdayDate } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import { listBookingsStartingBetween } from '@/modules/appointments/service';
 import { recordJobRun } from '@/modules/jobs/service';
 import { sendReminder } from '@/modules/notifications/service';
 import { getSetting } from '@/modules/settings/service';
-import { listAcceptedEnrollmentsStartingBetween } from '@/modules/training/service';
+import { listAcceptedEnrollmentSessionsBetween } from '@/modules/training/service';
 import { inQuietHours, reminderDueAt, reminderWindow, type QuietHours } from './schedule';
 
 /**
@@ -24,6 +24,7 @@ import { inQuietHours, reminderDueAt, reminderWindow, type QuietHours } from './
  *   time) before it is sent, so overlapping runs never send it twice. A failed
  *   SMS is not retried (the provider may have delivered it anyway); neither is
  *   a claim whose run died before recording the result (`smsSent` stays null).
+ * - Courses are reminded once per session (the claim key is the session's start).
  * - Soonest starts go first when a run hits MAX_SENDS_PER_RUN.
  */
 
@@ -94,10 +95,12 @@ async function bookingCandidates(
 
 async function courseCandidates(now: Date, hoursBefore: number, quiet: QuietHours) {
   const { from, to } = reminderWindow(now, hoursBefore);
-  const enrollments = await listAcceptedEnrollmentsStartingBetween(from, to);
-  return enrollments.flatMap((enrollment): Candidate[] => {
-    const { title, startsAt, location } = enrollment.course;
-    if (!startsAt || reminderDueAt(startsAt, hoursBefore, quiet) > now) return [];
+  const rows = await listAcceptedEnrollmentSessionsBetween(from, to);
+  return rows.flatMap((row): Candidate[] => {
+    const { enrollment, courseTitle: title, startsAt, location } = row;
+    if (reminderDueAt(startsAt, hoursBefore, quiet) > now) return [];
+    const session =
+      row.total > 1 ? `${formatNumber(row.number)} از ${formatNumber(row.total)}` : null;
     return [
       {
         kind: 'COURSE',
@@ -109,7 +112,7 @@ async function courseCandidates(now: Date, hoursBefore: number, quiet: QuietHour
             entityId: enrollment.id,
             phone: enrollment.phone,
             email: enrollment.email,
-            notice: reminderNotice.course(title, when(startsAt), location, accountLink()),
+            notice: reminderNotice.course(title, when(startsAt), location, accountLink(), session),
           }),
       },
     ];

@@ -9,6 +9,7 @@ import { requireAdmin } from '@/modules/auth/service';
 import { notifyEnrollmentStatus } from '@/modules/notifications/service';
 import { sendSurvey } from '@/modules/surveys/service';
 import { refreshCertificate } from '@/modules/training/certificates';
+import { parseSessions } from '@/modules/training/sessions';
 import {
   courseInputSchema,
   deleteCourse,
@@ -25,11 +26,19 @@ export async function saveCourseAction(
   const admin = await requireAdmin();
   const values = formValues(formData);
   const parsed = courseInputSchema.safeParse(values);
-  if (!parsed.success) {
-    return { status: 'error', message: GENERIC_ERROR, errors: fieldErrors(parsed.error), values };
+  const sessions = parseSessions(values);
+  if (!parsed.success || Object.keys(sessions.errors).length > 0) {
+    const errors = { ...(parsed.success ? {} : fieldErrors(parsed.error)), ...sessions.errors };
+    return { status: 'error', message: GENERIC_ERROR, errors, values };
   }
   const cover = formData.get('coverImage');
-  const result = await saveCourse(id, parsed.data, admin.id, cover instanceof File ? cover : null);
+  const result = await saveCourse(
+    id,
+    parsed.data,
+    sessions.sessions,
+    admin.id,
+    cover instanceof File ? cover : null,
+  );
   if (!result.ok) {
     return { status: 'error', message: GENERIC_ERROR, errors: result.errors, values };
   }

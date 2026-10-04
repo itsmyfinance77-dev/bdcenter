@@ -224,6 +224,18 @@ cPanel host (see "Hosting" below), and provide SMS/SMTP accounts.
   rate-limited, robots disallow). Admin «نظرسنجی‌ها» (`/admin/surveys`, all
   staff): summary per consulting / consultant / course with average, answers
   with filter, CSV export (audited). Privacy draft lists the survey data.
+  Merged as PR #6.
+- Task 4 — multi-session courses (`feat/course-sessions`): table
+  `course_sessions` (start, optional same-day end, optional place/topic; the
+  migration copies each existing course's start, and its end when on the same
+  Tehran day). `Course.startsAt/endsAt` stay as derived columns (first start,
+  last end) so listings, availability and certificates work unchanged.
+  `src/modules/training/sessions.ts` parses the numbered form rows
+  (`s0date`, `s0start`, …); the course form's «جلسه‌های دوره» editor
+  (`session-rows.tsx`) adds/removes rows. Course page lists the sessions,
+  course list shows «n جلسه», the events calendar / course `.ics` / member
+  feed have one entry per session (UID = course id + session start), and
+  reminders go per session («جلسهٔ ۲ از ۵»).
 
 ## Where things live
 

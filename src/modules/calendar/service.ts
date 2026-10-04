@@ -9,6 +9,7 @@ import {
   persianWeekday,
   type JalaliMonth,
 } from '@/lib/jalali';
+import { formatNumber } from '@/lib/format';
 import { plainExcerpt } from '@/lib/text';
 import { listMemberBookings } from '@/modules/appointments/service';
 import { getPublishedArticle, listPublishedEventsBetween } from '@/modules/content/service';
@@ -16,7 +17,7 @@ import { getMemberCalendarVersion } from '@/modules/members/service';
 import {
   getPublishedCourse,
   listMemberEnrollments,
-  listPublishedCoursesBetween,
+  listPublishedCourseSessionsBetween,
 } from '@/modules/training/service';
 
 /**
@@ -43,10 +44,45 @@ function siteUrl(path: string): string {
 
 const uidDomain = 'bdcenter.yazdccima.com';
 
+/**
+ * A course session as a calendar item. The key (and so the iCalendar UID) is
+ * the course and the session's start, which stays the same when the course is
+ * saved again; a moved session becomes a new entry.
+ */
+function sessionItem(
+  course: {
+    id: string;
+    slug: string;
+    title: string;
+    description: string | null;
+    location: string | null;
+    updatedAt: Date;
+  },
+  session: { startsAt: Date; endsAt: Date | null; location: string | null; topic: string | null },
+  numbering: { number: number; total: number },
+): CalendarItem {
+  const label =
+    numbering.total > 1
+      ? `${course.title} — جلسهٔ ${formatNumber(numbering.number)} از ${formatNumber(numbering.total)}`
+      : course.title;
+  const about = course.description ? plainExcerpt(course.description) : null;
+  return {
+    key: `course-${course.id}-${session.startsAt.getTime()}`,
+    kind: 'course',
+    title: label,
+    href: `/courses/${encodeURIComponent(course.slug)}`,
+    startsAt: session.startsAt,
+    endsAt: session.endsAt,
+    location: session.location ?? course.location,
+    description: [session.topic, about].filter(Boolean).join(' — ') || null,
+    updatedAt: course.updatedAt,
+  };
+}
+
 async function itemsBetween(from: Date, to: Date): Promise<CalendarItem[]> {
   const [events, courses] = await Promise.all([
     listPublishedEventsBetween(from, to),
-    listPublishedCoursesBetween(from, to),
+    listPublishedCourseSessionsBetween(from, to),
   ]);
   const items: CalendarItem[] = [
     ...events.map((event) => ({
@@ -60,17 +96,7 @@ async function itemsBetween(from: Date, to: Date): Promise<CalendarItem[]> {
       description: event.excerpt,
       updatedAt: event.updatedAt,
     })),
-    ...courses.map((course) => ({
-      key: `course-${course.id}`,
-      kind: 'course' as const,
-      title: course.title,
-      href: `/courses/${encodeURIComponent(course.slug)}`,
-      startsAt: course.startsAt!,
-      endsAt: course.endsAt,
-      location: course.location,
-      description: course.description ? plainExcerpt(course.description) : null,
-      updatedAt: course.updatedAt,
-    })),
+    ...courses.map((session) => sessionItem(session.course, session, session)),
   ];
   return items.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 }
@@ -154,22 +180,15 @@ export async function eventIcs(slug: string): Promise<{ id: string; body: string
   return { id: event.id, body: buildCalendar([toCalendarEvent(item)], { name: event.title }) };
 }
 
-/** A single course's .ics, or null when it is unpublished or has no start time. */
+/** A course's .ics with every session, or null when it is unpublished or has none. */
 export async function courseIcs(slug: string): Promise<{ id: string; body: string } | null> {
   const course = await getPublishedCourse(slug);
-  if (!course?.startsAt) return null;
-  const item: CalendarItem = {
-    key: `course-${course.id}`,
-    kind: 'course',
-    title: course.title,
-    href: `/courses/${encodeURIComponent(course.slug)}`,
-    startsAt: course.startsAt,
-    endsAt: course.endsAt,
-    location: course.location,
-    description: course.description ? plainExcerpt(course.description) : null,
-    updatedAt: course.updatedAt,
-  };
-  return { id: course.id, body: buildCalendar([toCalendarEvent(item)], { name: course.title }) };
+  if (!course || course.sessions.length === 0) return null;
+  const total = course.sessions.length;
+  const events = course.sessions.map((session, index) =>
+    toCalendarEvent(sessionItem(course, session, { number: index + 1, total })),
+  );
+  return { id: course.id, body: buildCalendar(events, { name: course.title }) };
 }
 
 // ---------------------------------------------------------------------------
@@ -230,20 +249,25 @@ export async function memberCalendarFeed(
         url: siteUrl('/account'),
       })),
     ...enrollments
-      .filter(
-        (enrollment) =>
-          ENROLLED_STATUSES.includes(enrollment.status) &&
-          enrollment.course.startsAt !== null &&
-          enrollment.course.startsAt > since,
-      )
-      .map((enrollment) => ({
-        uid: `enrollment-${enrollment.id}@${uidDomain}`,
-        title: `${calendarCopy.coursePrefix} ${enrollment.course.title}`,
-        startsAt: enrollment.course.startsAt!,
-        endsAt: enrollment.course.endsAt,
-        location: enrollment.course.location,
-        url: siteUrl(`/courses/${encodeURIComponent(enrollment.course.slug)}`),
-      })),
+      .filter((enrollment) => ENROLLED_STATUSES.includes(enrollment.status))
+      .flatMap((enrollment) => {
+        const { course } = enrollment;
+        const total = course.sessions.length;
+        return course.sessions
+          .map((session, index) => ({ session, number: index + 1 }))
+          .filter(({ session }) => session.startsAt > since)
+          .map(({ session, number }) => ({
+            uid: `enrollment-${enrollment.id}-${session.startsAt.getTime()}@${uidDomain}`,
+            title:
+              total > 1
+                ? `${calendarCopy.coursePrefix} ${course.title} — جلسهٔ ${formatNumber(number)} از ${formatNumber(total)}`
+                : `${calendarCopy.coursePrefix} ${course.title}`,
+            startsAt: session.startsAt,
+            endsAt: session.endsAt,
+            location: session.location ?? course.location,
+            url: siteUrl(`/courses/${encodeURIComponent(course.slug)}`),
+          }));
+      }),
   ];
   return buildCalendar(events, { name: calendarCopy.personalFeedName, now });
 }

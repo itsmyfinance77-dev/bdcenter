@@ -285,9 +285,9 @@ export function ReminderSettingsForm({ initial }: { initial: Record<string, stri
         />
       </fieldset>
       <fieldset className="space-y-3">
-        {toggle('coursesEnabled', 'یادآوری شروع دوره به ثبت‌نام‌های پذیرفته‌شده')}
+        {toggle('coursesEnabled', 'یادآوری جلسه‌های دوره به ثبت‌نام‌های پذیرفته‌شده')}
         <TextField
-          label="چند ساعت پیش از شروع دوره"
+          label="چند ساعت پیش از هر جلسهٔ دوره"
           hint="بین ۱ تا ۷۲ ساعت."
           {...field('coursesHours')}
         />
