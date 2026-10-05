@@ -7,8 +7,9 @@ Backups and restore: [backup.md](backup.md).
 
 - Linux with Docker Engine and the Compose plugin (`docker compose version`).
   2 vCPU / 4 GB RAM is plenty; the image build is the heaviest step.
-- A DNS **A record** for the site name (e.g. `bdcenter.yazdccima.com`) pointing
-  at the server's public IP (OQ-BD-08: whoever manages `yazdccima.com` adds it).
+- A DNS **A record** for the site name (`ccinno.center`, and `www` if used)
+  pointing at the server's public IP (OQ-BD-08; set directly at the domain's
+  registrar — this is an independent domain, not a subdomain of the Chamber's).
 - Ports **80 and 443** open to the internet (80 is needed for the certificate
   challenge and the redirect to HTTPS).
 

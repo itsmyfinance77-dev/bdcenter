@@ -9,7 +9,7 @@
 export const siteInfo = {
   name: 'مرکز توسعه کسب‌وکار',
   parentOrg: 'اتاق بازرگانی، صنایع، معادن و کشاورزی یزد',
-  domain: 'bdcenter.yazdccima.com',
+  domain: 'ccinno.center',
   contact: {
     address: 'یزد، خیابان مطهری، پارک علم و فناوری اقبال',
     // OQ-BD-02, OQ-BD-03: postal code and email are not confirmed yet.

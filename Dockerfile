@@ -26,7 +26,7 @@ RUN pnpm install --frozen-lockfile
 # ---------------------------------------------------------------------------
 FROM deps AS build
 # NEXT_PUBLIC_* values are compiled into the bundle, so they are build arguments.
-ARG NEXT_PUBLIC_SITE_URL=https://bdcenter.yazdccima.com
+ARG NEXT_PUBLIC_SITE_URL=https://ccinno.center
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 COPY . .
 ENV NODE_ENV=production NEXT_STANDALONE=1

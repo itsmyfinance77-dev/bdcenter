@@ -83,7 +83,7 @@ export function buildCalendar(
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//bdcenter.yazdccima.com//calendar//FA',
+    'PRODID:-//ccinno.center//calendar//FA',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     ...(options.name ? [`X-WR-CALNAME:${escapeText(options.name)}`] : []),

@@ -2,7 +2,7 @@
   "name": "bdcenter-site",
   "version": "0.0.0",
   "private": true,
-  "description": "Business Development Center (bdcenter.yazdccima.com) — a website for the business development center affiliated with the Yazd Chamber of Commerce.",
+  "description": "Business Development Center (ccinno.center) — a website for the business development center affiliated with the Yazd Chamber of Commerce.",
   "engines": {
     "node": ">=22.12"
   },

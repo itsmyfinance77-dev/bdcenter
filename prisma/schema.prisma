@@ -1,4 +1,4 @@
-// Business Development Center (bdcenter.yazdccima.com) — initial data model.
+// Business Development Center (ccinno.center) — initial data model.
 // Rules: a domain owns its own models; other domains read through a service
 // function, never through a direct Prisma relation across domain lines,
 // unless the relation is intrinsic to the record (e.g. AuditLog.actorId).

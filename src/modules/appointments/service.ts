@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { siteInfo } from '@/content/site';
 import { formatNumber } from '@/lib/format';
 import { buildCalendar } from '@/lib/ical';
 import { parseJalaliDateTime } from '@/lib/jalali';
@@ -279,7 +280,7 @@ export async function memberBookingIcs(bookingId: string, memberId: string) {
   return buildCalendar(
     [
       {
-        uid: `booking-${booking.id}@bdcenter.yazdccima.com`,
+        uid: `booking-${booking.id}@${siteInfo.domain}`,
         title: `${booking.slot.staff.fullName} — ${booking.topic}`,
         startsAt: booking.slot.startsAt,
         endsAt: booking.slot.endsAt,

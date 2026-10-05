@@ -46,16 +46,21 @@ Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
   instead (Ubuntu, root SSH, IP `87.107.160.104`). Domain: the owner bought
   **`ccinno.center`** via ParsPack as an **independent domain, replacing the
   planned `bdcenter.yazdccima.com` subdomain** (confirmed explicitly) — the
-  site is no longer tied to the Chamber's DNS. `OQ-BD-08` and
-  `docs/product/open-questions.md` updated; `docs/operations/deploy.md`,
-  `CLAUDE.md`, `.env.example`, `deploy/env.production.example`, `README.md`,
-  `package.json`, `prisma/schema.prisma` (header comment), the iCal UID
-  domain (`src/lib/ical.ts`, `src/modules/calendar/service.ts`,
-  `src/modules/appointments/service.ts`) and `src/content/site.ts`'s `domain`
-  field **still say `bdcenter.yazdccima.com`** — rename them to
-  `ccinno.center` in a follow-up PR (low risk: `SITE_DOMAIN` and
-  `NEXT_PUBLIC_SITE_URL` in `.env.production` already override the code
-  defaults, so this did not block the deploy).
+  site is no longer tied to the Chamber's DNS. `OQ-BD-08` updated. Every
+  remaining `bdcenter.yazdccima.com` reference (code defaults, docs, the
+  iCal UID domain, test fixtures) was renamed to `ccinno.center` right after,
+  in the same session (`docs/rename-domain-to-ccinno` branch): this did not
+  block the deploy since `SITE_DOMAIN`/`NEXT_PUBLIC_SITE_URL` in
+  `.env.production` already overrode the code defaults, but left stale
+  references everywhere else (README, the repo is about to go public).
+- **Owner is making the GitHub repo public** (for an easier deploy clone — no
+  SSH deploy key needed once it is public). Scanned the full git history for
+  committed secrets first (`.env*` was never committed except the example
+  file; no API keys/passwords/tokens in any diff besides obvious test
+  fixtures like `'initial-password-123'`) — looks safe. Once public, treat
+  `main` like any public repo: no real secrets in commits, ever, and the
+  owner's own GitHub account/org settings (branch protection, who can push)
+  are now the only access control.
 - Walked the owner through first production deploy on the MobinHost VPS
   step by step (DNS A records at ParsPack, SSH deploy key for the private
   repo, `openssl rand` secrets, `.env.production`, `docker compose -f

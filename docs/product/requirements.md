@@ -85,3 +85,12 @@ The owner asked for these on top of the brief; they are built (see ADR-0002):
 
 Still needed from the employer for these: an SMS provider (OQ-BD-11) and a
 privacy notice for the stored phone numbers (OQ-BD-12).
+
+## Update (2026-10-05): independent domain, not a Chamber subdomain
+
+The owner bought `ccinno.center` as the site's domain (via ParsPack),
+**replacing** the brief's planned `bdcenter.yazdccima.com` subdomain (§Context
+above). The site is no longer tied to the Chamber's own DNS; hosting is a
+separate VPS (OQ-BD-08, see `docs/HANDOFF.md`). This does not change anything
+else in the brief — the Chamber's home page may still link to the site, just
+at the new domain.

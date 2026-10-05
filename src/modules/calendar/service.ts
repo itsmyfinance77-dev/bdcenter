@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { calendarCopy } from '@/content/site';
+import { calendarCopy, siteInfo } from '@/content/site';
 import { buildCalendar, type CalendarEvent } from '@/lib/ical';
 import {
   addJalaliMonths,
@@ -42,7 +42,9 @@ function siteUrl(path: string): string {
   return new URL(path, process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3010').toString();
 }
 
-const uidDomain = 'bdcenter.yazdccima.com';
+/** Every iCalendar UID uses the site's own domain (src/content/site.ts), so a
+ * future domain change only needs to happen in one place. */
+const uidDomain = siteInfo.domain;
 
 /**
  * A course session as a calendar item. The key (and so the iCalendar UID) is

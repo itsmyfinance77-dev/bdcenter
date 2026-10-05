@@ -1,4 +1,4 @@
-# مرکز توسعه کسب‌وکار — bdcenter.yazdccima.com
+# مرکز توسعه کسب‌وکار — ccinno.center
 
 Public microsite for the Business Development Center affiliated with the Yazd
 Chamber of Commerce. Independent project from `F:/RoshdAfrinan Site`.
