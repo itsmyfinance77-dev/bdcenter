@@ -279,7 +279,7 @@ export async function memberBookingIcs(bookingId: string, memberId: string) {
   return buildCalendar(
     [
       {
-        uid: `booking-${booking.id}@bdcenter.yazdccima.com`,
+        uid: `booking-${booking.id}@ccinno.center`,
         title: `${booking.slot.staff.fullName} — ${booking.topic}`,
         startsAt: booking.slot.startsAt,
         endsAt: booking.slot.endsAt,

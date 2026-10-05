@@ -57,11 +57,11 @@ describe('iCalendar', () => {
     const body = buildCalendar(
       [
         {
-          uid: 'event-1@bdcenter.yazdccima.com',
+          uid: 'event-1@ccinno.center',
           title: 'نشست, تخصصی',
           startsAt: new Date('2026-10-01T10:00:00Z'),
           location: 'یزد',
-          url: 'https://bdcenter.yazdccima.com/events/x',
+          url: 'https://ccinno.center/events/x',
         },
       ],
       { name: 'تقویم', now: new Date('2026-09-30T00:00:00Z') },

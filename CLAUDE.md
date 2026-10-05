@@ -1,6 +1,6 @@
 # Project rules — Business Development Center microsite
 
-Standalone project for `bdcenter.yazdccima.com`, independent of `F:/RoshdAfrinan Site`.
+Standalone project for `ccinno.center`, independent of `F:/RoshdAfrinan Site`.
 Start every new session with `docs/HANDOFF.md` (current state, how to run,
 next steps, gotchas). Read `docs/product/requirements.md` and
 `docs/decisions/ADR-0001-architecture.md` before large changes. Keep
