@@ -6,7 +6,12 @@ import { SLUG_ERROR, SLUG_TAKEN, slugify, slugPattern } from '@/lib/slug';
 import { hasRichContent, richInput } from '@/lib/rich-html';
 import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
-import { checkImageUpload, deleteStoredImage, storeImage } from '@/modules/files/service';
+import {
+  checkImageUpload,
+  deleteStoredImage,
+  imageDimensions,
+  storeImage,
+} from '@/modules/files/service';
 
 const coverSelect = { select: { id: true, altText: true } } as const;
 
@@ -289,6 +294,18 @@ export async function getCoverKeyForAdmin(assetId: string): Promise<string | nul
     select: { storageKey: true },
   });
   return asset?.storageKey ?? null;
+}
+
+/** A cover's own pixel proportions, so its display box matches it exactly
+ * (no crop, no empty margins) instead of forcing a fixed aspect ratio. */
+export async function getCoverDimensions(assetId: string) {
+  const key = await getPublicCoverKey(assetId);
+  return key ? imageDimensions(key) : null;
+}
+
+export async function getCoverDimensionsForAdmin(assetId: string) {
+  const key = await getCoverKeyForAdmin(assetId);
+  return key ? imageDimensions(key) : null;
 }
 
 export async function countArticlesByStatus() {

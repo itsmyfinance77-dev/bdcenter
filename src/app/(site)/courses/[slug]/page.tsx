@@ -12,6 +12,7 @@ import { formatDateTime, formatNumber, formatTime, formatWeekdayDate } from '@/l
 import { decodeParam } from '@/lib/params';
 import { getCurrentMember } from '@/modules/members/service';
 import {
+  courseCoverDimensions,
   courseCoverUrl,
   getMemberEnrollment,
   getPublishedCourse,
@@ -56,6 +57,9 @@ export default async function CoursePage({
         ? enrollErrorMessage[result as keyof typeof enrollErrorMessage]
         : null;
 
+  const coverSrc = courseCoverUrl(course.coverKey);
+  const coverDimensions = coverSrc ? await courseCoverDimensions(course.coverKey) : null;
+
   const facts: [string, string][] = [];
   if (course.instructor) facts.push(['مدرس', course.instructor]);
   if (course.startsAt) facts.push(['زمان شروع', formatDateTime(course.startsAt)]);
@@ -77,10 +81,17 @@ export default async function CoursePage({
       />
       <div className="mx-auto grid max-w-(--container-page) gap-6 px-4 py-12 lg:grid-cols-[1fr_320px]">
         <article className="rounded-panel border border-line bg-white p-6">
-          {courseCoverUrl(course.coverKey) ? (
-            <div className="relative mb-6 aspect-[16/9] overflow-hidden rounded-card bg-surface-2">
+          {coverSrc ? (
+            <div
+              className="relative mb-6 overflow-hidden rounded-card bg-surface-2"
+              style={{
+                aspectRatio: coverDimensions
+                  ? `${coverDimensions.width} / ${coverDimensions.height}`
+                  : '16 / 9',
+              }}
+            >
               <Image
-                src={courseCoverUrl(course.coverKey)!}
+                src={coverSrc}
                 alt={course.coverAlt ?? ''}
                 fill
                 unoptimized

@@ -16,6 +16,7 @@ import type { MemberAccess } from '@/modules/members/access';
 import {
   checkImageUpload,
   deleteStoredImage,
+  imageDimensions,
   storeImage,
   type ImageVariant,
 } from '@/modules/files/service';
@@ -394,6 +395,12 @@ const coverKeyPattern = /^course-covers\/([0-9a-f-]{36})\.webp$/;
 export function courseCoverUrl(coverKey: string | null, variant: ImageVariant = 'lg') {
   const id = coverKey?.match(coverKeyPattern)?.[1];
   return id ? `/course-cover/${id}/${variant}` : null;
+}
+
+/** A cover's own pixel proportions, so its display box matches it exactly
+ * (no crop, no empty margins) instead of forcing a fixed aspect ratio. */
+export async function courseCoverDimensions(coverKey: string | null) {
+  return coverKey ? imageDimensions(coverKey) : null;
 }
 
 /** Storage key behind a public cover address: only covers of published courses. */
