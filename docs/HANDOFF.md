@@ -1,6 +1,8 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-04 (end of the sixth session; next steps in «START HERE — seventh session»). Read this first in a new session,
+Last updated: 2026-10-05 (seventh session, in progress — see «Seventh session»
+below for what changed; the «START HERE» list below is still mostly valid).
+Read this first in a new session,
 then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
@@ -27,11 +29,49 @@ Next, in this order:
    of open questions to the center (ST-BD-09-05), test-data cleanup with the
    owner's OK (ST-BD-08-06 — includes the local test admin
    `claude-dev@bdcenter.test` in the dev DB).
-3. **Waiting on the center** (`منتظر مرکز` stories): VPS + DNS (OQ-BD-08), SMS
-   provider (OQ-BD-11), sending email account (OQ-BD-23), content and rules.
+3. **Waiting on the center** (`منتظر مرکز` stories): SMS provider (OQ-BD-11),
+   sending email account (OQ-BD-23), content and rules. VPS + DNS (OQ-BD-08)
+   is **no longer waiting on the center** — see «Seventh session» below.
 
 Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
 (see `deploy/env.production.example` and `docs/operations/deploy.md`).
+
+## Seventh session (2026-10-05)
+
+- **Hosting and domain bought independently of the Chamber** (resolves part
+  of OQ-BD-08, differently than planned): the owner compared ParsPack's Iran
+  VPS plans against the earlier recommendation (2 vCPU/4 GB RAM/40+ GB,
+  `docs/HANDOFF.md` sixth session) and picked `irVPS4`, but checkout failed
+  ("ظرفیت تکمیل" on the network port) — bought a VPS from **MobinHost**
+  instead (Ubuntu, root SSH, IP `87.107.160.104`). Domain: the owner bought
+  **`ccinno.center`** via ParsPack as an **independent domain, replacing the
+  planned `bdcenter.yazdccima.com` subdomain** (confirmed explicitly) — the
+  site is no longer tied to the Chamber's DNS. `OQ-BD-08` and
+  `docs/product/open-questions.md` updated; `docs/operations/deploy.md`,
+  `CLAUDE.md`, `.env.example`, `deploy/env.production.example`, `README.md`,
+  `package.json`, `prisma/schema.prisma` (header comment), the iCal UID
+  domain (`src/lib/ical.ts`, `src/modules/calendar/service.ts`,
+  `src/modules/appointments/service.ts`) and `src/content/site.ts`'s `domain`
+  field **still say `bdcenter.yazdccima.com`** — rename them to
+  `ccinno.center` in a follow-up PR (low risk: `SITE_DOMAIN` and
+  `NEXT_PUBLIC_SITE_URL` in `.env.production` already override the code
+  defaults, so this did not block the deploy).
+- Walked the owner through first production deploy on the MobinHost VPS
+  step by step (DNS A records at ParsPack, SSH deploy key for the private
+  repo, `openssl rand` secrets, `.env.production`, `docker compose -f
+docker-compose.prod.yml up -d --build`, first admin account) per
+  `docs/operations/deploy.md`. Not yet confirmed live end-to-end in this
+  session — check `https://ccinno.center/api/health` next session if not
+  already done.
+- **Bug found on the live preview and fixed** (ST-BD-08-08): course/article
+  cover images were shown with `object-cover` inside a fixed-aspect box, so a
+  poster-style image with content near the edges (the owner's course cover)
+  got cropped at the top of the course/article page. Changed to
+  `object-contain` (full image, no crop, works for portrait or landscape) on
+  the course detail page, article detail page and the admin article cover
+  preview; list thumbnails still crop intentionally (grid density). Guide
+  (`src/content/admin-guide.ts`) updated. Verified in the dev server against
+  the owner's actual test course. Typecheck and lint clean.
 
 ## Sixth session — the owner's task list (written 2026-10-04 before a context clear)
 

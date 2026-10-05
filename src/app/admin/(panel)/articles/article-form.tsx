@@ -67,7 +67,7 @@ export function ArticleForm({
                 fill
                 unoptimized
                 sizes="12rem"
-                className="object-cover"
+                className="object-contain"
               />
             </div>
             <label className="flex items-center gap-2 text-sm text-ink">
