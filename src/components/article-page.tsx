@@ -13,11 +13,10 @@ import { formatDate, formatDateTime } from '@/lib/format';
 import type { ArticleKind } from '@/lib/prisma';
 import {
   getArticleForAdmin,
-  getCoverDimensions,
-  getCoverDimensionsForAdmin,
   getPublishedArticle,
   listPublishedArticles,
 } from '@/modules/content/service';
+import { imageDimensions } from '@/modules/files/service';
 
 const sectionTitle = { NEWS: 'اخبار', EVENT: 'رویدادها', ALL: 'اخبار و رویدادها' } as const;
 const kindLabel = { NEWS: 'خبر', EVENT: 'رویداد' } as const;
@@ -117,12 +116,12 @@ function MetaChip({
 export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slug: string }) {
   const article = await getPublishedArticle(kind, slug);
   if (!article) notFound();
-  const related = (await listPublishedArticles({ kind, limit: 4 }))
-    .filter((other) => other.id !== article.id)
-    .slice(0, 3);
-  const coverDimensions = article.coverImage
-    ? await getCoverDimensions(article.coverImage.id)
-    : null;
+  const [related, coverDimensions] = await Promise.all([
+    listPublishedArticles({ kind, limit: 4 }).then((articles) =>
+      articles.filter((other) => other.id !== article.id).slice(0, 3),
+    ),
+    article.coverImage ? imageDimensions(article.coverImage.storageKey) : null,
+  ]);
   return <ArticleView article={article} related={related} coverDimensions={coverDimensions} />;
 }
 
@@ -134,7 +133,7 @@ export async function ArticlePreview({ id }: { id: string }) {
   const article = await getArticleForAdmin(id);
   if (!article) notFound();
   const coverDimensions = article.coverImage
-    ? await getCoverDimensionsForAdmin(article.coverImage.id)
+    ? await imageDimensions(article.coverImage.storageKey)
     : null;
   return <ArticleView article={article} related={[]} coverDimensions={coverDimensions} preview />;
 }
