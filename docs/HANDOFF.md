@@ -1,24 +1,63 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-05 (seventh session, in progress — see «Seventh session»
-below for what changed; the «START HERE» list below is still mostly valid).
-Read this first in a new session,
-then `CLAUDE.md`, `docs/product/requirements.md` (including its dated update),
+Last updated: 2026-10-05 (end of the seventh session; next steps in «START
+HERE — eighth session»). Read this first in a new session, then `CLAUDE.md`,
+`docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
 The owner communicates in Persian and prefers short, concrete Persian
 explanations; code, commits and technical docs stay in English (see `CLAUDE.md`).
 
-## START HERE — seventh session
+## START HERE — eighth session
 
-The sixth session finished every task the owner listed (0–9 below), each as
-its own reviewed PR: #2 CI, #3 reminders, #4/#5 announcement bar, #6 surveys,
-#7 course sessions, #8 home texts, #9–#12 form builder (الف–د), #13 backlog,
-#14/#15 audit fixes, security review, QA report and the restricted database
-role, #16 research report. The way of working in section 1 stays. Plan work
-from the backlog (`docs/product/backlog/`, every PR names its `ST-BD-*`).
+**The site is live in production:** `https://ccinno.center` (verified via
+`curl -I`: `HTTP/2 200`, HSTS and CSP headers present). VPS: MobinHost,
+`87.107.160.104`, root SSH, Ubuntu, Docker. The GitHub repo is now **public**.
+Full story in «Seventh session» below. Next, in this order:
 
-Next, in this order:
+1. **Unresolved bug report — needs investigation first.** The owner wrote
+   «انیمیشن سایت اجرا نمیشه» (the site's animation doesn't run) with no
+   further detail, and this session never got to look into it (a browser
+   navigation attempt to `https://ccinno.center` failed in-tool, then the
+   conversation moved on and the session was cleared before returning to it).
+   Ask the owner which page and what they see (the home page has a ~3.5s
+   intro animation, `src/components/home/intro.tsx` — also
+   `hero-visuals.tsx`, `about-reveal.tsx` — a known speed/complexity trade-off
+   from the third session's mobile audit). Check it directly at
+   `https://ccinno.center`, read the browser console for errors, and check
+   whether `NODE_ENV=production` behavior (reduced-motion handling, hydration
+   timing) differs from what was tested in dev.
+2. **SMTP/email still not decided.** The owner asked whether the site could
+   send email from its own domain (`@ccinno.center`) instead of a personal
+   Gmail. Explained three options and their trade-offs (self-hosting a mail
+   server on the same VPS was explicitly discouraged — IP reputation on a
+   generic VPS means major providers like Gmail/Outlook silently spam-box or
+   reject it, regardless of correct SPF/DKIM/DMARC setup): (a) Gmail SMTP
+   relay with an App Password — fastest, free, sender stays
+   `@gmail.com`; (b) a cheap Iranian cPanel shared host bought just for a real
+   `@ccinno.center` mailbox, paid in Rial — recommended if the professional
+   sender address matters; (c) international transactional email services —
+   not recommended, they need an international card. **No decision made
+   yet** — ask the owner which, then fill `SMTP_URL`/`MAIL_FROM` in
+   `.env.production` on the server (format and nodemailer URL syntax are
+   documented in `src/modules/messaging/email.ts` and
+   `deploy/env.production.example`) and `docker compose ... up -d` (no
+   `--build` needed, only env changed).
+3. **SMS provider still not set (OQ-BD-11).** The site is live but member
+   sign-up/login by phone will not work until `SMS_PROVIDER` and its keys are
+   filled in `.env.production` (Kavenegar or SMS.ir, see `.env.example`).
+4. **Second admin account:** walked the owner through
+   `scripts/create-admin.ts` (confirmed from the script's own code: it only
+   inserts a new `AdminUser` row, never touches an existing one — completely
+   safe to run again) but did not confirm whether they actually ran it this
+   session. Check `/admin/users` in the panel.
+5. Then resume the sixth session's plain backlog (below): go-live checklist
+   (ST-BD-01-11), the letter to the center (ST-BD-09-05), test-data cleanup
+   (ST-BD-08-06), and the remaining content gaps in `open-questions.md`
+   (postal code, email, phone extension, the four «به‌زودی» tiles, final
+   privacy/terms text).
+
+## Sixth session's plain backlog (still valid, done except item 3)
 
 1. **Owner decisions** (ask in Persian, see `docs/qa-report-2026-10-04.fa.md`
    and `docs/product/research-2026-10-04.fa.md`): mandatory two-step login for
@@ -29,9 +68,9 @@ Next, in this order:
    of open questions to the center (ST-BD-09-05), test-data cleanup with the
    owner's OK (ST-BD-08-06 — includes the local test admin
    `claude-dev@bdcenter.test` in the dev DB).
-3. **Waiting on the center** (`منتظر مرکز` stories): SMS provider (OQ-BD-11),
-   sending email account (OQ-BD-23), content and rules. VPS + DNS (OQ-BD-08)
-   is **no longer waiting on the center** — see «Seventh session» below.
+3. ~~**Waiting on the center:** VPS + DNS (OQ-BD-08)~~ — **done, seventh
+   session**, independently of the center (own domain + VPS). Still waiting:
+   SMS provider (OQ-BD-11), sending email account (OQ-BD-23), content and rules.
 
 Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
 (see `deploy/env.production.example` and `docs/operations/deploy.md`).
@@ -53,30 +92,72 @@ Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
   block the deploy since `SITE_DOMAIN`/`NEXT_PUBLIC_SITE_URL` in
   `.env.production` already overrode the code defaults, but left stale
   references everywhere else (README, the repo is about to go public).
-- **Owner is making the GitHub repo public** (for an easier deploy clone — no
-  SSH deploy key needed once it is public). Scanned the full git history for
-  committed secrets first (`.env*` was never committed except the example
-  file; no API keys/passwords/tokens in any diff besides obvious test
-  fixtures like `'initial-password-123'`) — looks safe. Once public, treat
-  `main` like any public repo: no real secrets in commits, ever, and the
-  owner's own GitHub account/org settings (branch protection, who can push)
-  are now the only access control.
-- Walked the owner through first production deploy on the MobinHost VPS
-  step by step (DNS A records at ParsPack, SSH deploy key for the private
-  repo, `openssl rand` secrets, `.env.production`, `docker compose -f
-docker-compose.prod.yml up -d --build`, first admin account) per
-  `docs/operations/deploy.md`. Not yet confirmed live end-to-end in this
-  session — check `https://ccinno.center/api/health` next session if not
-  already done.
-- **Bug found on the live preview and fixed** (ST-BD-08-08): course/article
-  cover images were shown with `object-cover` inside a fixed-aspect box, so a
-  poster-style image with content near the edges (the owner's course cover)
-  got cropped at the top of the course/article page. Changed to
-  `object-contain` (full image, no crop, works for portrait or landscape) on
-  the course detail page, article detail page and the admin article cover
-  preview; list thumbnails still crop intentionally (grid density). Guide
-  (`src/content/admin-guide.ts`) updated. Verified in the dev server against
-  the owner's actual test course. Typecheck and lint clean.
+- **The GitHub repo (`itsmyfinance77-dev/bdcenter`) is now public.** Scanned
+  the full git history for committed secrets first (`.env*` was never
+  committed except the example file; no API keys/passwords/tokens in any diff
+  besides obvious test fixtures like `'initial-password-123'`) — looked safe,
+  and the owner confirmed they'd flipped visibility. A private-repo deploy
+  key is no longer needed; `git clone https://github.com/itsmyfinance77-dev/bdcenter.git`
+  works with no auth.
+- **Bug found on the live preview and fixed** (ST-BD-08-08, [PR #17](https://github.com/itsmyfinance77-dev/bdcenter/pull/17)):
+  course/article cover images were shown with `object-cover` inside a
+  fixed-aspect box, so a poster-style image with content near the edges (the
+  owner's course cover) got cropped at the top of the course/article page.
+  Changed to `object-contain` (full image, no crop, works for portrait or
+  landscape) on the course detail page, article detail page and the admin
+  article cover preview; list thumbnails still crop intentionally (grid
+  density). Guide (`src/content/admin-guide.ts`) updated.
+- **Domain rename finished** ([PR #18](https://github.com/itsmyfinance77-dev/bdcenter/pull/18),
+  ST-BD-01-09): every remaining `bdcenter.yazdccima.com` reference (env/Dockerfile
+  defaults, the iCal UID domain, docs, test fixtures) renamed to
+  `ccinno.center`. `docs/product/requirements.md` kept the original employer
+  brief's planned subdomain intact and got a dated amendment instead
+  (matches the file's existing pattern — never rewrite the brief itself).
+- **First production deploy — completed and confirmed live.** DNS turned out
+  harder than expected: ParsPack's own domain panel only manages nameservers
+  (NS) and glue records, not plain A records, and its "CDN" product (which
+  bundles free DNS) had ordering disabled ("فیلترینگ" limitation) at first —
+  the owner found a **free CDN plan** that could still be ordered, set its two
+  A records (`@` and `www` → `87.107.160.104`) with the cloud/proxy toggle
+  **off** ("فقط DNS" — essential, so Caddy can reach the origin directly for
+  its Let's Encrypt HTTP-01 challenge), then pointed the domain's nameservers
+  at `sky.parspack.net` / `soil.parspack.net` to activate it. Propagated in
+  under an hour. Walked the owner through the rest step by step: Docker
+  install (`curl -fsSL https://get.docker.com | sh`), `git clone` (plain,
+  public repo), `.env.production` from the example with `openssl rand`
+  secrets, `docker compose -f docker-compose.prod.yml --env-file
+.env.production up -d --build`. All five services (`app`, `db`, `caddy`,
+  `backup`, `scheduler`) came up healthy on the first try; `migrate` ran and
+  exited clean. **Verified live**: `curl -I https://ccinno.center/api/health`
+  → `HTTP/2 200`, HSTS + CSP headers present, Caddy's cert issued. First admin
+  account created via `scripts/create-admin.ts`. The owner asked about a
+  second admin account — confirmed from the script's code that it only
+  inserts a new row and never touches any existing account, gave the command,
+  but didn't confirm afterward whether it was actually run (check
+  `/admin/users`).
+- **Second cover-image bug, found live, fixed** (ST-BD-08-09,
+  [PR #19](https://github.com/itsmyfinance77-dev/bdcenter/pull/19)): `object-contain`
+  inside the _fixed_ 16:9 box from PR #17 stopped cropping but still
+  letterboxed any cover whose proportions differ from 16:9 — the owner's
+  course poster showed correctly but with large empty side margins. Added
+  `imageDimensions()` (`src/modules/files/service.ts`, sharp metadata only,
+  no decode) and size the course/article cover box to the image's **own**
+  aspect ratio read straight from the stored file, instead of a fixed one.
+  Falls back to 16:9 if dimensions can't be read. An independent review
+  caught that the first version re-queried the database for a storage key
+  the page had already fetched — fixed by adding `storageKey` to the
+  article's existing `coverSelect` and reading dimensions from that directly
+  (no extra query), and parallelized the now-independent related-articles
+  and cover-dimensions fetches with `Promise.all`. Verified in the dev server
+  against the owner's actual test course: cover now fills edge-to-edge at its
+  own proportions. **Status as this session ends: PR #19 open, CI green,
+  needs merge** (same self-approval restriction as every PR — the owner
+  merges with `gh pr merge 19 --squash --match-head-commit <sha>` after
+  `gh auth switch --user itsmyfinance77-dev`).
+- **SMTP/email discussed, not decided** — see «START HERE» above.
+- **Owner reported the site's animation not working**, with no further
+  detail, right as the session was ending — **not yet investigated**, see
+  «START HERE» above.
 
 ## Sixth session — the owner's task list (written 2026-10-04 before a context clear)
 
@@ -615,9 +696,10 @@ Test counts: 119 unit, 56 DB, 27 browser — all pass.
 **Hosting (2026-10-03):** the owner bought «هاست لینوکس» at 130.185.76.122.
 It is a shared cPanel host (LiteSpeed, cPanel on 2082/2083, FTP, server name
 `s372.roodaki.com`, SSH closed). It cannot run this app (Node.js process,
-PostgreSQL, sharp/argon2 native modules, Docker per ADR-0004). Recommended to
-the owner: a Linux VPS (Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40+ GB disk) with root
-SSH by key, and DNS for `bdcenter.yazdccima.com` pointing at it. Not deployed.
+PostgreSQL, sharp/argon2 native modules, Docker per ADR-0004) and was never
+used. **Superseded, 2026-10-05 (seventh session):** a VPS from MobinHost
+(`87.107.160.104`) and an independent domain `ccinno.center` (via ParsPack) —
+see «Seventh session» above. Deployed and confirmed live.
 
 The checkout moved from the C: desktop to `F:\SITE SEARCH` (drive C was full),
 and the dev server now runs on port **3010** (3000 belongs to another project).
@@ -642,11 +724,13 @@ and the dev server now runs on port **3010** (3000 belongs to another project).
 Every item of the owner's list that does not need the center is done. Waiting
 on the center (see `docs/product/open-questions.md`):
 
-1. Hosting and DNS (OQ-BD-08), then the first real deploy per
-   `docs/operations/deploy.md` and the go-live list in
-   `docs/security-review-2026-10.md`.
+1. ~~Hosting and DNS (OQ-BD-08), then the first real deploy~~ — **done,
+   seventh session**: live at `https://ccinno.center`, see «Seventh session»
+   above and «START HERE — eighth session» for what's still open
+   (SMS, SMTP, an unconfirmed animation bug report).
 2. SMS provider and keys (OQ-BD-11) — without them nobody can sign up on a
-   production build. SMTP account for notices and error alerts.
+   production build. SMTP account for notices and error alerts (discussed,
+   not decided — see «START HERE»).
 3. Certificate wording and signatory (OQ-BD-16); certificates stay off.
 4. Content: the four «به‌زودی» service tiles (OQ-BD-06), postal code / email /
    extension (OQ-BD-02/03), service-desk form fields (OQ-BD-09), «در یک نگاه»
