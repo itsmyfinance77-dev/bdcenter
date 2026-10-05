@@ -85,7 +85,7 @@ export default async function CoursePage({
                 fill
                 unoptimized
                 sizes="(min-width: 1024px) 800px, 100vw"
-                className="object-cover"
+                className="object-contain"
               />
             </div>
           ) : null}

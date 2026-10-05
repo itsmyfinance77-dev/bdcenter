@@ -161,7 +161,9 @@ function ArticleView({
       <PageBody>
         <div className="flex flex-col gap-12">
           <article className="mx-auto flex w-full max-w-[780px] flex-col gap-7">
-            <div className="bg-placeholder-stripes relative aspect-video overflow-hidden rounded-3xl">
+            <div
+              className={`relative aspect-video overflow-hidden rounded-3xl ${article.coverImage ? 'bg-surface-2' : 'bg-placeholder-stripes'}`}
+            >
               {article.coverImage ? (
                 <Image
                   src={cover(article.coverImage.id, 'lg')}
@@ -170,7 +172,7 @@ function ArticleView({
                   unoptimized
                   priority
                   sizes="(min-width: 840px) 780px, 100vw"
-                  className="object-cover"
+                  className="object-contain"
                 />
               ) : null}
               <span
