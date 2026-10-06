@@ -172,12 +172,13 @@ async function sendAlert(
     `جزئیات: ${site}/admin/system/errors/${id}`,
   ].join('\n');
 
-  const results = await Promise.all(
-    recipients.map((to) =>
-      sendEmail({ to, subject: `[bdcenter] خطای سرور: ${info.name}`.slice(0, 150), text }, env),
-    ),
-  );
-  return results.some(Boolean);
+  // Not awaited: this can run from the onRequestError instrumentation hook,
+  // which Next.js awaits before finishing the error response, and the send
+  // itself can be slow (see src/modules/messaging/email.ts). The rate-limit
+  // check above already happened synchronously, so the cap is still accurate.
+  const subject = `[bdcenter] خطای سرور: ${info.name}`.slice(0, 150);
+  void Promise.all(recipients.map((to) => sendEmail({ to, subject, text }, env)));
+  return true;
 }
 
 async function pruneResolved() {
