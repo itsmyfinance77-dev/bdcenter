@@ -166,7 +166,5 @@ describe('email', () => {
     expect(createTransport.mock.calls.at(-1)?.[0]).toMatchObject({
       tls: { rejectUnauthorized: false },
     });
-
-    createTransport.mockRestore();
   });
 });
