@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import nodemailer from 'nodemailer';
 import { emailAvailable, sendEmail } from '@/modules/messaging/email';
 import { smsSandboxEnabled } from '@/modules/messaging/sandbox';
 import { kavenegar, smsIr, smsSender } from '@/modules/messaging/sms';
@@ -144,5 +145,28 @@ describe('email', () => {
         { SMTP_URL: 'smtp://127.0.0.1:1' },
       ),
     ).toBe(false);
+  });
+
+  it('only relaxes TLS certificate checking when SMTP_ALLOW_SELF_SIGNED is set', async () => {
+    const sendMail = vi.fn(async () => undefined);
+    const createTransport = vi
+      .spyOn(nodemailer, 'createTransport')
+      .mockReturnValue({ sendMail } as unknown as ReturnType<typeof nodemailer.createTransport>);
+    const message = { to: 'a@b.ir', subject: 's', text: 't' };
+    const from = 'noreply@ccinno.center';
+
+    await sendEmail(message, { SMTP_URL: 'smtps://trusted.example.com:465', MAIL_FROM: from });
+    expect(createTransport.mock.calls.at(-1)?.[0]).toMatchObject({ tls: undefined });
+
+    await sendEmail(message, {
+      SMTP_URL: 'smtps://self-signed.example.com:465',
+      MAIL_FROM: from,
+      SMTP_ALLOW_SELF_SIGNED: '1',
+    });
+    expect(createTransport.mock.calls.at(-1)?.[0]).toMatchObject({
+      tls: { rejectUnauthorized: false },
+    });
+
+    createTransport.mockRestore();
   });
 });
