@@ -8,7 +8,7 @@ import { optionalText, requiredText } from '@/lib/validation';
 import { recordAudit } from '@/modules/audit/service';
 import { checkImageUpload, deleteStoredImage, storeImage } from '@/modules/files/service';
 
-const coverSelect = { select: { id: true, altText: true } } as const;
+const coverSelect = { select: { id: true, altText: true, storageKey: true } } as const;
 
 const articleSummarySelect = {
   id: true,

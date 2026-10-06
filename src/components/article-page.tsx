@@ -16,6 +16,7 @@ import {
   getPublishedArticle,
   listPublishedArticles,
 } from '@/modules/content/service';
+import { imageDimensions } from '@/modules/files/service';
 
 const sectionTitle = { NEWS: 'اخبار', EVENT: 'رویدادها', ALL: 'اخبار و رویدادها' } as const;
 const kindLabel = { NEWS: 'خبر', EVENT: 'رویداد' } as const;
@@ -115,10 +116,13 @@ function MetaChip({
 export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slug: string }) {
   const article = await getPublishedArticle(kind, slug);
   if (!article) notFound();
-  const related = (await listPublishedArticles({ kind, limit: 4 }))
-    .filter((other) => other.id !== article.id)
-    .slice(0, 3);
-  return <ArticleView article={article} related={related} />;
+  const [related, coverDimensions] = await Promise.all([
+    listPublishedArticles({ kind, limit: 4 }).then((articles) =>
+      articles.filter((other) => other.id !== article.id).slice(0, 3),
+    ),
+    article.coverImage ? imageDimensions(article.coverImage.storageKey) : null,
+  ]);
+  return <ArticleView article={article} related={related} coverDimensions={coverDimensions} />;
 }
 
 /**
@@ -128,7 +132,10 @@ export async function ArticleDetailPage({ kind, slug }: { kind: ArticleKind; slu
 export async function ArticlePreview({ id }: { id: string }) {
   const article = await getArticleForAdmin(id);
   if (!article) notFound();
-  return <ArticleView article={article} related={[]} preview />;
+  const coverDimensions = article.coverImage
+    ? await imageDimensions(article.coverImage.storageKey)
+    : null;
+  return <ArticleView article={article} related={[]} coverDimensions={coverDimensions} preview />;
 }
 
 type ArticleWithCover = NonNullable<Awaited<ReturnType<typeof getArticleForAdmin>>>;
@@ -136,10 +143,12 @@ type ArticleWithCover = NonNullable<Awaited<ReturnType<typeof getArticleForAdmin
 function ArticleView({
   article,
   related,
+  coverDimensions,
   preview = false,
 }: {
   article: ArticleWithCover;
   related: Awaited<ReturnType<typeof listPublishedArticles>>;
+  coverDimensions: { width: number; height: number } | null;
   preview?: boolean;
 }) {
   const kind = article.kind;
@@ -162,7 +171,16 @@ function ArticleView({
         <div className="flex flex-col gap-12">
           <article className="mx-auto flex w-full max-w-[780px] flex-col gap-7">
             <div
-              className={`relative aspect-video overflow-hidden rounded-3xl ${article.coverImage ? 'bg-surface-2' : 'bg-placeholder-stripes'}`}
+              className={`relative overflow-hidden rounded-3xl ${article.coverImage ? 'bg-surface-2' : 'aspect-video bg-placeholder-stripes'}`}
+              style={
+                article.coverImage
+                  ? {
+                      aspectRatio: coverDimensions
+                        ? `${coverDimensions.width} / ${coverDimensions.height}`
+                        : '16 / 9',
+                    }
+                  : undefined
+              }
             >
               {article.coverImage ? (
                 <Image

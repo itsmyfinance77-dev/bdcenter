@@ -186,6 +186,25 @@ export function isImageVariant(value: string): value is ImageVariant {
   return Object.hasOwn(IMAGE_VARIANTS, value);
 }
 
+/**
+ * Pixel size of a stored image, read from the file itself (sharp only parses
+ * the header, it does not decode the image). Used to size a cover's display
+ * box to its own proportions instead of cropping or letterboxing it.
+ */
+export async function imageDimensions(
+  storageKey: string,
+  variant: ImageVariant = 'lg',
+): Promise<{ width: number; height: number } | null> {
+  const target = storedFilePath(imageVariantKey(storageKey, variant));
+  if (!target) return null;
+  try {
+    const { width, height } = await sharp(target).metadata();
+    return width && height ? { width, height } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Streams one size of a stored image, or a 404 when it is missing. */
 export async function imageResponse(
   storageKey: string,
