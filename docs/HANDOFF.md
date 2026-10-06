@@ -1,56 +1,74 @@
 # Handoff — state of the project and how to continue
 
-Last updated: 2026-10-05 (end of the seventh session; next steps in «START
-HERE — eighth session»). Read this first in a new session, then `CLAUDE.md`,
+Last updated: 2026-10-06 (end of the eighth session; next steps in «START
+HERE — ninth session»). Read this first in a new session, then `CLAUDE.md`,
 `docs/product/requirements.md` (including its dated update),
 `docs/product/open-questions.md` and the ADRs in `docs/decisions/`.
 
 The owner communicates in Persian and prefers short, concrete Persian
 explanations; code, commits and technical docs stay in English (see `CLAUDE.md`).
 
-## START HERE — eighth session
+## START HERE — ninth session
 
-**The site is live in production:** `https://ccinno.center` (verified via
-`curl -I`: `HTTP/2 200`, HSTS and CSP headers present). VPS: MobinHost,
-`87.107.160.104`, root SSH, Ubuntu, Docker. The GitHub repo is now **public**.
-Full story in «Seventh session» below. Next, in this order:
+**The site is live in production:** `https://ccinno.center`. VPS: MobinHost,
+`87.107.160.104`, root SSH, Ubuntu, Docker. The GitHub repo is public. Full
+eighth-session story below. Next, in this order:
 
-1. **Unresolved bug report — needs investigation first.** The owner wrote
-   «انیمیشن سایت اجرا نمیشه» (the site's animation doesn't run) with no
-   further detail, and this session never got to look into it (a browser
-   navigation attempt to `https://ccinno.center` failed in-tool, then the
-   conversation moved on and the session was cleared before returning to it).
-   Ask the owner which page and what they see (the home page has a ~3.5s
-   intro animation, `src/components/home/intro.tsx` — also
-   `hero-visuals.tsx`, `about-reveal.tsx` — a known speed/complexity trade-off
-   from the third session's mobile audit). Check it directly at
-   `https://ccinno.center`, read the browser console for errors, and check
-   whether `NODE_ENV=production` behavior (reduced-motion handling, hydration
-   timing) differs from what was tested in dev.
-2. **SMTP/email still not decided.** The owner asked whether the site could
-   send email from its own domain (`@ccinno.center`) instead of a personal
-   Gmail. Explained three options and their trade-offs (self-hosting a mail
-   server on the same VPS was explicitly discouraged — IP reputation on a
-   generic VPS means major providers like Gmail/Outlook silently spam-box or
-   reject it, regardless of correct SPF/DKIM/DMARC setup): (a) Gmail SMTP
-   relay with an App Password — fastest, free, sender stays
-   `@gmail.com`; (b) a cheap Iranian cPanel shared host bought just for a real
-   `@ccinno.center` mailbox, paid in Rial — recommended if the professional
-   sender address matters; (c) international transactional email services —
-   not recommended, they need an international card. **No decision made
-   yet** — ask the owner which, then fill `SMTP_URL`/`MAIL_FROM` in
-   `.env.production` on the server (format and nodemailer URL syntax are
-   documented in `src/modules/messaging/email.ts` and
-   `deploy/env.production.example`) and `docker compose ... up -d` (no
-   `--build` needed, only env changed).
-3. **SMS provider still not set (OQ-BD-11).** The site is live but member
-   sign-up/login by phone will not work until `SMS_PROVIDER` and its keys are
-   filled in `.env.production` (Kavenegar or SMS.ir, see `.env.example`).
-4. **Second admin account:** walked the owner through
-   `scripts/create-admin.ts` (confirmed from the script's own code: it only
-   inserts a new `AdminUser` row, never touches an existing one — completely
-   safe to run again) but did not confirm whether they actually ran it this
-   session. Check `/admin/users` in the panel.
+1. **Confirm the SMTP fix actually delivers an email — this is the one
+   unfinished thing from the eighth session.** Current state of
+   `.env.production` on the server:
+   ```
+   SMTP_URL="smtp://info%40ccinno.center:<password>@mail.ccinno.center:587"
+   MAIL_FROM="info@ccinno.center"
+   SMTP_ALLOW_SELF_SIGNED="1"
+   ```
+   Three real, separate problems were found and fixed/worked around on this
+   one cheap cPanel mailbox, in order:
+   - **Self-signed TLS cert** — `SMTP_ALLOW_SELF_SIGNED` (PR #21). AutoSSL
+     issued a _valid_ Let's Encrypt certificate for `mail.ccinno.center` (the
+     domain), but cPanel's AutoSSL does not bind that certificate to the
+     actual Exim/Dovecot mail daemons — that bind is a WHM/server-level
+     action the account owner cannot do themselves. A support-ticket
+     template for ParsPack to do this properly was given to the owner, not
+     sent as of end of session; once they do and it's confirmed fixed,
+     `SMTP_ALLOW_SELF_SIGNED` can come off and `SMTP_URL` can drop back to
+     `smtps://...:465` with real validation.
+   - **Port 465 (implicit TLS) never sends its SMTP greeting** — confirmed
+     with a raw Node `tls.connect` test (TLS handshake completes, then
+     nothing). A real bug/misconfiguration on the host's side. Switched to
+     port 587 (STARTTLS), confirmed with a raw `net.connect` test to respond
+     immediately with `220-s375.bitcommand.com ESMTP Exim...`.
+   - **Even port 587 is intermittently slow to greet** — nodemailer's
+     default `connectionTimeout`/`greetingTimeout` (10s) wasn't always
+     enough (repeated "Greeting never received" / `ETIMEDOUT` in
+     `docker compose logs app`, even though a manual raw-socket test against
+     the same port had succeeded instantly minutes earlier). Likely the
+     mailbox plan's tiny resources (128 MB RAM) under fluctuating load.
+     Raised all three nodemailer timeouts to 30s in
+     `src/modules/messaging/email.ts` (PR not yet merged as this session
+     ended — check `git log` / open PRs). Safe to be generous here: both
+     call sites (`src/modules/auth/password-reset.ts`,
+     `src/modules/notifications/service.ts`) already run `sendEmail` through
+     Next's `after()`, so it never blocks an HTTP response.
+     **Next session: merge that PR if still open, deploy
+     (`git pull && docker compose ... up -d --build`), then actually confirm a
+     real email lands in an inbox** — this was never fully confirmed end to
+     end. Rate limits block repeated testing: admin "forgot password" is
+     1-hour-limited per email+IP (`rate_limit_buckets` table, keys
+     `admin-reset:email:...` / `admin-reset:ip:...` — safe to `DELETE FROM
+rate_limit_buckets WHERE key = '...'` for a specific key to retest sooner,
+     already done a few times this session); the guest-form confirmation email
+     is 3/day per email address (`formConfirmEmail` in
+     `src/modules/ratelimit/service.ts`, key `form-confirm:<email>`).
+2. **Owner reported the "site animation" issue is no longer happening**
+   (2026-10-06) — no fix was needed, drop it from the backlog.
+3. **SMS provider still not set (OQ-BD-11).** Researched: Kavenegar's free
+   "استاندارد" account tier includes the OTP/verification service; a
+   dedicated sender line (one-time cost, cheapest non-custom 14-digit line
+   ≈ ۶۵۰,۰۰۰ ریال) is still needed before real sending works. Owner hadn't
+   signed up as of end of eighth session — ask whether they started.
+4. **Second admin account — still unconfirmed after two sessions of asking.**
+   Stop asking and just check `/admin/users` in the panel directly.
 5. Then resume the sixth session's plain backlog (below): go-live checklist
    (ST-BD-01-11), the letter to the center (ST-BD-09-05), test-data cleanup
    (ST-BD-08-06), and the remaining content gaps in `open-questions.md`
@@ -74,6 +92,60 @@ Full story in «Seventh session» below. Next, in this order:
 
 Production setup changed in #15: `.env.production` needs `APP_DB_PASSWORD`
 (see `deploy/env.production.example` and `docs/operations/deploy.md`).
+
+## Eighth session (2026-10-06)
+
+- PR #19 and #20 (from the seventh session's end) confirmed merged; `main`
+  synced. Domain/cover-image work from the seventh session is fully live.
+- **Second admin account:** walked the owner through `scripts/create-admin.ts`
+  again; not confirmed run this session either (see «START HERE» above).
+- **Owner reported the "site animation" doesn't run**, investigation deferred
+  (browser tool couldn't reach the live site directly from here), then later
+  in the session the owner said it's no longer happening — no fix needed,
+  treated as resolved without a root cause ever being found.
+- **Email, the bulk of this session** — see the detailed account in «START
+  HERE» above for the three distinct problems found. Summary of what was
+  bought/configured along the way:
+  - Owner bought the cheapest custom "هاست خودت رو بساز" Linux hosting from
+    ParsPack (128 MB RAM / 100 MB disk / cPanel / Iran / monthly,
+    ۹۴,۰۸۵ تومان/ماه) — for an `@ccinno.center` mailbox only, not web hosting
+    (the live site stays on the MobinHost VPS). Ordered with "دامنه دارم"
+    (existing domain), nameservers left untouched.
+  - Created `info@ccinno.center` in cPanel's Email Accounts.
+  - cPanel's own "Connect Devices" auto-config page showed a mail server
+    hostname (`s375.bitcommand.com`) that **does not resolve in public DNS**
+    (confirmed via `nslookup` from the owner's machine) — a real error on
+    the host's side; used the account's Shared IP (`146.19.212.122`) instead
+    at first, later a proper `mail` A record (see below).
+  - Added DNS records in ParsPack's free-CDN DNS-only panel (same place the
+    site's own `@`/`www` A records live): `mail` → A → `146.19.212.122`, and
+    an MX record for `@` (not `info` — the owner tried that once, a mistake:
+    MX is for the whole domain, not a mailbox name) → `mail.ccinno.center`.
+  - Created `mail.ccinno.center` as a subdomain inside cPanel (empty, just so
+    AutoSSL would cover it) and ran AutoSSL — got a real Let's Encrypt cert
+    for the domain, which is _not_ the same as the mail daemon's cert (see
+    «START HERE» above).
+  - `src/modules/messaging/email.ts` changed twice: `SMTP_ALLOW_SELF_SIGNED`
+    added (PR #21, merged), then nodemailer's timeouts raised 10s → 30s (not
+    yet merged/deployed as the session ended).
+  - Along the way, debugged the rate limiters that kept blocking retests:
+    `admin-reset:email:<email>` / `admin-reset:ip:<ip>` (1 hour,
+    `LIMITS.adminPasswordReset`) and `form-confirm:<email>` (3/day,
+    `LIMITS.formConfirmEmail`), both rows in `rate_limit_buckets` — safe to
+    `DELETE FROM rate_limit_buckets WHERE key = '...'` for a specific key
+    when retesting, never touches any other key/user.
+  - Noticed (not yet acted on) several `admin-reset:email:*` attempts in that
+    table for admin emails other than the owner's own
+    (`itsmyfinance100@gmail.com`, `itsmyfinance77@gmail.com`,
+    `hadizare.eco@gmail.com`, ...) — likely automated probing now that the
+    site is live and public; the rate limiter is already doing its job, no
+    action needed unless it escalates.
+- **SMS provider (OQ-BD-11) researched, not yet set up.** Kavenegar's free
+  "استاندارد" tier includes the OTP/verification service (`۵۰,۰۰۰` ریال free
+  trial credit); still needs a one-time dedicated sender line purchase
+  (cheapest non-custom 14-digit line ≈ ۶۵۰,۰۰۰ ریال). SMS.ir mentioned as the
+  codebase's other already-supported option but not compared in depth.
+  Owner hadn't signed up with either as of end of session.
 
 ## Seventh session (2026-10-05)
 

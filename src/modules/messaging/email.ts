@@ -30,9 +30,12 @@ function transport(url: string, allowSelfSigned: boolean) {
       allowSelfSigned,
       transport: nodemailer.createTransport({
         url,
-        connectionTimeout: 10_000,
-        greetingTimeout: 10_000,
-        socketTimeout: 20_000,
+        // Generous: sendEmail always runs in the background (after() on the
+        // caller's side), never blocking a response, and some budget shared
+        // hosts are slow to greet under load.
+        connectionTimeout: 30_000,
+        greetingTimeout: 30_000,
+        socketTimeout: 30_000,
         tls: allowSelfSigned ? { rejectUnauthorized: false } : undefined,
       }),
     };
