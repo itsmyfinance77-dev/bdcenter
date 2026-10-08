@@ -6,8 +6,10 @@ import type { SmsSender } from './sms';
  * member sign-in and status notices can be tested without an SMS provider.
  *
  * Allowed in development and in the plain-HTTP preview build
- * (INSECURE_HTTP_PREVIEW=1, `npm run preview`), never on the real deployment:
- * anyone who can read the inbox could sign in as any member.
+ * (INSECURE_HTTP_PREVIEW=1, `npm run preview`). On the real deployment only
+ * with the explicit opt-in SMS_SANDBOX_ON_LIVE=1 (owner's decision while no SMS
+ * provider is set up): anyone who can read the inbox could sign in as any
+ * member, so the inbox stays ADMIN-only.
  */
 
 type Env = Record<string, string | undefined>;
@@ -16,7 +18,11 @@ const KEEP = 300;
 
 export function smsSandboxEnabled(env: Env = process.env): boolean {
   if (env.SMS_PROVIDER?.trim() !== 'sandbox') return false;
-  return env.NODE_ENV !== 'production' || env.INSECURE_HTTP_PREVIEW === '1';
+  return (
+    env.NODE_ENV !== 'production' ||
+    env.INSECURE_HTTP_PREVIEW === '1' ||
+    env.SMS_SANDBOX_ON_LIVE?.trim() === '1'
+  );
 }
 
 async function db() {
