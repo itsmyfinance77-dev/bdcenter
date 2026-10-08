@@ -37,7 +37,7 @@ describe('provider selection', () => {
     expect(smsSender({ NODE_ENV: 'development' })).not.toBeNull();
   });
 
-  it('allows the sandbox only in development and the plain-HTTP preview', () => {
+  it('allows the sandbox in development, the plain-HTTP preview and by live opt-in', () => {
     expect(smsSandboxEnabled({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'development' })).toBe(true);
     expect(
       smsSandboxEnabled({
@@ -47,6 +47,27 @@ describe('provider selection', () => {
       }),
     ).toBe(true);
     expect(smsSandboxEnabled({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'production' })).toBe(false);
+    expect(
+      smsSandboxEnabled({
+        SMS_PROVIDER: 'sandbox',
+        NODE_ENV: 'production',
+        SMS_SANDBOX_ON_LIVE: '1',
+      }),
+    ).toBe(true);
+    expect(
+      smsSandboxEnabled({
+        SMS_PROVIDER: 'sandbox',
+        NODE_ENV: 'production',
+        SMS_SANDBOX_ON_LIVE: '0',
+      }),
+    ).toBe(false);
+    expect(
+      smsSandboxEnabled({
+        SMS_PROVIDER: 'kavenegar',
+        NODE_ENV: 'production',
+        SMS_SANDBOX_ON_LIVE: '1',
+      }),
+    ).toBe(false);
     expect(smsSandboxEnabled({ SMS_PROVIDER: 'console', NODE_ENV: 'development' })).toBe(false);
     expect(smsSender({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'production' })).toBeNull();
     expect(smsSender({ SMS_PROVIDER: 'sandbox', NODE_ENV: 'development' })).not.toBeNull();
